@@ -227,4 +227,3 @@ SELECT P_Unidade
                   Order by Leito
                   ) mov
                   where mov.Cd_Setor = 215)
-                                         
