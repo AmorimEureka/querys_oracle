@@ -1,7 +1,12 @@
 
+/* ********************************************************************************************************************************************** */
 
+/* ********************************************************************************************************************************************** */
+
+-- QUERY ORIGINAL DO PAINEL HPC-DIRETORIA-Custos por Cirurgia
 
 WITH CUSTO_CIRURGIA AS (
+        -- QUERY ORIGINAL
         SELECT DISTINCT
             main_query.cd_concatenated_columns,
             main_query.cd_aviso_cirurgia, 
@@ -85,6 +90,7 @@ WITH CUSTO_CIRURGIA AS (
             main_query.nm_prestador
 ),
 GASTO_SALA AS (
+        -- QUERY ORIGINAL
         SELECT DISTINCT
             me.cd_mvto_estoque,
             --ci.cd_cirurgia,
@@ -278,3 +284,40 @@ LEFT JOIN
 SELECT CD_PRODUTO, VL_FATOR, VL_ULTIMA_ENTRADA FROM DBAMV.UNI_PRO WHERE CD_PRODUTO = 9032281 ;
 
 SELECT * FROM user_tab_columns WHERE COLUMN_NAME = 'VL_ULTIMA_ENTRADA';
+
+/* ********************************************************************************************************************************************** */
+/* ********************************************************************************************************************************************** */
+
+-- QUERY AJUSTADA PARA O PAINEL
+SELECT DISTINCT
+    me.cd_mvto_estoque,
+    --ci.cd_cirurgia,
+    a.cd_paciente,
+    me.cd_atendimento,
+    me.cd_aviso_cirurgia,
+    ie.cd_produto,
+    p.ds_produto,
+    DECODE(
+        me.tp_mvto_estoque,
+        'D', ie.qt_movimentacao,
+        'C' , ie.qt_movimentacao,
+        ie.qt_movimentacao * -1) qt_movimentacao,
+        p.VL_CUSTO_MEDIO AS vl_initario
+    -- p.VL_ULTIMA_ENTRADA AS vl_initario
+    -- vip.vl_unitario AS vl_initario
+FROM mvto_estoque me
+JOIN itmvto_estoque ie ON me.cd_mvto_estoque = ie.cd_mvto_estoque
+JOIN atendime a ON a.cd_atendimento = me.cd_atendimento
+JOIN (
+    SELECT ip.cd_produto, ip.vl_unitario, ip.dt_gravacao
+    FROM itent_pro ip
+    JOIN (
+        SELECT cd_produto, MAX(dt_gravacao) AS max_dt_gravacao
+        FROM itent_pro
+        GROUP BY cd_produto
+    ) latest ON ip.cd_produto = latest.cd_produto AND ip.dt_gravacao = latest.max_dt_gravacao
+) vip ON vip.cd_produto = ie.cd_produto
+JOIN cirurgia_aviso ca ON ca.cd_aviso_cirurgia = me.cd_aviso_cirurgia
+JOIN cirurgia ci ON ci.cd_cirurgia = ca.cd_cirurgia
+JOIN produto p ON p.cd_produto = vip.cd_produto
+WHERE me.cd_aviso_cirurgia IS NOT NULL
