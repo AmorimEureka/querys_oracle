@@ -201,6 +201,378 @@ LEFT JOIN DBAMV.PRODUTO p
 WHERE oc.CD_ORD_COM = 4026 ;
 
 
+-- ************************************************************************************************************************************************************* --
+-- ************************************************************************************************************************************************************* --
+
+WITH teste AS (
+    SELECT 
+        oc.CD_ORD_COM
+        , itpr.CD_ORD_COM AS itpr_qtd
+    FROM
+        DBAMV.ITORD_PRO itpr
+    LEFT JOIN DBAMV.ORD_COM oc ON itpr.CD_ORD_COM = itpr.CD_ORD_COM
+    WHERE itpr.CD_ORD_COM = 5682 --AND oc.DT_ORD_COM BETWEEN SYSDATE-30 AND SYSDATE
+ )
+ SELECT COUNT(*) FROM teste -- WHERE ROWNUM <= 1000
+ ;
+
+/* ----------------------------------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------------------------------- */
+    
+    -- ITSOL_COM:
+        -- qt_solic
+        -- qt_comprada
+        -- qt_atendida
+
+    -- ITORD_PRO:
+        -- qt_comprada
+        -- qt_atendida
+        -- qt_recebida
+        -- qt_cancelada
+    
+    -- ITENT_PRO:
+        -- qt_entrada
+        -- qt_devolucao
+
+    -- PRODUTO:
+        -- qt_estoque_atual
+        -- qt_ultima_entrada
+
+
+    -- TESTE_1:
+        -- 1 SOL_COM - TEM 13 ORD_COM
+            -- 1 DESSAS 13 ORD_COM - TEM 9 ITORD_PRO
+                -- 9 ITORD_PRO - 9 PRODUTOS
+        
+        -- 1 SOL_COM - TEM 25 ITSOL_COM
+            -- 25 ITSOL_COM - 25 PRODUTOS
+
+        -- # TESTAR SE A QUANTIDADE PRODUTOS DAS 13 ORD_COM É IGUAL 25 [ 25 ITSOL_COM ]
+    
+    -- TESTE_2:
+        -- 1 ORD_COM - TEM 4 ENT_PRO
+            -- 1 DESSAS 4 ENT_PRO - TEM 3 ITENT_PRO
+                -- 3 ITENT_PRO - 3 PRODUTO
+        
+        -- 1 ORD_COM [ NO GERAL ] - TEM 15 ITENT_PRO/PRODUTO
+
+        -- # TESTAR SE A QUANTIDADE [ 25 ITENS ] DE ITENT_PRO/PRODUTO PERTENCE AS 13 ORD_COM DA SOL_COM EXPLORADA
+
+
+
+
+
+
+/* ----------------------------------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------------------------------- */
+
+
+-- 19802 [ N ESTAVA NA SOLICITAÇÃO ORIGINAL - PORÉM FOI INCLUÍDO EM OUTUBRO ] 
+-- 19838, 19872 e 13383 [ OS 3 FORAM INCLUÍDOS EM NOVEMBRO ] - [ 13383 REPETIDO - 1 FOI CANCELADO ]
+
+WITH 
+    itrod AS (
+    SELECT -- 29 -> 
+        oc.CD_SOL_COM
+        , ip.CD_PRODUTO AS prod
+    FROM DBAMV.ITORD_PRO ip
+    LEFT JOIN DBAMV.ORD_COM oc ON ip.CD_ORD_COM = oc.CD_ORD_COM
+    WHERE oc.CD_SOL_COM = 3337
+),
+itsol AS (
+    SELECT -- 25
+        sc.CD_SOL_COM
+        , ic.CD_PRODUTO AS prod
+    FROM DBAMV.ITSOL_COM ic
+    LEFT JOIN DBAMV.SOL_COM sc ON ic.CD_SOL_COM = sc.CD_SOL_COM
+    WHERE sc.CD_SOL_COM = 3337
+)
+SELECT prod FROM itrod
+MINUS
+SELECT prod FROM itsol
+;
+
+
+SELECT -- 29 -> 19802 , 19838, 19872 e 13383 REPETIDO
+    oc.CD_SOL_COM
+    , oc.CD_ORD_COM
+    , oc.DT_ORD_COM
+    , ip.CD_PRODUTO AS prod
+FROM DBAMV.ITORD_PRO ip
+LEFT JOIN DBAMV.ORD_COM oc ON ip.CD_ORD_COM = oc.CD_ORD_COM
+WHERE oc.CD_SOL_COM = 3337 AND ip.CD_PRODUTO IN(19802 , 19838, 19872)
+;
+
+SELECT -- 29 -> 19802 , 19838, 19872 e 13383 REPETIDO
+    oc.CD_SOL_COM
+    , oc.CD_ORD_COM
+    , oc.DT_ORD_COM
+    , oc.DT_CANCELAMENTO
+    , ip.CD_PRODUTO AS prod
+FROM DBAMV.ITORD_PRO ip
+LEFT JOIN DBAMV.ORD_COM oc ON ip.CD_ORD_COM = oc.CD_ORD_COM
+WHERE oc.CD_SOL_COM = 3337 --AND oc.CD_ORD_COM IN(5507, 5696, 5695)
+;
+
+
+
+    -- ITSOL_COM:
+        -- qt_solic
+        -- qt_comprada
+        -- qt_atendida
+
+    -- ITORD_PRO:
+        -- qt_comprada
+        -- qt_atendida
+        -- qt_recebida
+        -- qt_cancelada
+WITH 
+    itrod AS (
+    SELECT -- 29 -> 
+        oc.CD_SOL_COM
+        , ip.CD_PRODUTO AS prod
+        , ip.qt_comprada
+        , ip.qt_atendida
+        , ip.qt_recebida
+        , ip.qt_cancelada
+    FROM DBAMV.ITORD_PRO ip
+    LEFT JOIN DBAMV.ORD_COM oc ON ip.CD_ORD_COM = oc.CD_ORD_COM
+    WHERE oc.CD_SOL_COM = 3337
+),
+itsol AS (
+    SELECT -- 25
+        sc.CD_SOL_COM
+        , ic.CD_PRODUTO AS prod
+        , ic.qt_solic
+        , ic.qt_comprada
+        , ic.qt_atendida
+    FROM DBAMV.ITSOL_COM ic
+    LEFT JOIN DBAMV.SOL_COM sc ON ic.CD_SOL_COM = sc.CD_SOL_COM
+    WHERE sc.CD_SOL_COM = 3337
+)
+SELECT prod FROM itrod
+MINUS
+SELECT prod FROM itsol
+;
+
+
+
+
+/* ----------------------------------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------------------------------- */
+
+
+
+/* ----------------------------------------------------------- */
+/* ---------------- SOL_COM 1:* ORD_COM ---------------------- */
+-- 1 SOLICITACAO_COMPRA 
+SELECT 
+    COUNT(*)
+FROM DBAMV.SOL_COM sc
+WHERE sc.CD_SOL_COM = 3337
+;
+
+
+-- A SOLICITACAO_COMRPA "3337" TEM 13 ORDEM_COMPRA
+SELECT 
+    COUNT(*)
+FROM DBAMV.ORD_COM oc
+WHERE oc.CD_SOL_COM = 3337
+;
+
+
+/* ----------------------------------------------------------- */
+/* -------------- ORD_COM 1:* ITORD_PRO ---------------------- */
+-- 1 REGISTRO
+SELECT 
+    COUNT(*)
+FROM DBAMV.ORD_COM oc
+WHERE oc.CD_ORD_COM = 5542
+;
+
+-- 9 REGISTROS
+SELECT 
+    COUNT(*)
+FROM DBAMV.ITORD_PRO itpr
+WHERE itpr.CD_ORD_COM = 5542
+;
+
+    /* -------------- ORD_COM 1:* ITORD_PRO ---------------------- */
+
+    -- A SOLICITACAO_COMRPA "3337" TEM 13 ORDEM_COMPRA
+    -- UMA DESSAS ORDENS_COMPRA TEM 9 itpr
+        -- A CD_ORD_COM=5542 TEM 9 ITPR
+    SELECT 
+        oc.CD_ORD_COM
+        , COUNT(itpr.CD_ORD_COM) AS qtd_itpr
+    FROM DBAMV.ITORD_PRO itpr
+    LEFT JOIN DBAMV.ORD_COM oc ON itpr.CD_ORD_COM = oc.CD_ORD_COM
+    WHERE oc.CD_SOL_COM = 3337
+    GROUP BY oc.CD_ORD_COM
+    ;
+
+
+    /* -------------- ITORD_PRO 1:1 PRODUTO  ---------------------- */
+
+    -- AS TABELAS TEM A SEGUINTE RELACAO ITORD_PRO 1:1 PRODUTO
+        -- LEITURAS DA RELACAO:
+            -- A ORDEM_COMPRA 5542 TEM 9 ITORD_PRO
+            -- A ORDEM_COMPRA 5542 TEM 9 PRODUTOS
+
+    -- A ORDEM_COMPRA 5542 TEM 9 ITORD_PRO
+    SELECT
+        itpr.CD_ORD_COM
+        , p.CD_PRODUTO
+    FROM DBAMV.ITORD_PRO itpr
+    LEFT JOIN DBAMV.PRODUTO p ON itpr.CD_PRODUTO = p.CD_PRODUTO
+    WHERE itpr.CD_ORD_COM = 5542
+    ;
+
+    -- A ORDEM_COMPRA 5542 TEM 9 PRODUTOS
+    SELECT 
+        itpr.CD_ORD_COM
+        , COUNT(p.CD_PRODUTO) AS qtd_produto
+    FROM DBAMV.ITORD_PRO itpr
+    LEFT JOIN DBAMV.ORD_COM oc ON itpr.CD_ORD_COM = oc.CD_ORD_COM
+    LEFT JOIN DBAMV.PRODUTO p ON itpr.CD_PRODUTO = p.CD_PRODUTO
+    WHERE oc.CD_SOL_COM = 3337
+    GROUP BY itpr.CD_ORD_COM 
+    ;
+
+
+/* ----------------------------------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------- */
+/* -------------- SOL_COM 1:* ITSOL_COM ---------------------- */
+-- 1 REGISTRO
+SELECT 
+    COUNT(*)
+FROM DBAMV.SOL_COM sc
+WHERE sc.CD_SOL_COM = 3337
+;
+
+-- 25 ITSOL_COM RELACIONADOS A CD_SOL_COM = 3337
+SELECT 
+    COUNT(*)
+FROM DBAMV.ITSOL_COM ic
+WHERE ic.CD_SOL_COM = 3337
+;
+
+-- RELACAO DOS 25 ITENS RELACIONADOS À CD_SOL_COM = 3337 NA ITSOL_COM
+SELECT 
+    ic.CD_SOL_COM
+    , ic.CD_PRODUTO
+FROM DBAMV.ITSOL_COM ic
+WHERE ic.CD_SOL_COM = 3337
+;
+
+
+    /* -------------- ITSOL_COM 1:1 PRODUTO ---------------------- */
+
+    -- AS TABELAS TEM A SEGUINTE RELACAO ITSOL_COM 1:1 PRODUTO
+        -- LEITURAS DA RELACAO:
+            -- A SOLICITACAO_COMPRA 3337 TEM 25 ITSOL_COM
+            -- A SOLICITACAO_COMPRA 3337 TEM 25 PRODUTOS
+
+    -- 25 ITSOL_COM RELACIONADOS A CD_SOL_COM = 3337
+    SELECT 
+        COUNT(p.CD_PRODUTO)
+    FROM DBAMV.ITSOL_COM ic
+    LEFT JOIN DBAMV.PRODUTO p ON ic.CD_PRODUTO = p.CD_PRODUTO
+    WHERE ic.CD_SOL_COM = 3337
+    ;
+
+    -- RELACAO DOS 25 ITENS RELACIONADOS À CD_SOL_COM = 3337 NA PRODUTO
+    SELECT 
+        ic.CD_SOL_COM
+        , p.CD_PRODUTO
+    FROM DBAMV.ITSOL_COM ic
+    LEFT JOIN DBAMV.PRODUTO p ON ic.CD_PRODUTO = p.CD_PRODUTO
+    WHERE ic.CD_SOL_COM = 3337
+    ;
+
+
+/* ----------------------------------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------- */
+/* --------------- ORD_COM 1:* ENT_PRO ----------------------- */
+
+ -- 4 CD_ENT_PRO/NR_DOCUMENTO RELACIONADOS A ORDEM_COMPRA = 5542
+    -- 1 DOCUMENTO E CONSIDERADA UMA ENTRADA NA TABELA "ENT_PRO"
+SELECT 
+    oc.CD_ORD_COM
+    , COUNT(ep.CD_ENT_PRO) AS qtd_ent_pro
+FROM DBAMV.ORD_COM oc
+LEFT JOIN DBAMV.ENT_PRO ep ON oc.CD_ORD_COM = ep.CD_ORD_COM
+WHERE oc.CD_ORD_COM = 5542
+GROUP BY oc.CD_ORD_COM
+;
+
+
+    -- A RELACAO DAS 4 ENTRADAS RELACIONADAS A ORDEM_COMPRA "5542"
+    SELECT 
+        oc.CD_ORD_COM
+        , ep.CD_ENT_PRO
+    FROM DBAMV.ORD_COM oc
+    LEFT JOIN DBAMV.ENT_PRO ep ON oc.CD_ORD_COM = ep.CD_ORD_COM
+    WHERE oc.CD_ORD_COM = 5542
+    ;
+
+    -- UM DESSAS ENTRADAS, A ENTRADA "25041" TEM 3 ITENS DE ENTRADAS NA ITENT_PRO
+    SELECT 
+        ep.CD_ORD_COM
+        , ip.CD_ITENT_PRO
+    FROM ITENT_PRO ip
+    LEFT JOIN DBAMV.ENT_PRO ep ON ip.CD_ENT_PRO = ep.CD_ENT_PRO
+    WHERE ep.CD_ENT_PRO = 25041
+    ;
+
+    -- UM DESSAS ENTRADAS, A ENTRADA "25041" TEM 3 PRODUTOS
+    SELECT
+        ip.CD_ITENT_PRO
+        , p.CD_PRODUTO
+    FROM DBAMV.ITENT_PRO ip
+    LEFT JOIN DBAMV.PRODUTO p ON ip.CD_PRODUTO = p.CD_PRODUTO
+    WHERE ip.CD_ENT_PRO = 25041
+    ;
+
+/* ----------------------------------------------------------- */
+/* ----------------------------------------------------------- */
+
+-- 15 ITENS DE ENTRADA RELACIONADO A CD_ORD_COM = 5542
+SELECT
+    ep.CD_ORD_COM
+    , COUNT(ip.CD_ITENT_PRO)
+FROM DBAMV.ITENT_PRO ip
+LEFT JOIN DBAMV.ENT_PRO ep ON ip.CD_ENT_PRO = ep.CD_ENT_PRO
+LEFT JOIN DBAMV.PRODUTO p ON ip.CD_PRODUTO = p.CD_PRODUTO
+WHERE ep.CD_ORD_COM = 5542 --AND ip.CD_ENT_PRO = 25041
+GROUP BY ep.CD_ORD_COM
+;
+
+-- RELACAO DOS 15 ITENS DE ENTRADA RELACIONADO A CD_ORD_COM = 5542
+SELECT
+    ep.CD_ORD_COM
+    , EP.NR_DOCUMENTO
+    , ip.CD_ITENT_PRO
+    , p.CD_PRODUTO
+FROM DBAMV.ITENT_PRO ip
+LEFT JOIN DBAMV.ENT_PRO ep ON ip.CD_ENT_PRO = ep.CD_ENT_PRO
+LEFT JOIN DBAMV.PRODUTO p ON ip.CD_PRODUTO = p.CD_PRODUTO
+WHERE ep.CD_ORD_COM = 5542 --AND ip.CD_ENT_PRO = 25041
+;
+
+
+
+
+
+
+
+
+
+
 
 -- ************************************************************************************************************************************************************* --
 -- ************************************************************ DESNORMALIZAÇÃO - ESBOLÇO ********************************************************************** --
