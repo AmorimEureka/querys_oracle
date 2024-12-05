@@ -218,25 +218,157 @@ WITH teste AS (
 
 /* ----------------------------------------------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------------------------------------------- */
-    
+
+
+
+
+
+
+    -- SOL_COM:
+        -- CD_SOL_COM
+        -- CD_MOT_PED
+        -- CD_SETOR
+        -- CD_ESTOQUE
+        -- CD_MOT_CANCEL
+        -- CD_ATENDIME
+        -- VL_TOTAL
+        -- DT_SOL_COM
+        -- DT_CANCELAMENTO
+        -- NM_SOLICITANTE
+        -- TP_SITUACAO
+        -- TP_SOL_COM
+        -- SN_URGENTE
+        -- SN_APROVADO
+        -- SN_OPME
+
+
+
+    -- ORD_COM:
+        -- CD_ORD_COM
+        -- CD_ESTOQUE
+        -- CD_FORNECEDOR
+        -- CD_SOL_COM
+        -- CD_MOT_CANCEL
+        -- CD_USUARIO_CRIADOR_OC
+        -- CD_ULTIMO_USU_ALT_OC
+        -- DT_ORD_COM
+        -- DT_CANCELAMENTO
+        -- DT_AUTORIZACAO
+        -- DT_ULTIMA_ALTERACAO_OC
+        -- TP_ORD_COM
+        -- SN_AUTORIZADO
+
+
+
+    -- ENT_PRO:
+        -- CD_ENT_PRO
+        -- CD_TIP_ENT
+        -- CD_ESTOQUE
+        -- CD_FORNECEDOR
+        -- CD_ORD_COM
+        -- CD_USUARIO_RECEBIMENTO
+        -- CD_ATENDIMENTO
+        -- DT_EMISSAO
+        -- DT_ENTRADA
+        -- DT_RECEBIMENTO
+        -- HR_ENTRADA
+        -- VL_TOTAL
+        -- NR_DOCUMENTO
+        -- NR_CHAVE_ACESSO
+        -- SN_AUTORIZADO
+
+
+
     -- ITSOL_COM:
-        -- qt_solic
-        -- qt_comprada
-        -- qt_atendida
+        -- CD_SOL_COM
+        -- CD_PRODUTO
+        -- CD_UNI_PRO
+        -- CD_MOT_CANCEL
+        -- DT_CANCELAMENTO
+        -- QT_SOLIC
+        -- QT_COMPRADA
+        -- QT_ATENDIDA
+        -- SN_COMPRADO
+
+
 
     -- ITORD_PRO:
-        -- qt_comprada
-        -- qt_atendida
-        -- qt_recebida
-        -- qt_cancelada
-    
+        -- CD_ORD_COM
+        -- CD_PRODUTO
+        -- CD_UNI_PRO
+        -- CD_MOT_CANCEL
+        -- DT_CANCELAMENTO
+        -- QT_COMPRADA
+        -- QT_ATENDIDA
+        -- QT_RECEBIDA
+        -- QT_CANCELADA
+        -- VL_UNITARIO
+        -- VL_TOTAL
+        -- VL_CUSTO_REAL
+        -- VL_TOTAL_CUSTO_REAL
+
+
+
     -- ITENT_PRO:
-        -- qt_entrada
-        -- qt_devolucao
+        -- CD_ITENT_PRO
+        -- CD_ENT_PRO
+        -- CD_PRODUTO
+        -- CD_UNI_PRO
+        -- CD_ATENDIMENTO
+        -- CD_CUSTO_MEDIO
+        -- CD_PRODUTO_FORNECEDOR
+        -- DT_GRAVACAO
+        -- QT_ENTRADA
+        -- QT_DEVOLUCAO
+        -- QT_ATENDIDA
+        -- VL_UNITARIO
+        -- VL_CUSTO_REAL
+        -- VL_TOTAL_CUSTO_REAL
+        -- VL_TOTAL
+
+
 
     -- PRODUTO:
-        -- qt_estoque_atual
-        -- qt_ultima_entrada
+        -- CD_PRODUTO
+        -- CD_ESPECIE
+        -- DT_CADASTRO
+        -- DT_ULTIMA_ENTRADA
+        -- HR_ULTIMA_ENTRADA
+        -- QT_ESTOQUE_ATUAL
+        -- QT_ULTIMA_ENTRADA
+        -- VL_ULTIMA_ENTRADA
+        -- VL_CUSTO_MEDIO
+        -- VL_ULTIMA_CUSTO_REAL
+        -- DS_PRODUTO
+        -- DS_PRODUTO_RESUMIDO
+
+
+    -- UNI_PRO:
+        -- CD_UNI_PRO
+        -- CD_UNIDADE
+        -- CD_PRODUTO
+        -- VL_FATOR
+        -- SN_ATIVO
+
+
+
+    -- FORNECEDOR:
+        -- CD_FORNECEDOR
+        -- NM_FORNECEDOR
+        -- NM_FANTASIA
+        -- TP_FORNECEDOR
+        -- NR_CGC_CPF
+        -- DT_INCLUSAO
+
+
+
+
+
+
+    
+
+
+
 
 
     -- TESTE_1:
