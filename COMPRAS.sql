@@ -219,6 +219,23 @@ WITH teste AS (
 /* ----------------------------------------------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------------------------------------------- */
 
+    --FUNCTIONS:
+        -- VL_CUSTO_UNIT
+            -- Valor do custo Fixo. (F)
+            -- Valor do custo Medio no periodo. (M)
+            -- Valor do Ultimo custo do periodo. (U)
+
+        -- VERIF_ESTOQUE
+
+        -- VERIF_VL_CUSTO_MEDIO
+
+        -- VERIF_VL_FATOR_PROD
+
+
+
+/* ----------------------------------------------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------------------------------------------- */
+
 
 
 
@@ -334,13 +351,14 @@ WITH teste AS (
         -- DT_CADASTRO
         -- DT_ULTIMA_ENTRADA
         -- HR_ULTIMA_ENTRADA
-        -- QT_ESTOQUE_ATUAL
+        -- QT_ESTOQUE_ATUAL --NAO CONFIAR NISSO PEGAR DA "EST_PRO"
         -- QT_ULTIMA_ENTRADA
         -- VL_ULTIMA_ENTRADA
         -- VL_CUSTO_MEDIO
         -- VL_ULTIMA_CUSTO_REAL
         -- DS_PRODUTO
         -- DS_PRODUTO_RESUMIDO
+
 
 
     -- UNI_PRO:
@@ -362,10 +380,49 @@ WITH teste AS (
 
 
 
+    -- MOT_CANCEL
+        -- CD_MOT_CANCEL
+        -- DS_MOT_CANCEL
+        -- TP_MOT_CALCEL
 
 
+
+    -- EST_PRO
+        -- CD_ESTOQUE
+        -- CD_PRODUTO
+        -- DS_LOCALIZACAO_PRATELEIRA
+        -- QT_ESTOQUE_ATUAL
+        -- QT_ESTOQUE_MAXIMO
+        -- QT_ESTOQUE_MINIMO
+        -- QT_ESTOQUE_VIRTUAL
+        -- QT_PONTO_DE_PEDIDO
+        -- QT_CONSUMO_MES
+        -- QT_SOLICITACAO_DE_COMPRA
+        -- QT_ORDEM_DE_COMPRA
+        -- DT_ULTIMA_MOVIMENTACAO
+        -- TP_CLASSIFICACAO_ABC
+        -- QT_ESTOQUE_DOADO
+        -- QT_ESTOQUE_RESERVADO
+        -- CD_LOCALIZACAO
+        -- QT_CONSUMO_ATUAL
+    
+
+
+    -- ESTOQUE
+        -- CD_ESTOQUE
+        -- CD_SETOR
+        -- DS_ESTOQUE
+        -- TP_ESTOQUE
 
     
+
+    -- LOT_PRO
+        -- CD_LOT_PRO
+        -- CD_ESTOQUE
+        -- CD_PRODUTO
+        -- CD_LOTE
+        -- DT_VALIDADE
+        -- QT_ESTOQUE_ATUAL
 
 
 
@@ -391,6 +448,51 @@ WITH teste AS (
         -- # TESTAR SE A QUANTIDADE [ 25 ITENS ] DE ITENT_PRO/PRODUTO PERTENCE AS 13 ORD_COM DA SOL_COM EXPLORADA
 
 
+
+-- VDIC_ESTOQUE_PRODUTO
+SELECT 
+    EST_PRO.CD_ESTOQUE                 COD_ESTOQUE,
+    EST_PRO.CD_PRODUTO                 COD_PRODUTO,
+    EST_PRO.DS_LOCALIZACAO_PRATELEIRA  DESC_LOCALIZACAO,
+    EST_PRO.QT_ESTOQUE_ATUAL           QUANT_ESTOQUE_ATUAL,
+    EST_PRO.QT_ESTOQUE_MAXIMO          QUANT_ESTOQUE_MAXIMO,
+    EST_PRO.QT_ESTOQUE_MINIMO          QUANT_ESTOQUE_MINIMO,
+    EST_PRO.QT_ESTOQUE_VIRTUAL         QUANT_ESTOQUE_VIRTUAL,
+    EST_PRO.QT_PONTO_DE_PEDIDO         QUANT_PONTO_DE_PEDIDO,
+    EST_PRO.QT_CONSUMO_MES             QUANT_CONSUMO_MES,
+    EST_PRO.QT_SOLICITACAO_DE_COMPRA   QUANT_SOLICITACAO_DE_COMPRA,
+    EST_PRO.QT_ORDEM_DE_COMPRA         QUANT_ORDEM_DE_COMPRA,
+    EST_PRO.DT_ULTIMA_MOVIMENTACAO     DATA_ULTIMA_MOVIMENTACAO,
+    EST_PRO.TP_CLASSIFICACAO_ABC       TIPO_CLASSIFICACAO_ABC,
+    EST_PRO.QT_ESTOQUE_DOADO           QUANT_ESTOQUE_DOADO,
+    EST_PRO.QT_ESTOQUE_RESERVADO       QUANT_ESTOQUE_RESERVADO,
+    EST_PRO.CD_LOCALIZACAO             COD_LOCALIZACAO,
+    EST_PRO.QT_CONSUMO_ATUAL           QUANT_CONSUMO_ATUAL
+FROM 
+    DBAMV.EST_PRO , DBAMV.ESTOQUE
+WHERE 
+    EST_PRO.CD_ESTOQUE = ESTOQUE.CD_ESTOQUE 
+    AND EST_PRO.CD_PRODUTO = 14045
+;
+
+
+
+SELECT
+    CD_PRODUTO
+    , CD_ESPECIE
+    , DT_CADASTRO
+    , DT_ULTIMA_ENTRADA
+    , HR_ULTIMA_ENTRADA
+    , QT_ESTOQUE_ATUAL
+    , QT_ULTIMA_ENTRADA
+    , VL_ULTIMA_ENTRADA
+    , VL_CUSTO_MEDIO
+    , VL_ULTIMA_CUSTO_REAL
+    , DS_PRODUTO
+    , DS_PRODUTO_RESUMIDO
+FROM DBAMV.PRODUTO 
+WHERE CD_PRODUTO = 14045
+;
 
 
 
