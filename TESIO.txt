@@ -1,0 +1,101 @@
+# Meeting Transcription
+
+  Meeting started: 26/11/2024, 13:48:55
+  Duration: 12 minutes
+  Participants: Pedro Marlon R. Gomes, phelipe lima, Tercio Arruda
+
+  [View original transcript](https://app.tactiq.io/api/2/u/m/r/HICDghW0RM4qgYO0YgoB?o=txt)
+
+  
+
+  
+  
+  
+
+  ## Transcript
+
+  00:00 Tercio Arruda: It was no consider row as transferences this stock again. Que vai nortear todo o restante, a gente tem que dizer justamente tirar essa dúvida contigo se você quer considerar as transferências entre estoques ou não, entendeu?
+00:19 phelipe lima: Entende, cara, é porque assim aqui. São dois toques diferentes tá e
+00:26 Tercio Arruda: Tá bom.
+00:27 phelipe lima: farmácia.
+00:28 Tercio Arruda: certo
+00:28 phelipe lima: São dois pontos de Stop diferente quando eu trabalhava com esse relatório antes o estoque era assim a gente baseava esse relatório no estoque CAF porque tudo era dar entrada por lá e estocado lá as farmácias eram abastecidas por meio de uma solicitação de uma transferência.
+00:48 Pedro Marlon R. Gomes: transferência
+00:49 Tercio Arruda: Então ótimo a gente pode considerar
+00:50 phelipe lima: Ou seja a gente se baseava exatamente no estoque Caf.
+00:56 Tercio Arruda: o estoque e considerar as transferências que tiverem dela para os demais estoques, entendeu?
+01:03 phelipe lima: é eu acho que assim ficaria melhor porque
+01:07 Tercio Arruda: O texto toque ele abastece a tua
+01:07 phelipe lima: Abastece só que assim hoje.
+01:09 Tercio Arruda: farmácia.
+01:15 phelipe lima: A farmácia também é um ponto de estoque, entendeu? Tem muita coisa que a farmácia lança a nota fiscal tudo que é de medicamento a farmácia lança no estoque da própria farmácia ou seja. A Cafe é
+01:25 Tercio Arruda: Tá bom.
+01:27 phelipe lima: o estoque um e a farmácia Stop 2, entendeu?
+01:30 Tercio Arruda: Tá o que que acontece eu não posso juntar esses dois estoques porque que vai acontecer é o seguinte, aí a gente tem que fazer um combinado aqui para a gente fazer como é que faz esse consumo porque se eu considerar todas as transferências que teve do Caf. Onde ele for e eu considerar depois as saídas que tiveram da farmácia meio que vai duplicar o consumo tu concorda comigo?
+01:54 phelipe lima: Sim, sim, sim.
+01:55 Tercio Arruda: Então, a gente teria que considerar as transferências que o carro fizer para todos os estoques exceto ou da farmácia, entendeu?
+02:06 phelipe lima: Entendi, mas aí como é que a gente ia ter o controle da movimentação dos medicamentos seria feito um outro relatório.
+02:13 Tercio Arruda: Eu posso colocar nesse cálculo aqui a gente pode colocar o que a gente quiser, a gente pode considerar nesse consumo. Certo todos os com todos os estoques que o Caf. envia tá Exceto que ele envia para farmácia. E que seria as transferências que o café faz para todos os outros esportes. Esse é um caminho a ser seguido não teste eu quero considerar como consumo tudo que teve de saída para setor de saída para paciente.
+02:53 Tercio Arruda: Independente de que estoque ele esteja e não considera as transferências de estoque também é um outro caminho, entendeu? A gente tem que ver.
+03:01 phelipe lima: Essa segunda alternativa como é que você falou?
+03:04 Tercio Arruda: Era a gente considerar tudo que teve de sair da paciente e sai da placetou. Independente de que estoque ele saiu, entendeu?
+03:14 phelipe lima: Eu acho que que nos atenderia melhor por conta dessa dessa divisão de stops aqui, eu acho que dessa forma.
+03:22 Pedro Marlon R. Gomes: Até porque além da além do do da farmácia acho. Que tem outros estoques. Que também dá uma entrada em nota. Chegou do laboratório?
+03:43 phelipe lima: laboratório
+03:44 Tercio Arruda: De todos os estoques e não levar em consideração as transferências, entendeu?
+03:49 Pedro Marlon R. Gomes: Como é Felipe?
+03:52 Tercio Arruda: Entendeu? A gente também fica até
+03:53 Pedro Marlon R. Gomes: Tá bom.
+03:55 Tercio Arruda: melhor dessa forma.
+03:58 phelipe lima: mas Então o laboratório agora vai alimentar o estoque de tudo na caixa transfere para lá assim, mas vai ser armazenado onde tá. Vai fazer a transferência? Eu tava confirmando aqui as coisas do laboratório, viu? Pedro vai ser dado entrada agora vai passar tudo pela Cafe vai ser armazenado lá aí quando o laboratório precisar vai gerar aquela requisição de transferência.
+04:32 Pedro Marlon R. Gomes: Inclusive eu rodei aqui teste e deu
+04:33 Tercio Arruda: Então, ó, agora está pronta já. Tu tem que filtrar Pedro tem que
+04:40 Pedro Marlon R. Gomes: bom aqui apareceu aqui já.
+04:44 Tercio Arruda: tirar somente.
+04:47 Pedro Marlon R. Gomes: tem
+05:00 Tercio Arruda: A gente não colocou no aquário porque vai ser um cálculo e ele vai te solicitar mais ou menos o que Felipe vai vai dizer como é que seria o cálculo para reposição de compra, entendeu? Nesse relatório, eu não calculei isso. Esse relatório a gente só mostrou essas variáveis para que ele possa colocar no dashboard que você depois possa extratificar isso e fazer o cálculo da sua reposição de compra, entendeu? Mas se você quiser depois passar por Pedro. Qual é o cálculo que você deseja para fazer a reposição de compra a gente faz né? Desse porque eu não sei se vai ser para 7 dias que você vai comprar se você tá 30 dias vai ter materiais que você compra.
+05:47 phelipe lima: Sim, sim. Valeu muito eu tenho que ver com o pessoal direitinho aqui porque Varia muito né aí para definir uma regra só para tudo.
+05:56 Tercio Arruda: Diante mão a gente já deixa na mão dele aí todas as informações produto unidades de compra movimentação dos 30 dias dos 90 dias que é um período a média mensal, a média diária vontade de estoque em dia já tá tudo pronto. É só Pedro você alterar o período que ele quer colocar ali, beleza? Só saiba que as queres ali só para deixar claro para vocês. Deixa eu compartilhar aqui.
+06:25 Tercio Arruda: Elas estão condicionadas para para 90 dias tá? Todos os cálculos estão condicionados para 90 dias só mostrar aqui, ó. Aqui é que eu coloquei só um período pequeno para não pegar minha base toda tá? Então aqui a gente você vai colocar o período que ele deseja. Tá bom. E aqui em cima tá cravado. três meses Entendeu? E tá cravado 120 dias para fazer o cálculo diário.
+07:02 Pedro Marlon R. Gomes: A partir da data que fica colocar lá embaixo, é isso? Não.
+07:07 Tercio Arruda: Não não porque aqui como é aquário eu não consigo manipular isso entendesse diante. Num MV painel você tem que se ligar aqui. Obrigatoriamente. Quando fizer o painel lá dentro ele tem que escolher. Três meses para poder filtrar lá no dashboard, entendeu? Você usa você usa no painel da MV aí não usa?
+07:32 Pedro Marlon R. Gomes: Sim, sim.
+07:33 Tercio Arruda: você vai colocar lá é só para
+07:35 Pedro Marlon R. Gomes: Na verdade na verdade, a gente começou a usar ele agora a gente tinha ele e até comentei contigo que a gente criou agora recente um painel para assistencial, né que a gente ainda tá em fazer validação aí vai começar realmente a usar a ferramenta agora.
+07:53 Tercio Arruda: Se você tiver alguma dificuldade para fazer eu boto os meninos para lhe ajudar aí tá?
+07:58 Pedro Marlon R. Gomes: certo
+07:59 Tercio Arruda: Tá bom. Mas os parâmetros que você passar aqui tem que ser os parâmetros de três meses, para que ele possa fazer o cálculo certo em três meses, entendeu? Porque se você colocar um mês aqui, ele vai dividir lá por três. Entendeu? Porque aqui o cálculo também. interesse Beleza, e aqui o cálculo tá diário. É só para poder você só para você entender aqui o que foi feito para poder mostrar mas todas as informações estrelas agora tem que jogar para o painel dele.
+08:43 Tercio Arruda: Como eu não tenho acesso aí direitinho para poder fazer latas precisaria criar acesso da gente é pegar essa cueca aqui e colocar para lá e colocar os parâmetros de data para ele informar o período, entendeu?
+08:55 Pedro Marlon R. Gomes: Então no caso aí Felipe, tá
+08:56 Tercio Arruda: Não era isso Felipe que você queria?
+09:00 phelipe lima: Isso mesmo. Eu só não entendi o Tácio que Ali tá pegando a média dos últimos três meses, mas para pegar o consumo diário tá dividindo por 120.
+09:13 Tercio Arruda: o consumo diário Eu peguei. O meu consumo que eu tive nos últimos 90 dias. beleza
+09:26 phelipe lima: certo
+09:27 Tercio Arruda: E dividir ele por 120 dias. Porque eu calculei que cada mês tinha 30 dias, entendeu?
+09:36 phelipe lima: Não não entendi.
+09:39 Tercio Arruda: Imagina que tu tivesse vamos pegar os três meses certo. mês um mês dois mês três vamos imaginar que somando os três meses, você tivesse um consumo de Comprimidos somando de três meses, tá?
+09:53 phelipe lima: Não sim.
+09:55 Tercio Arruda: beleza O consumo diário eu peguei 90 dividir pela quantidade de dias. Entendeu? Por a quantidade de dias não são três meses. Eu deveria por 120. Como é que tu queria calcular o consumo diário?
+10:18 phelipe lima: Mas três meses não dá só 90 dias.
+10:23 Tercio Arruda: Ô desculpa não três meses não três meses. 3 meses e 90 dias
+10:31 phelipe lima: Era isso que eu tava porque tu tava acrescentando um mês a mais.
+10:35 Tercio Arruda: Eu tô com a cabeça no esporte.
+10:51 phelipe lima: Não tranquilo
+10:57 Tercio Arruda: Bom meus amigos. Acho que era isso,
+11:10 phelipe lima: Para saber se era isso mesmo que eu queria.
+11:20 Tercio Arruda: viu?
+11:23 Pedro Marlon R. Gomes: validado assim, pelo menos vamos dizer essa parte que o teste explicou né de informações é todo essa
+11:29 phelipe lima: É isso aí mesmo aí?
+11:31 Pedro Marlon R. Gomes: todas essas vezes é isso. Aí, a gente vai partir aqui para a criação dele.
+11:36 phelipe lima: Sim, aí a gente define só o ponto de reposição, né para ele dar aquela sugestão.
+11:42 Tercio Arruda: É só tu definir o cálculo do ponto de reposição e depois você pedir para Pedro chamar a gente aqui, eu junto minha turma aqui novamente, a gente faz o cálculo do ponto de reposição para você.
+11:50 phelipe lima: show de bola
+11:51 Tercio Arruda: Tá bom acaba. Oi, eu já vou para
+11:52 phelipe lima: Ficou bacana.
+11:56 Pedro Marlon R. Gomes: Beleza, teste aí, qualquer a gente
+11:56 Tercio Arruda: outra empreitada aqui que eu tenho que terminar de resolver os negócio que era só passar aqui para mim, mas Meio caminho andado aí já depois vai ter alguns pequenos ajustes para validação. A gente não precisa ajustar viu? Tá bom.
+12:13 Pedro Marlon R. Gomes: vai iniciar aqui, qualquer qualquer dúvida aí precisar de algum apoio eu te dou um toque aí, beleza?
+12:18 Tercio Arruda: Fechado, eu vou lhe passar o contato dos meninos filho que eu vou estar pegando fogo daqui a pouco. Qualquer coisa os meninos te ajudar e ser qualquer coisa que precisar também me adiciona. Quando chegar lá em São Paulo, viu?
+12:30 Pedro Marlon R. Gomes: Valeu galera, valeu, tchau, abraço.
+12:30 Tercio Arruda: Valeu, valeu Felipe.
+  
