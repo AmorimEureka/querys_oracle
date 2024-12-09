@@ -56,4 +56,3 @@ WITH TESIO AS (
     )
 )
 SELECT COUNT(*) FROM TESIO
-;

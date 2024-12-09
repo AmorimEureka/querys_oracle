@@ -241,188 +241,221 @@ WITH teste AS (
 
 
 
-    -- SOL_COM:
-        -- CD_SOL_COM
-        -- CD_MOT_PED
-        -- CD_SETOR
-        -- CD_ESTOQUE
-        -- CD_MOT_CANCEL
-        -- CD_ATENDIME
-        -- VL_TOTAL
-        -- DT_SOL_COM
-        -- DT_CANCELAMENTO
-        -- NM_SOLICITANTE
-        -- TP_SITUACAO
-        -- TP_SOL_COM
-        -- SN_URGENTE
-        -- SN_APROVADO
-        -- SN_OPME
+-- sol_com:
+    -- cd_sol_com
+    -- cd_mot_ped
+    -- cd_setor
+    -- cd_estoque
+    -- cd_mot_cancel
+    -- cd_atendime
+    -- vl_total
+    -- dt_sol_com
+    -- dt_cancelamento
+    -- nm_solicitante
+    -- tp_situacao
+    -- tp_sol_com
+    -- sn_urgente
+    -- sn_aprovado
+    -- sn_opme
+
+-- ord_com:
+    -- cd_ord_com
+    -- cd_estoque
+    -- cd_fornecedor
+    -- cd_sol_com
+    -- cd_mot_cancel
+    -- cd_usuario_criador_oc
+    -- cd_ultimo_usu_alt_oc
+    -- dt_ord_com
+    -- dt_cancelamento
+    -- dt_autorizacao
+    -- dt_ultima_alteracao_oc
+    -- tp_ord_com
+    -- sn_autorizado
+
+-- ent_pro:
+    -- cd_ent_pro
+    -- cd_tip_ent
+    -- cd_estoque
+    -- cd_fornecedor
+    -- cd_ord_com
+    -- cd_usuario_recebimento
+    -- cd_atendimento
+    -- dt_emissao
+    -- dt_entrada
+    -- dt_recebimento
+    -- hr_entrada
+    -- vl_total
+    -- nr_documento
+    -- nr_chave_acesso
+    -- sn_autorizado
+
+-- itsol_com:
+    -- cd_sol_com
+    -- cd_produto
+    -- cd_uni_pro
+    -- cd_mot_cancel
+    -- dt_cancelamento
+    -- qt_solic
+    -- qt_comprada
+    -- qt_atendida
+    -- sn_comprado
+
+-- itord_pro:
+    -- cd_ord_com
+    -- cd_produto
+    -- cd_uni_pro
+    -- cd_mot_cancel
+    -- dt_cancelamento
+    -- qt_comprada
+    -- qt_atendida
+    -- qt_recebida
+    -- qt_cancelada
+    -- vl_unitario
+    -- vl_total
+    -- vl_custo_real
+    -- vl_total_custo_real
+
+-- itent_pro:
+    -- cd_itent_pro
+    -- cd_ent_pro
+    -- cd_produto
+    -- cd_uni_pro
+    -- cd_atendimento
+    -- cd_custo_medio
+    -- cd_produto_fornecedor
+    -- dt_gravacao
+    -- qt_entrada
+    -- qt_devolucao
+    -- qt_atendida
+    -- vl_unitario
+    -- vl_custo_real
+    -- vl_total_custo_real
+    -- vl_total
+
+-- produto:
+    -- cd_produto
+    -- cd_especie
+    -- dt_cadastro
+    -- dt_ultima_entrada
+    -- hr_ultima_entrada
+    -- qt_estoque_atual --nao confiar nisso pegar da "est_pro"
+    -- qt_ultima_entrada
+    -- vl_ultima_entrada
+    -- vl_custo_medio
+    -- vl_ultima_custo_real
+    -- ds_produto
+    -- ds_produto_resumido
+
+-- uni_pro:
+    -- cd_uni_pro
+    -- cd_unidade
+    -- cd_produto
+    -- vl_fator
+    -- tp_relatorios
+    -- sn_ativo
+
+-- fornecedor:
+    -- cd_fornecedor
+    -- nm_fornecedor
+    -- nm_fantasia
+    -- tp_fornecedor
+    -- nr_cgc_cpf
+    -- dt_inclusao
+
+-- mot_cancel:
+    -- cd_mot_cancel
+    -- ds_mot_cancel
+    -- tp_mot_calcel
+
+-- est_pro:
+    -- cd_estoque
+    -- cd_produto
+    -- ds_localizacao_prateleira
+    -- qt_estoque_atual
+    -- qt_estoque_maximo
+    -- qt_estoque_minimo
+    -- qt_estoque_virtual
+    -- qt_ponto_de_pedido
+    -- qt_consumo_mes
+    -- qt_solicitacao_de_compra
+    -- qt_ordem_de_compra
+    -- dt_ultima_movimentacao
+    -- tp_classificacao_abc
+    -- qt_estoque_doado
+    -- qt_estoque_reservado
+    -- cd_localizacao
+    -- qt_consumo_atual
+
+-- estoque:
+    -- cd_estoque
+    -- cd_setor
+    -- ds_estoque
+    -- tp_estoque
+
+-- lot_pro:
+    -- cd_lot_pro
+    -- cd_estoque
+    -- cd_produto
+    -- cd_lote
+    -- dt_validade
+    -- qt_estoque_atual
+
+-- setor:
+    -- CD_SETOR
+    -- CD_FATOR
+    -- CD_GRUPO_CUSTO
+    -- CD_SETOR_CUSTO
+    -- NM_SETOR
+    -- SN_ATIVO
+
+-- especie:
+    -- CD_ESPECIE
+    -- CD_ITEM_RES
+    -- DS_ESPECIE
+
+-- mvto_estoque:
+    -- CD_MVTO_ESTOQUE
+    -- CD_ESTOQUE
+    -- CD_UNI_PRO
+    -- CD_UNID_INT
+    -- CD_SETOR
+    -- CD_ESTOQUE_DESTINO
+    -- CD_CUSTO_MEDIO
+    -- CD_AVISO_CIRURGIA
+    -- CD_ENT_PRO
+    -- CD_USUARIO
+    -- CD_FORNECEDOR
+    -- CD_PRESTADOR
+    -- CD_PRE_MED
+    -- CD_ATENDIMENTO
+    -- CD_MOT_DEV
+    -- DT_MVTO_ESTOQUE
+    -- HR_MVTO_ESTOQUE
+    -- VL_TOTAL
+    -- TP_MVTO_ESTOQUE
+    -- NR_DOCUMENTO
+    -- CHAVE_NFE
+
+
+-- itmvto_estoque:
+    -- CD_ITMVTO_ESTOQUE
+    -- CD_MVTO_ESTOQUE
+    -- CD_PRODUTO
+    -- CD_UNI_PRO
+    -- CD_LOTE
+    -- CD_ITENT_PRO
+    -- CD_FORNECEDOR
+    -- CD_ITPRE_MED
+    -- DT_VALIDADE
+    -- DH_MVTO_ESTOQUE
+    -- QT_MOVIMENTACAO
+    -- VL_UNITARIO
+    -- TP_ESTOQUE
 
 
 
-    -- ORD_COM:
-        -- CD_ORD_COM
-        -- CD_ESTOQUE
-        -- CD_FORNECEDOR
-        -- CD_SOL_COM
-        -- CD_MOT_CANCEL
-        -- CD_USUARIO_CRIADOR_OC
-        -- CD_ULTIMO_USU_ALT_OC
-        -- DT_ORD_COM
-        -- DT_CANCELAMENTO
-        -- DT_AUTORIZACAO
-        -- DT_ULTIMA_ALTERACAO_OC
-        -- TP_ORD_COM
-        -- SN_AUTORIZADO
 
-
-
-    -- ENT_PRO:
-        -- CD_ENT_PRO
-        -- CD_TIP_ENT
-        -- CD_ESTOQUE
-        -- CD_FORNECEDOR
-        -- CD_ORD_COM
-        -- CD_USUARIO_RECEBIMENTO
-        -- CD_ATENDIMENTO
-        -- DT_EMISSAO
-        -- DT_ENTRADA
-        -- DT_RECEBIMENTO
-        -- HR_ENTRADA
-        -- VL_TOTAL
-        -- NR_DOCUMENTO
-        -- NR_CHAVE_ACESSO
-        -- SN_AUTORIZADO
-
-
-
-    -- ITSOL_COM:
-        -- CD_SOL_COM
-        -- CD_PRODUTO
-        -- CD_UNI_PRO
-        -- CD_MOT_CANCEL
-        -- DT_CANCELAMENTO
-        -- QT_SOLIC
-        -- QT_COMPRADA
-        -- QT_ATENDIDA
-        -- SN_COMPRADO
-
-
-
-    -- ITORD_PRO:
-        -- CD_ORD_COM
-        -- CD_PRODUTO
-        -- CD_UNI_PRO
-        -- CD_MOT_CANCEL
-        -- DT_CANCELAMENTO
-        -- QT_COMPRADA
-        -- QT_ATENDIDA
-        -- QT_RECEBIDA
-        -- QT_CANCELADA
-        -- VL_UNITARIO
-        -- VL_TOTAL
-        -- VL_CUSTO_REAL
-        -- VL_TOTAL_CUSTO_REAL
-
-
-
-    -- ITENT_PRO:
-        -- CD_ITENT_PRO
-        -- CD_ENT_PRO
-        -- CD_PRODUTO
-        -- CD_UNI_PRO
-        -- CD_ATENDIMENTO
-        -- CD_CUSTO_MEDIO
-        -- CD_PRODUTO_FORNECEDOR
-        -- DT_GRAVACAO
-        -- QT_ENTRADA
-        -- QT_DEVOLUCAO
-        -- QT_ATENDIDA
-        -- VL_UNITARIO
-        -- VL_CUSTO_REAL
-        -- VL_TOTAL_CUSTO_REAL
-        -- VL_TOTAL
-
-
-
-    -- PRODUTO:
-        -- CD_PRODUTO
-        -- CD_ESPECIE
-        -- DT_CADASTRO
-        -- DT_ULTIMA_ENTRADA
-        -- HR_ULTIMA_ENTRADA
-        -- QT_ESTOQUE_ATUAL --NAO CONFIAR NISSO PEGAR DA "EST_PRO"
-        -- QT_ULTIMA_ENTRADA
-        -- VL_ULTIMA_ENTRADA
-        -- VL_CUSTO_MEDIO
-        -- VL_ULTIMA_CUSTO_REAL
-        -- DS_PRODUTO
-        -- DS_PRODUTO_RESUMIDO
-
-
-
-    -- UNI_PRO:
-        -- CD_UNI_PRO
-        -- CD_UNIDADE
-        -- CD_PRODUTO
-        -- VL_FATOR
-        -- SN_ATIVO
-
-
-
-    -- FORNECEDOR:
-        -- CD_FORNECEDOR
-        -- NM_FORNECEDOR
-        -- NM_FANTASIA
-        -- TP_FORNECEDOR
-        -- NR_CGC_CPF
-        -- DT_INCLUSAO
-
-
-
-    -- MOT_CANCEL
-        -- CD_MOT_CANCEL
-        -- DS_MOT_CANCEL
-        -- TP_MOT_CALCEL
-
-
-
-    -- EST_PRO
-        -- CD_ESTOQUE
-        -- CD_PRODUTO
-        -- DS_LOCALIZACAO_PRATELEIRA
-        -- QT_ESTOQUE_ATUAL
-        -- QT_ESTOQUE_MAXIMO
-        -- QT_ESTOQUE_MINIMO
-        -- QT_ESTOQUE_VIRTUAL
-        -- QT_PONTO_DE_PEDIDO
-        -- QT_CONSUMO_MES
-        -- QT_SOLICITACAO_DE_COMPRA
-        -- QT_ORDEM_DE_COMPRA
-        -- DT_ULTIMA_MOVIMENTACAO
-        -- TP_CLASSIFICACAO_ABC
-        -- QT_ESTOQUE_DOADO
-        -- QT_ESTOQUE_RESERVADO
-        -- CD_LOCALIZACAO
-        -- QT_CONSUMO_ATUAL
-    
-
-
-    -- ESTOQUE
-        -- CD_ESTOQUE
-        -- CD_SETOR
-        -- DS_ESTOQUE
-        -- TP_ESTOQUE
-
-    
-
-    -- LOT_PRO
-        -- CD_LOT_PRO
-        -- CD_ESTOQUE
-        -- CD_PRODUTO
-        -- CD_LOTE
-        -- DT_VALIDADE
-        -- QT_ESTOQUE_ATUAL
 
 
 
@@ -472,7 +505,7 @@ FROM
     DBAMV.EST_PRO , DBAMV.ESTOQUE
 WHERE 
     EST_PRO.CD_ESTOQUE = ESTOQUE.CD_ESTOQUE 
-    AND EST_PRO.CD_PRODUTO = 14045
+    AND EST_PRO.CD_PRODUTO = 14142
 ;
 
 
