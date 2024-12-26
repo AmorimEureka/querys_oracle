@@ -881,6 +881,72 @@ LEFT JOIN estoque e ON e.cd_estoque = sc.cd_estoque
 WHERE ic.qt_solic IS NOT NULL AND ip.dt_gravacao IS NOT NULL AND sc.CD_SOL_COM = '2518' ;
 
 
+/* ------------------------------------------------------------------------------------------------------ */
+
+WITH heado 
+    AS (
+        SELECT
+            sc.cd_sol_com
+            , sc.dt_sol_com
+            , CASE 
+                WHEN sc.tp_situacao ='A' THEN 'Aberta'
+                WHEN sc.tp_situacao ='F' THEN 'Fechada'
+                WHEN sc.tp_situacao ='P' THEN 'Parcialmente Atendida'
+                WHEN sc.tp_situacao ='S' THEN 'Solicitada'
+                WHEN sc.tp_situacao ='C' THEN 'Cancelada'
+              END AS situacao_sc
+            , oc.cd_ord_com
+            , oc.dt_ord_com
+            , oc.dt_autorizacao
+            , CASE 
+                WHEN oc.tp_situacao = 'A' THEN 'Aberta'
+                WHEN oc.tp_situacao = 'U' THEN 'Autorizada'
+                WHEN oc.tp_situacao = 'N' THEN 'Não Autorizada'
+                WHEN oc.tp_situacao = 'P' THEN 'Pendente'
+                WHEN oc.tp_situacao = 'L' THEN 'Parcialmente Atendida'
+                WHEN oc.tp_situacao = 'T' THEN 'Atendida'
+                WHEN oc.tp_situacao = 'C' THEN 'Cancelada'
+                WHEN oc.tp_situacao = 'D' THEN 'Adjudicação'
+                WHEN oc.tp_situacao = 'O' THEN 'Aguard. Próximo Nível'
+              END AS situacao_oc
+            , ep.cd_fornecedor
+            , ep.nr_documento
+            , ep.dt_entrada
+        FROM DBAMV.sol_com sc
+        LEFT JOIN DBAMV.ord_com oc ON sc.cd_sol_com = oc.cd_sol_com
+        LEFT JOIN DBAMV.ent_pro ep ON oc.cd_ord_com = ep.cd_ord_com
+),
+prod_ord
+    AS (
+        SELECT
+            oc2.cd_ord_com
+            , io.cd_produto
+            , p.ds_produto
+        FROM DBAMV.ord_com oc2
+        LEFT JOIN DBAMV.itord_pro io ON oc2.cd_ord_com = io.cd_ord_com
+        LEFT JOIN DBAMV.produto p ON io.cd_produto = p.cd_produto
+),
+treats
+    AS (
+        SELECT
+            h.cd_sol_com
+            , h.dt_sol_com
+            , h.situacao_sc
+            , h.cd_ord_com
+            , h.dt_ord_com
+            , h.dt_autorizacao
+            , h.situacao_oc
+            , h.cd_fornecedor
+            , h.nr_documento
+            , h.dt_entrada
+        FROM heado h
+        LEFT JOIN prod_ord po ON h.cd_ord_com = po.cd_ord_com
+)
+SELECT * FROM treats WHERE cd_sol_com = 3431
+;
+
+
+
 
 
 
