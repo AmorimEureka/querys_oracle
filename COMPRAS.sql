@@ -887,15 +887,25 @@ WITH heado
     AS (
         SELECT
             sc.cd_sol_com
+            , sc.cd_setor
+            , sc.cd_estoque
+            , sc.cd_mot_ped
+            , sc.cd_mot_cancel AS cd_mot_cancel_sc
             , sc.dt_sol_com
-            , CASE 
+            , sc.dt_cancelamento
+            , CASE
                 WHEN sc.tp_situacao ='A' THEN 'Aberta'
                 WHEN sc.tp_situacao ='F' THEN 'Fechada'
                 WHEN sc.tp_situacao ='P' THEN 'Parcialmente Atendida'
                 WHEN sc.tp_situacao ='S' THEN 'Solicitada'
                 WHEN sc.tp_situacao ='C' THEN 'Cancelada'
               END AS situacao_sc
+            , sc.sn_urgente
+            , sc.sn_opme
+              
             , oc.cd_ord_com
+            , io.cd_produto
+            , oc.cd_mot_cancel AS cd_mot_cancel_oc
             , oc.dt_ord_com
             , oc.dt_autorizacao
             , CASE 
@@ -909,12 +919,16 @@ WITH heado
                 WHEN oc.tp_situacao = 'D' THEN 'Adjudicação'
                 WHEN oc.tp_situacao = 'O' THEN 'Aguard. Próximo Nível'
               END AS situacao_oc
+
+            , ep.cd_ent_pro
             , ep.cd_fornecedor
-            , ep.nr_documento
             , ep.dt_entrada
+            , ep.nr_documento
+
         FROM DBAMV.sol_com sc
         LEFT JOIN DBAMV.ord_com oc ON sc.cd_sol_com = oc.cd_sol_com
         LEFT JOIN DBAMV.ent_pro ep ON oc.cd_ord_com = ep.cd_ord_com
+        LEFT JOIN DBAMV.itord_pro io ON oc.cd_ord_com = io.cd_ord_com
 ),
 prod_ord
     AS (
@@ -926,24 +940,139 @@ prod_ord
         LEFT JOIN DBAMV.itord_pro io ON oc2.cd_ord_com = io.cd_ord_com
         LEFT JOIN DBAMV.produto p ON io.cd_produto = p.cd_produto
 ),
+item_sol
+    AS (
+        SELECT
+            ic.cd_sol_com
+            , ic.cd_produto
+            , ic.cd_uni_pro
+            , ic.dt_cancel
+            , ic.qt_solic
+            , ic.qt_comprada
+            , ic.qt_atendida
+        FROM DBAMV.itsol_com ic
+),
+item_ord
+    AS (
+        SELECT
+            io.cd_ord_com
+            , io.cd_produto
+            , io.cd_uni_pro
+            , io.dt_cancel
+            , io.qt_comprada
+            , io.qt_atendida
+            , io.qt_recebida
+            , io.qt_cancelada
+            , io.vl_unitario
+            , io.vl_total
+        FROM DBAMV.itord_pro io
+),
+item_ent
+    AS (
+        SELECT
+            ip.cd_ent_pro
+            , ip.cd_produto
+            , ip.dt_gravacao
+            , ip.qt_entrada
+            , ip.qt_atendida
+            , ip.vl_unitario
+            , ip.vl_custo_real
+            , ip.vl_total_custo_real
+            , ip.vl_total
+        FROM DBAMV.itent_pro ip
+),
 treats
     AS (
         SELECT
             h.cd_sol_com
+            , h.cd_setor
+            , h.cd_estoque
+            , h.cd_mot_ped
+            , h.cd_mot_cancel_sc
             , h.dt_sol_com
-            , h.situacao_sc
+            , CASE 
+                WHEN (io.qt_comprada - io.qt_recebida) = 0 THEN
+                    'Atendida'
+                WHEN (io.qt_comprada - io.qt_recebida) = io.qt_cancelada THEN
+                    'Cancelada'
+                ELSE h.situacao_sc
+              END AS situacao_sc
+            , h.sn_urgente
+            , h.sn_opme
+
             , h.cd_ord_com
             , h.dt_ord_com
             , h.dt_autorizacao
-            , h.situacao_oc
+            , h.cd_mot_cancel_oc
+            , CASE 
+                WHEN (io.qt_comprada - io.qt_recebida) = 0 THEN
+                    'Atendida'
+                WHEN (io.qt_comprada - io.qt_recebida) = io.qt_cancelada THEN
+                    'Cancelada'
+                ELSE h.situacao_oc
+              END AS situacao_oc
             , h.cd_fornecedor
             , h.nr_documento
             , h.dt_entrada
+            , io.cd_uni_pro
+
+            , h.cd_produto
+            -- , po.ds_produto
+
+            , isol.dt_cancel AS dt_cancel_sol
+            , NVL(isol.qt_solic, 0) AS qt_solic_sol
+            , NVL(isol.qt_comprada, 0) AS qt_comprada_sol
+            , NVL(isol.qt_atendida, 0) AS qt_atendida_sol
+
+            , io.dt_cancel AS dt_cancel_ord
+            , NVL(io.qt_comprada, 0) AS qt_comprada_ord
+            , NVL(io.qt_atendida, 0) AS qt_atendida_ord
+            , NVL(io.qt_recebida, 0) AS qt_recebida_ord
+            , NVL(io.qt_cancelada, 0) AS qt_cancelada_ord
+            , NVL(io.vl_unitario, 0) AS vl_unitario_ord
+            , NVL(((io.qt_comprada - io.qt_recebida) - io.qt_cancelada), 0) AS saldo
+
+            , NVL(ie.qt_entrada, 0) AS qt_entrada_ent
+            , NVL(ie.qt_atendida, 0) AS qt_atendida_ent
+            , NVL(ie.vl_unitario, 0) AS qt_unitario_ent
+
         FROM heado h
-        LEFT JOIN prod_ord po ON h.cd_ord_com = po.cd_ord_com
+        -- LEFT JOIN prod_ord po ON h.cd_ord_com = po.cd_ord_com
+        LEFT JOIN item_sol isol ON h.cd_sol_com = isol.cd_sol_com AND h.cd_produto = isol.cd_produto
+        LEFT JOIN item_ord io ON h.cd_ord_com = io.cd_ord_com AND h.cd_produto = io.cd_produto
+        LEFT JOIN item_ent ie ON h.cd_ent_pro = ie.cd_ent_pro AND h.cd_produto = ie.cd_produto
+        ORDER BY h.cd_produto
 )
 SELECT * FROM treats WHERE cd_sol_com = 3431
 ;
+
+
+TP_MVTO_ESTOQUE IN ('D', 'C', 'T', 'M', 'O', 'E', 'V', 'X', 'S', 'P','N', 'R', 'B' )
+mvto_estoque.tp_mvto_estoque IN ('S', 'P', 'D', 'C')
+
+SELECT 
+    itmvto.CD_PRODUTO
+    , up.VL_FATOR
+    , up.TP_RELATORIOS
+    , mvto.TP_MVTO_ESTOQUE
+    , COALESCE(
+        SUM(
+            itmvto.QT_MOVIMENTACAO
+            * up.VL_FATOR 
+            * CASE 
+                WHEN mvto.TP_MVTO_ESTOQUE IN ('D', 'C') THEN -1
+                ELSE 1 
+              END 
+            )  / up.VL_FATOR, 
+            0
+      )  AS QT_MOVIMENTO
+FROM DBAMV.itmvto_estoque itmvto
+LEFT JOIN DBAMV.mvto_estoque mvto ON itmvto.CD_MVTO_ESTOQUE = mvto.CD_MVTO_ESTOQUE
+LEFT JOIN DBAMV.uni_pro up  ON itmvto.CD_UNI_PRO = up.CD_UNI_PRO
+WHERE itmvto.CD_PRODUTO = 9026858 AND up.TP_RELATORIOS = 'G' AND mvto.tp_mvto_estoque IN ('S', 'P', 'D', 'C')
+GROUP BY itmvto.CD_PRODUTO, up.VL_FATOR, up.TP_RELATORIOS, mvto.TP_MVTO_ESTOQUE
+;
+
 
 
 
