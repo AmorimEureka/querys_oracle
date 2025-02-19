@@ -135,11 +135,12 @@
         - É retornado apenas os registros com repasse 'realizados' aos médicos
 
     - FUNCIONALIDADE.: Popular o campo SN_REPASSADO. Na inserção de um novo registro, será verificado
-      se o campo cd_prestador está preenchido, se estiver preencherá o campo com N, ou seja ainda será
-      repassado. Caso não tenha prestador, sera verificado se existe regra configurada para aquele
-      procedimento no cadastro de regras sem prestador. Caso não exista a coluna será preenchida
-      com 'X', ou seja nunca será repassado. Na alteração será verificado se a coluna vl_base_repassado
-      está sendo alterada, caso esteja nula e estiver sendo preenchida com valor, quer dizer que o
+                       se o campo cd_prestador está preenchido, se estiver preencherá o campo com N, ou seja ainda será
+                       repassado. Caso não tenha prestador, sera verificado se existe regra configurada para aquele
+                       procedimento no cadastro de regras sem prestador. Caso não exista a coluna será preenchida
+                       com 'X', ou seja nunca será repassado. Na alteração será verificado se a coluna vl_base_repassado
+                       está sendo alterada, caso esteja nula e estiver sendo preenchida com valor, quer dizer que o
+                       procedimento estará sendo repassado, então a coluna será populada com S.
         - Comentário nas triggers **"trg_itreg_fat_atualiza_sn_rep"** & **"trg_itreg_amb_atualiza_sn_rep"**
 
 </details>
