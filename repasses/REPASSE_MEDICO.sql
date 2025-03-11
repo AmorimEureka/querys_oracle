@@ -18,7 +18,8 @@ WITH REPASSE_MEDICO AS (
         TO_CHAR(a.dt_atendimento,'MM/YYYY') mes_atendimento,
         NVL(rf.cd_remessa,ra.cd_remessa) cd_remessa,
         NVL(TO_CHAR(rf.dt_remessa,'MM/YYYY'),TO_CHAR(ra.dt_remessa,'MM/YYYY')) dt_remessa,
-        NVL(rs.dt_competencia,NVL(r1.dt_competencia,r2.dt_competencia)) dt_competencia,
+        NVL(rs.dt_competencia,NVL(r1.dt_competencia,
+        .dt_competencia)) dt_competencia,
         NVL(gp1.cd_gru_pro,gp2.cd_gru_pro) cd_gru_pro,
         NVL(gp1.ds_gru_pro,gp2.ds_gru_pro) ds_gru_pro,
         NVL(gf1.ds_gru_fat,gf2.ds_gru_fat) ds_gru_fat,
@@ -322,7 +323,7 @@ REGRA_AMBULATORIO
         FROM DBAMV.PRO_FAT pf
         LEFT JOIN DBAMV.ITREG_AMB ia ON pf.CD_PRO_FAT = ia.CD_PRO_FAT
         LEFT JOIN DBAMV.REG_AMB ra ON ia.CD_REG_AMB = ra.CD_REG_AMB
-        WHERE ia.SN_REPASSADO <> 'X' --AND ia.DT_PRODUCAO BETWEEN TRUNC(SYSDATE - :DIA) AND TRUNC(SYSDATE)
+        WHERE ia.SN_REPASSADO IN ('S', 'N') OR ia.SN_REPASSADO IS NULL --AND ia.DT_PRODUCAO BETWEEN TRUNC(SYSDATE - :DIA) AND TRUNC(SYSDATE)
     ),
 REGRA_FATURAMENTO
     AS (
@@ -351,7 +352,7 @@ REGRA_FATURAMENTO
         FROM DBAMV.PRO_FAT pf
         LEFT JOIN DBAMV.ITREG_FAT itf ON pf.CD_PRO_FAT = itf.CD_PRO_FAT
         LEFT JOIN DBAMV.REG_FAT rf ON itf.CD_REG_FAT = rf.CD_REG_FAT
-        WHERE itf.SN_REPASSADO <> 'X' --AND itf.DT_PRODUCAO BETWEEN TRUNC(SYSDATE - :DIA) AND TRUNC(SYSDATE)
+        WHERE itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL --AND itf.DT_PRODUCAO BETWEEN TRUNC(SYSDATE - :DIA) AND TRUNC(SYSDATE)
     ),
 GRUPO_PROCEDIMENTO
     AS (
@@ -393,6 +394,7 @@ REPASSE_MEDICO
     AS (
         SELECT
             ra.CD_PRO_FAT,
+            ra.CD_REG_AMB AS CD_REG_FAT,
             ra.CD_ATENDIMENTO AS cd_atendimento,
             pa.NM_PACIENTE AS nm_paciente,
             p.NM_PRESTADOR AS medico,
@@ -418,7 +420,7 @@ REPASSE_MEDICO
         FROM REPASSES r
         LEFT JOIN PRESTADORES p ON r.CD_PRESTADOR_REPASSE = p.CD_PRESTADOR
         LEFT JOIN ATENDIMENTO_MEDICO am ON r.CD_ATI_MED = am.CD_ATI_MED
-        LEFT JOIN REGRA_AMBULATORIO ra ON r.CD_REG_AMB = ra.CD_REG_AMB AND r.CD_LANCAMENTO_AMB = ra.CD_LANCAMENTO
+        INNER JOIN REGRA_AMBULATORIO ra ON r.CD_REG_AMB = ra.CD_REG_AMB AND r.CD_LANCAMENTO_AMB = ra.CD_LANCAMENTO
         LEFT JOIN GRUPO_PROCEDIMENTO gp ON ra.CD_GRU_PRO = gp.CD_GRU_PRO
         LEFT JOIN GRUPO_FATURAMENTO gf ON ra.CD_GRU_FAT = gf.CD_GRU_FAT
         LEFT JOIN CONVENIOS c ON ra.CD_CONVENIO = c.CD_CONVENIO
@@ -427,6 +429,7 @@ REPASSE_MEDICO
         UNION ALL
         SELECT
             rf.CD_PRO_FAT,
+            rf.CD_REG_FAT,
             rf.CD_ATENDIMENTO AS cd_atendimento,
             pa.NM_PACIENTE AS nm_paciente,
             p.NM_PRESTADOR AS medico,
@@ -452,23 +455,56 @@ REPASSE_MEDICO
         FROM REPASSES r
         LEFT JOIN PRESTADORES p ON r.CD_PRESTADOR_REPASSE = p.CD_PRESTADOR
         LEFT JOIN ATENDIMENTO_MEDICO am ON r.CD_ATI_MED = am.CD_ATI_MED
-        LEFT JOIN REGRA_FATURAMENTO rf ON r.CD_REG_FAT = rf.CD_REG_FAT AND r.CD_LANCAMENTO_FAT = rf.CD_LANCAMENTO
+        INNER JOIN REGRA_FATURAMENTO rf ON r.CD_REG_FAT = rf.CD_REG_FAT AND r.CD_LANCAMENTO_FAT = rf.CD_LANCAMENTO
         LEFT JOIN GRUPO_PROCEDIMENTO gp ON rf.CD_GRU_PRO = gp.CD_GRU_PRO
         LEFT JOIN GRUPO_FATURAMENTO gf ON rf.CD_GRU_FAT = gf.CD_GRU_FAT
         LEFT JOIN CONVENIOS c ON rf.CD_CONVENIO = c.CD_CONVENIO
         LEFT JOIN ATENDIMENTO a ON rf.CD_ATENDIMENTO = a.CD_ATENDIMENTO
         LEFT JOIN PACIENTES pa ON a.CD_PACIENTE = pa.CD_PACIENTE
-    )
-SELECT
-    mes_atendimento,
-    auxiliar,
-    SUM(vl_repasse) AS vl_repasse
-FROM REPASSE_MEDICO
-WHERE medico LIKE '%MARCELO OTOCH%' AND dt_competencia = '01/12/2024' AND convenio = 'ISSEC'
-GROUP BY
-    mes_atendimento,
-    auxiliar
-ORDER BY mes_atendimento, auxiliar ;
+),
+VALIDACAO
+    AS (
+        SELECT
+            medico,
+            dt_competencia,
+            convenio,
+            descricao_servico,
+            vl_total_conta,
+            SUM(vl_repasse) AS vl_repasse
+        FROM REPASSE_MEDICO
+        WHERE medico LIKE '%GUILHERME CARDOSO FERNANDES%' AND TRUNC(dt_competencia) = TO_DATE('2024-01-01', 'YYYY-MM-DD')
+        GROUP BY
+            medico,
+            dt_competencia,
+            convenio,
+            descricao_servico,
+            vl_total_conta
+),
+TOTALIZACAO
+    AS (
+        SELECT medico, dt_competencia, convenio, descricao_servico, vl_total_conta, vl_repasse, 0 FROM VALIDACAO
+        UNION ALL
+        SELECT
+            'TOTAL GERAL' AS medico,
+            NULL AS dt_competencia,
+            NULL AS convenio,
+            NULL AS descricao_servico,
+            NULL AS vl_total_conta,
+            SUM(vl_repasse),
+            1
+        FROM VALIDACAO
+)
+SELECT medico, dt_competencia, convenio, descricao_servico, vl_total_conta, vl_repasse
+FROM TOTALIZACAO
+ORDER BY
+    CASE WHEN medico = 'TOTAL GERAL' THEN 1 ELSE 0 END,
+    medico NULLS FIRST,
+    dt_competencia NULLS FIRST,
+    convenio NULLS FIRST,
+    descricao_servico NULLS FIRST,
+    vl_total_conta NULLS FIRST ;
+
+
 
 
 
@@ -486,9 +522,3 @@ ORDER BY mes_atendimento, auxiliar ;
 
 
 /* ************************************************************************************************ */
-
-
-
-
-
-
