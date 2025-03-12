@@ -248,8 +248,6 @@ WHERE CD_GRU_PRO IN(1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 28, 75, 76, 77, 89, 90, 91, 9
 /* ********************************* REFATORACAO **************************************************** */
 
 
-
-
 WITH REPASSES
     AS (
         SELECT
@@ -282,6 +280,26 @@ WITH REPASSES
         FROM DBAMV.IT_REPASSE_SIH sih
         LEFT JOIN DBAMV.REPASSE rish ON sih.CD_REPASSE = rish.CD_REPASSE
 ),
+REPASSES_MANUAL
+    AS (
+        SELECT
+            rp.CD_REPASSE,
+            ir.CD_REG_AMB,
+            ir.CD_LANCAMENTO_AMB,
+            ir.CD_REG_FAT,
+            ir.CD_LANCAMENTO_FAT,
+            r.DS_REPASSE,
+            rp.CD_PRESTADOR_REPASSE,
+            rp.VL_REPASSE,
+            r.DT_COMPETENCIA,
+            r.DT_REPASSE,
+            r.TP_REPASSE,
+            rp.VL_FATURADO
+        FROM DBAMV.REPASSE r
+        LEFT JOIN DBAMV.REPASSE_PRESTADOR rp ON r.CD_REPASSE = rp.CD_REPASSE
+        LEFT JOIN DBAMV.IT_REPASSE ir ON rp.CD_REPASSE = ir.CD_REPASSE AND rp.CD_PRESTADOR = ir.CD_PRESTADOR AND rp.CD_PRESTADOR_REPASSE = ir.CD_PRESTADOR_REPASSE
+        WHERE r.TP_REPASSE = 'M'
+    ),
 PRESTADORES
     AS (
         SELECT
@@ -461,6 +479,34 @@ REPASSE_MEDICO
         LEFT JOIN CONVENIOS c ON rf.CD_CONVENIO = c.CD_CONVENIO
         LEFT JOIN ATENDIMENTO a ON rf.CD_ATENDIMENTO = a.CD_ATENDIMENTO
         LEFT JOIN PACIENTES pa ON a.CD_PACIENTE = pa.CD_PACIENTE
+        UNION ALL
+        SELECT
+            NULL AS CD_PRO_FAT,
+            NULL AS CD_REG_FAT,
+            NULL AS cd_atendimento,
+            NULL AS nm_paciente,
+            p.NM_PRESTADOR AS medico,
+            CAST('LANC. MANUAL' AS VARCHAR2(12)) AS convenio,
+            CAST('LANC. MANUAL' AS VARCHAR2(12)) AS tipo_de_conta,
+            NULL AS cd_reg,
+            NULL AS cd_lancamento,
+            r.DS_REPASSE AS descricao_servico,
+            NULL AS dt_atendimento,
+            NULL AS MES,
+            NULL AS ANO,
+            NULL AS mes_atendimento,
+            NULL AS cd_remessa,
+            NULL AS dt_remessa,
+            r.DT_COMPETENCIA AS dt_competencia,
+            NULL AS cd_gru_pro,
+            NULL AS ds_gru_pro,
+            NULL AS ds_gru_fat,
+            NULL AS vl_total_conta,
+            r.VL_REPASSE AS vl_repasse,
+            CAST('LANC. MANUAL' AS VARCHAR2(12)) AS auxiliar,
+            NULL AS SN_REPASSADO
+        FROM REPASSES_MANUAL r
+        LEFT JOIN PRESTADORES p ON r.CD_PRESTADOR_REPASSE = p.CD_PRESTADOR
 ),
 VALIDACAO
     AS (
@@ -472,7 +518,7 @@ VALIDACAO
             vl_total_conta,
             SUM(vl_repasse) AS vl_repasse
         FROM REPASSE_MEDICO
-        WHERE medico LIKE '%GUILHERME CARDOSO FERNANDES%' AND TRUNC(dt_competencia) = TO_DATE('2024-01-01', 'YYYY-MM-DD')
+        WHERE medico LIKE '%FLADSON%' AND TRUNC(dt_competencia) = TO_DATE('2024-12-01', 'YYYY-MM-DD')
         GROUP BY
             medico,
             dt_competencia,
@@ -503,11 +549,6 @@ ORDER BY
     convenio NULLS FIRST,
     descricao_servico NULLS FIRST,
     vl_total_conta NULLS FIRST ;
-
-
-
-
-
 
 
 
