@@ -476,8 +476,8 @@ REGRA_AMBULATORIO
             ia.VL_UNITARIO,
             ia.VL_TOTAL_CONTA,
             ia.VL_BASE_REPASSADO
-        FROM DBAMV.PRO_FAT pf
-        LEFT JOIN DBAMV.ITREG_AMB ia ON pf.CD_PRO_FAT = ia.CD_PRO_FAT
+        FROM DBAMV.ITREG_AMB ia
+        LEFT JOIN DBAMV.PRO_FAT pf ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
         LEFT JOIN DBAMV.REG_AMB ra ON ia.CD_REG_AMB = ra.CD_REG_AMB
         WHERE ia.SN_REPASSADO IN ('S', 'N') OR ia.SN_REPASSADO IS NULL --AND ia.DT_PRODUCAO BETWEEN TRUNC(SYSDATE - :DIA) AND TRUNC(SYSDATE)
     ),
@@ -505,8 +505,8 @@ REGRA_FATURAMENTO
             itf.VL_UNITARIO,
             itf.VL_TOTAL_CONTA,
             itf.VL_BASE_REPASSADO
-        FROM DBAMV.PRO_FAT pf
-        LEFT JOIN DBAMV.ITREG_FAT itf ON pf.CD_PRO_FAT = itf.CD_PRO_FAT
+        FROM DBAMV.ITREG_FAT itf
+        LEFT JOIN DBAMV.PRO_FAT pf ON itf.CD_PRO_FAT = pf.CD_PRO_FAT
         LEFT JOIN DBAMV.REG_FAT rf ON itf.CD_REG_FAT = rf.CD_REG_FAT
         WHERE itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL --AND itf.DT_PRODUCAO BETWEEN TRUNC(SYSDATE - :DIA) AND TRUNC(SYSDATE)
     ),
@@ -656,7 +656,7 @@ VALIDACAO
             vl_total_conta,
             SUM(vl_repasse) AS vl_repasse
         FROM REPASSE_MEDICO
-        WHERE medico LIKE '%FLADSON%' AND TRUNC(dt_competencia) = TO_DATE('2024-12-01', 'YYYY-MM-DD')
+        WHERE medico LIKE '%KLAUB%' AND TRUNC(dt_competencia) = TO_DATE('2024-12-01', 'YYYY-MM-DD')
         GROUP BY
             medico,
             dt_competencia,
