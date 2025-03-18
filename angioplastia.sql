@@ -180,6 +180,23 @@ QTD_COM_ATEND_SEGUINTE AS (
     SELECT ANO, MES, COUNT(DISTINCT CD_PACIENTE) AS QTD_COM_RETORNO FROM COM_ATEND_SEGUINTE GROUP BY ANO, MES ORDER BY ANO, MES ASC
 )
 SELECT
+    a.ANO,
+    a.MES,
+    b.QTD_SEM_RETORNO,
+    c.QTD_COM_RETORNO,
+    (SUM(b.QTD_SEM_RETORNO) + SUM(c.QTD_COM_RETORNO)) AS SOMA,
+    a.QTD_ANGIO,
+    (SUM(b.QTD_SEM_RETORNO) + SUM(c.QTD_COM_RETORNO)) - a.QTD_ANGIO AS DIF,
+    TO_CHAR((a.QTD_ANGIO - b.QTD_SEM_RETORNO) / a.QTD_ANGIO * 100, '99.99') PERC
+FROM QTD_ANGIO a
+LEFT JOIN QTD_SEM_ATEND_SEGUINTE b ON a.ANO = b.ANO AND a.MES = b.MES
+LEFT JOIN QTD_COM_ATEND_SEGUINTE c ON a.ANO = c.ANO AND a.MES = c.MES
+WHERE a.ANO = 2023
+GROUP BY a.ANO, a.MES, a.QTD_ANGIO, b.QTD_SEM_RETORNO, c.QTD_COM_RETORNO
+ORDER BY a.ANO, a.MES;
+
+
+SELECT
     p.CD_PACIENTE,
     sas.DT_ATENDIMENTO,
     MES,
@@ -218,21 +235,6 @@ GROUP BY
     p.NR_CELULAR
 ORDER BY sas.ANO, sas.MES;
 
-SELECT
-    a.ANO,
-    a.MES,
-    b.QTD_SEM_RETORNO,
-    c.QTD_COM_RETORNO,
-    (SUM(b.QTD_SEM_RETORNO) + SUM(c.QTD_COM_RETORNO)) AS SOMA,
-    a.QTD_ANGIO,
-    (SUM(b.QTD_SEM_RETORNO) + SUM(c.QTD_COM_RETORNO)) - a.QTD_ANGIO AS DIF,
-    TO_CHAR((a.QTD_ANGIO - b.QTD_SEM_RETORNO) / a.QTD_ANGIO * 100, '99.99') PERC
-FROM QTD_ANGIO a
-LEFT JOIN QTD_SEM_ATEND_SEGUINTE b ON a.ANO = b.ANO AND a.MES = b.MES
-LEFT JOIN QTD_COM_ATEND_SEGUINTE c ON a.ANO = c.ANO AND a.MES = c.MES
-WHERE a.ANO = 2023
-GROUP BY a.ANO, a.MES, a.QTD_ANGIO, b.QTD_SEM_RETORNO, c.QTD_COM_RETORNO
-ORDER BY a.ANO, a.MES;
 
 
 
@@ -253,26 +255,25 @@ WITH ANGIO AS (
         ca.CD_CONVENIO,
         co.NM_CONVENIO,
         a.DT_ALTA,
-        TRUNC(ac.DT_AVISO_CIRURGIA) AS DT_AVISO_CIRURGIA,
-        pr.NM_PRESTADOR,
         a.CD_ATENDIMENTO,
         a.DT_ATENDIMENTO,
         a.TP_ATENDIMENTO,
         ma.CD_MOT_ALT,
         ma.DS_MOT_ALT,
-        am.DS_ATI_MED,
-        ca.CD_CIRURGIA,
-        c.DS_CIRURGIA
+        LISTAGG(ac.DT_AVISO_CIRURGIA,';') WITHIN GROUP (ORDER BY ac.DT_AVISO_CIRURGIA) AS vetor_DT_AVISO_CIRURGIA,
+        LISTAGG(pr.NM_PRESTADOR,';') WITHIN GROUP (ORDER BY pr.NM_PRESTADOR) AS vetor_NM_PRESTADOR,
+        LISTAGG(ca.CD_CIRURGIA, ';') WITHIN GROUP (ORDER BY ca.CD_CIRURGIA) AS vetor_CD_CIRURGIA,
+        LISTAGG(c.DS_CIRURGIA, ';') WITHIN GROUP (ORDER BY c.DS_CIRURGIA) AS vetor_DS_CIRURGIA
     FROM
         dbamv.prestador_aviso pa
-        LEFT JOIN dbamv.aviso_cirurgia ac ON ac.cd_aviso_cirurgia = pa.cd_aviso_cirurgia
-        LEFT JOIN dbamv.cirurgia_aviso ca ON ca.cd_cirurgia_aviso = pa.cd_cirurgia_aviso
-        LEFT JOIN dbamv.paciente p ON p.cd_paciente = ac.cd_paciente
+        LEFT JOIN dbamv.aviso_cirurgia ac ON pa.cd_aviso_cirurgia = ac.cd_aviso_cirurgia
+        LEFT JOIN dbamv.cirurgia_aviso ca ON pa.cd_cirurgia_aviso = ca.cd_cirurgia_aviso
         LEFT JOIN dbamv.ati_med am ON pa.cd_ati_med = am.cd_ati_med
-        LEFT JOIN DBAMV.CIRURGIA c ON c.CD_CIRURGIA = ca.CD_CIRURGIA
-        LEFT JOIN DBAMV.CONVENIO co ON co.CD_CONVENIO = ca.CD_CONVENIO
+        LEFT JOIN dbamv.paciente p ON ac.cd_paciente = p.cd_paciente
+        LEFT JOIN DBAMV.CIRURGIA c ON ca.CD_CIRURGIA = c.CD_CIRURGIA
+        LEFT JOIN DBAMV.CONVENIO co ON ca.CD_CONVENIO = co.CD_CONVENIO
         LEFT JOIN dbamv.prestador pr ON pa.cd_prestador = pr.cd_prestador
-        LEFT JOIN dbamv.atendime a ON a.CD_PACIENTE = ac.CD_PACIENTE
+        LEFT JOIN dbamv.atendime a ON a.CD_ATENDIMENTO = ac.CD_ATENDIMENTO
         LEFT JOIN DBAMV.MOT_ALT ma ON a.CD_MOT_ALT = ma.CD_MOT_ALT
     WHERE
         pa.sn_principal = 'S'
@@ -280,9 +281,96 @@ WITH ANGIO AS (
         AND ac.cd_cen_cir IN ('1', '2')
         AND c.DS_CIRURGIA LIKE '%ANGIOPLASTIA%'
         AND ma.TP_MOT_ALTA <> 'O'
-    ORDER BY ac.DT_AVISO_CIRURGIA
+        AND ac.DT_AVISO_CIRURGIA BETWEEN TRUNC(SYSDATE - :pDIAS) AND TRUNC(SYSDATE + 0.99999)
+    GROUP BY
+        ac.NM_PACIENTE,
+        p.NR_DDD_FONE,
+        p.NR_FONE,
+        p.EMAIL,
+        p.DT_NASCIMENTO,
+        p.TP_SEXO,
+        ac.CD_PACIENTE,
+        ca.CD_CONVENIO,
+        co.NM_CONVENIO,
+        a.DT_ALTA,
+
+        a.CD_ATENDIMENTO,
+        a.DT_ATENDIMENTO,
+        a.TP_ATENDIMENTO,
+        ma.CD_MOT_ALT,
+        ma.DS_MOT_ALT
+    ORDER BY
+        a.CD_ATENDIMENTO
 )
 SELECT
     *
 FROM ANGIO
-WHERE DT_AVISO_CIRURGIA BETWEEN TRUNC(SYSDATE - :pDIAS) AND TRUNC(SYSDATE + 0.99999) AND CD_MOT_ALT IS NOT NULL;
+WHERE CD_MOT_ALT IS NOT NULL AND DT_ATENDIMENTO = (SELECT MAX(a.DT_ATENDIMENTO) FROM atendime a WHERE a.CD_PACIENTE = CD_PRONTUARIO);
+
+
+
+
+
+WITH ANGIO AS (
+    SELECT
+        ac.NM_PACIENTE,
+        p.NR_DDD_FONE,
+        p.NR_FONE,
+        p.EMAIL,
+        p.DT_NASCIMENTO,
+        p.TP_SEXO,
+        ac.CD_PACIENTE AS CD_PRONTUARIO,
+        ca.CD_CONVENIO,
+        co.NM_CONVENIO,
+        a.DT_ALTA,
+        a.CD_ATENDIMENTO,
+        a.DT_ATENDIMENTO,
+        a.TP_ATENDIMENTO,
+        ma.CD_MOT_ALT,
+        ma.DS_MOT_ALT,
+        LISTAGG(ac.DT_AVISO_CIRURGIA,';') WITHIN GROUP (ORDER BY ac.DT_AVISO_CIRURGIA) AS vetor_DT_AVISO_CIRURGIA,
+        LISTAGG(pr.NM_PRESTADOR,';') WITHIN GROUP (ORDER BY pr.NM_PRESTADOR) AS vetor_NM_PRESTADOR,
+        LISTAGG(ca.CD_CIRURGIA, ';') WITHIN GROUP (ORDER BY ca.CD_CIRURGIA) AS vetor_CD_CIRURGIA,
+        LISTAGG(c.DS_CIRURGIA, ';') WITHIN GROUP (ORDER BY c.DS_CIRURGIA) AS vetor_DS_CIRURGIA
+    FROM
+        dbamv.prestador_aviso pa
+        LEFT JOIN dbamv.aviso_cirurgia ac ON pa.cd_aviso_cirurgia = ac.cd_aviso_cirurgia
+        LEFT JOIN dbamv.cirurgia_aviso ca ON pa.cd_cirurgia_aviso = ca.cd_cirurgia_aviso
+        LEFT JOIN dbamv.ati_med am ON pa.cd_ati_med = am.cd_ati_med
+        LEFT JOIN dbamv.paciente p ON ac.cd_paciente = p.cd_paciente
+        LEFT JOIN DBAMV.CIRURGIA c ON ca.CD_CIRURGIA = c.CD_CIRURGIA
+        LEFT JOIN DBAMV.CONVENIO co ON ca.CD_CONVENIO = co.CD_CONVENIO
+        LEFT JOIN dbamv.prestador pr ON pa.cd_prestador = pr.cd_prestador
+        LEFT JOIN dbamv.atendime a ON a.CD_ATENDIMENTO = ac.CD_ATENDIMENTO
+        LEFT JOIN DBAMV.MOT_ALT ma ON a.CD_MOT_ALT = ma.CD_MOT_ALT
+    WHERE
+        pa.sn_principal = 'S'
+        AND ac.tp_situacao = 'R'
+        AND ac.cd_cen_cir IN ('1', '2')
+        AND c.DS_CIRURGIA LIKE '%ANGIOPLASTIA%'
+        AND ma.TP_MOT_ALTA <> 'O'
+        AND ac.DT_AVISO_CIRURGIA BETWEEN TRUNC(SYSDATE - :pDIAS) AND TRUNC(SYSDATE + 0.99999)
+    GROUP BY
+        ac.NM_PACIENTE,
+        p.NR_DDD_FONE,
+        p.NR_FONE,
+        p.EMAIL,
+        p.DT_NASCIMENTO,
+        p.TP_SEXO,
+        ac.CD_PACIENTE,
+        ca.CD_CONVENIO,
+        co.NM_CONVENIO,
+        a.DT_ALTA,
+
+        a.CD_ATENDIMENTO,
+        a.DT_ATENDIMENTO,
+        a.TP_ATENDIMENTO,
+        ma.CD_MOT_ALT,
+        ma.DS_MOT_ALT
+    ORDER BY
+        a.CD_ATENDIMENTO
+)
+SELECT
+    *
+FROM ANGIO
+WHERE CD_MOT_ALT IS NOT NULL AND DT_ATENDIMENTO = (SELECT MAX(a.DT_ATENDIMENTO) FROM atendime a WHERE a.CD_PACIENTE = CD_PRONTUARIO);
