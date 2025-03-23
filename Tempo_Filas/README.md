@@ -23,16 +23,16 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
                     DATEDIFF('Tempo de Processo'[ADM_FINAL],'Tempo de Processo'[MÉD_CHAMADA],MINUTE)
             ))
         ```
-> [!NOTE]
-> Sobre o cálculo:
 
-- A formula verifica se existe TEMPO FINAL do **Exame de Imagem** e então calcula a diferença entre o TEMPO FINAL
-DO ATENDIMENTO ADMNISTRATIVO DA RECEPÇÃO e o TEMPO CHAMADA DO EXAME DE IMAGEM em minutos.
-- Caso a condição NÃO seja satisfeita é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
-calcular a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO e o TEMPO DE CHAMADADA EXAME DE
-LABORATÓRIO em minutos.
-- Quando nenhuma das condições é satisfeita, é cálculo a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA
-RECEPÇÃO e o TEMPO CHAMADA DO ATENDIMENTO MEDICO em minutos.
+        > Sobre o cálculo:
+
+        - A formula verifica se existe TEMPO FINAL do **Exame de Imagem** e então calcula a diferença entre o TEMPO FINAL
+        DO ATENDIMENTO ADMNISTRATIVO DA RECEPÇÃO e o TEMPO CHAMADA DO EXAME DE IMAGEM em minutos.
+        - Caso a condição NÃO seja satisfeita é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
+        calcular a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO e o TEMPO DE CHAMADADA EXAME DE
+        LABORATÓRIO em minutos.
+        - Quando nenhuma das condições é satisfeita, é cálculo a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA
+        RECEPÇÃO e o TEMPO CHAMADA DO ATENDIMENTO MEDICO em minutos.
     </details>
 
     <details open>
@@ -51,15 +51,16 @@ RECEPÇÃO e o TEMPO CHAMADA DO ATENDIMENTO MEDICO em minutos.
                     DATEDIFF('Tempo de Processo'[MÉD_CHAMADA],'Tempo de Processo'[MÉD_FINAL],MINUTE)
             ))
         ```
-> [!NOTE]
-> Sobre o cálculo:
 
-- A formula verifica se existe TEMPO FINAL do **Exame de Imagem** e então calcula a diferença entre o TEMPO INICIAL e
-FINAL DO EXAME DE IMAGEM em minutos;
-- Caso a condição NÃO seja satisfeita é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
-calcular a diferença entre o TEMPO INICIAL e o TEMPO FINAL do exame em minutos.
-- Quando nenhuma das condições é satisfeita, é calculada a diferença entre o TEMPO CHAMADA DO MEDICO e o TEMPO FINAL DO MEDICO
-em minutos.
+        > Sobre o cálculo:
+
+        - A formula verifica se existe TEMPO FINAL do **Exame de Imagem** e então calcula a diferença entre o TEMPO INICIAL e
+        FINAL DO EXAME DE IMAGEM em minutos;
+        - Caso a condição NÃO seja satisfeita é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
+        calcular a diferença entre o TEMPO INICIAL e o TEMPO FINAL do exame em minutos.
+        - Quando nenhuma das condições é satisfeita, é calculada a diferença entre o TEMPO CHAMADA DO MEDICO e o TEMPO FINAL DO MEDICO
+        em minutos.
+
     </details>
 
     <details open>
@@ -71,10 +72,11 @@ em minutos.
         ```sql
             DATEDIFF('Tempo de Processo'[CAD_TOTEM],'Tempo de Processo'[ADM_CHAMADA],MINUTE)
         ```
-> [!NOTE]
-> Sobre o cálculo:
 
-- A formula calcula a diferença entre o TEMPO CADASTRO NO TOTEM e o TEMPO CHAMADA DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO
+        > Sobre o cálculo:
+
+        - A formula calcula a diferença entre o TEMPO CADASTRO NO TOTEM e o TEMPO CHAMADA DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO
+
     </details>
 
 
@@ -87,11 +89,12 @@ em minutos.
         ```sql
             DATEDIFF('Tempo de Processo'[ADM_INÍCIO],'Tempo de Processo'[ADM_FINAL],MINUTE)
         ```
-> [!NOTE]
-> Sobre o cálculo:
 
-- A formula calcula a diferença entre o TEMPO INICIO DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO e o
-TEMPO CHAMADA DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO
+        > Sobre o cálculo:
+
+        - A formula calcula a diferença entre o TEMPO INICIO DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO e o
+        TEMPO CHAMADA DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO
+
     </details>
 
 <br>
@@ -163,12 +166,12 @@ nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tip
     <br>
     <br>
 
-> [!CAUTION]
-> CONSIDERAÇÕES:
 
-- Query não permite calcular com precisam os KPI relacionados aos tempos entre os processos de forma real, pois além de
-não retorna todos os atendimentos, até mesmo aqueles que não **´CD_ATENDIMENTO´**, também omite as linhas necessárias
-para calcular os tempos entre cada um dos processos das filas que são geradas nos atendimentos.
+    > CONSIDERAÇÕES:
+
+    - Query não permite calcular com precisam os KPI relacionados aos tempos entre os processos de forma real, pois além de
+    não retorna todos os atendimentos, até mesmo aqueles que não **´CD_ATENDIMENTO´**, também omite as linhas necessárias
+    para calcular os tempos entre cada um dos processos das filas que são geradas nos atendimentos.
 
     <br>
     <br>
@@ -249,6 +252,12 @@ para calcular os tempos entre cada um dos processos das filas que são geradas n
         </tbody>
     </table>
 
+
+    <br>
+    <br>
+
+    <br>
+    <br>
 
 
 </details>
