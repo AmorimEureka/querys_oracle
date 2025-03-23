@@ -160,6 +160,9 @@ nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tip
 
     ```
 
+    <br>
+    <br>
+
     > [!CAUTION]
     > CONSIDERAÇÕES:
 
