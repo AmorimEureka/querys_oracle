@@ -121,6 +121,9 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tipo de atendimento.
 
 
+<br>
+<br>
+
 
 ### Querys do painel
 
