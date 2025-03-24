@@ -1,9 +1,13 @@
 Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 =============================================================
 
+<br>
+<br>
 
-### O painel apresenta KPI e Indicadores relacionados ao acompanhamento do tempo de atendimento no hospital.
+# O painel apresenta KPI e Indicadores relacionados ao acompanhamento do tempo de atendimento no hospital.
 
+<br>
+<br>
 
 - ## **As metricas acompanhadas são:**
 
@@ -35,6 +39,9 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
         RECEPÇÃO e o TEMPO CHAMADA DO ATENDIMENTO MEDICO em minutos.
     </details>
 
+    <br>
+    <br>
+
     <details open>
     <summary><strong>TA Consulta:</strong></summary>
     <p></p>
@@ -63,6 +70,9 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 
     </details>
 
+    <br>
+    <br>
+
     <details open>
     <summary><strong>TE Guichê:</strong></summary>
     <p></p>
@@ -79,6 +89,8 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 
     </details>
 
+    <br>
+    <br>
 
     <details open>
     <summary><strong>TA Guichê:</strong></summary>
@@ -97,8 +109,8 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 
     </details>
 
-<br>
-<br>
+    <br>
+    <br>
 
 > [!IMPORTANT]
 > No painel os calculos podem são agrupados poor:
@@ -110,8 +122,8 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 - Por Prioridade do Paciente;
 - Também é fornecida visões mais análiticas,
 
-<br>
-<br>
+    <br>
+    <br>
 
 
 > [!CAUTION]
@@ -124,8 +136,18 @@ nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tip
 <br>
 <br>
 
+<br>
+<br>
 
-### Querys do painel
+# Querys do painel
+
+
+- ## **Modelo ER:**
+
+    ![Diagrama ER](TEMPOS.png)
+
+    <br>
+    <br>
 
 - ## **Querys:**
 
