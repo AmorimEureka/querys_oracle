@@ -129,8 +129,9 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 > [!CAUTION]
 > CONSIDERAÇÕES:
 
-- A forma como os cálculos são realizados não parecem corretas, pois retorna apenas um dos valores que serão manipulados por CROSS FILTER
-nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tipo de atendimento.
+- A forma como os cálculos foram criados apresenta falha lógica, pois retorna apenas um dos valores que serão manipulados por CROSS FILTER
+nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tipo de atendimento, pois espera-se o tempo entre os processos que 
+compõem o fluxo de atendimento, independentemente do tipo de fila.
 
 
 <br>
@@ -195,7 +196,7 @@ nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tip
     > CONSIDERAÇÕES:
 
     - Query não permite calcular com precisam os KPI relacionados aos tempos entre os processos de forma real, pois além de
-    não retorna todos os atendimentos, até mesmo aqueles que não **´CD_ATENDIMENTO´**, também omite as linhas necessárias
+    não retorna todos os atendimentos, até mesmo aqueles que não tem **´CD_ATENDIMENTO´**, também omite as linhas necessárias
     para calcular os tempos entre cada um dos processos das filas que são geradas nos atendimentos.
 
     <br>
