@@ -30,13 +30,13 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 
         > Sobre o cálculo:
 
-        - A formula verifica se existe TEMPO FINAL do **Exame de Imagem** e então calcula a diferença entre o TEMPO FINAL
+        - A formula verifica se existe TEMPO FINAL do **Exame de Imagem**,  então calcula a diferença entre o TEMPO FINAL
         DO ATENDIMENTO ADMNISTRATIVO DA RECEPÇÃO e o TEMPO CHAMADA DO EXAME DE IMAGEM em minutos.
-        - Caso a condição NÃO seja satisfeita é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
-        calcular a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO e o TEMPO DE CHAMADADA EXAME DE
+        - Caso a condição NÃO seja satisfeita, é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para
+        calcular a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO e o TEMPO DE CHAMADADA DO EXAME DE
         LABORATÓRIO em minutos.
-        - Quando nenhuma das condições é satisfeita, é cálculo a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA
-        RECEPÇÃO e o TEMPO CHAMADA DO ATENDIMENTO MEDICO em minutos.
+        - Quando nenhuma das condições é satisfeita, é calculado a diferença entre o TEMPO FINAL DO ATENDIMENTO ADMINISTRATIVO DA
+        RECEPÇÃO e o TEMPO DE CHAMADA DO ATENDIMENTO MEDICO em minutos.
     </details>
 
     <br>
@@ -63,8 +63,8 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 
         - A formula verifica se existe TEMPO FINAL do **Exame de Imagem** e então calcula a diferença entre o TEMPO INICIAL e
         FINAL DO EXAME DE IMAGEM em minutos;
-        - Caso a condição NÃO seja satisfeita é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
-        calcular a diferença entre o TEMPO INICIAL e o TEMPO FINAL do exame em minutos.
+        - Caso a condição NÃO seja satisfeita, é feita nova verificação sobre o TEMPO FINAL do **Exame de Labotório** para então
+        calcular a diferença entre o TEMPO INICIAL e o TEMPO FINAL DO EXAME em minutos.
         - Quando nenhuma das condições é satisfeita, é calculada a diferença entre o TEMPO CHAMADA DO MEDICO e o TEMPO FINAL DO MEDICO
         em minutos.
 
@@ -85,7 +85,7 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 
         > Sobre o cálculo:
 
-        - A formula calcula a diferença entre o TEMPO CADASTRO NO TOTEM e o TEMPO CHAMADA DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO
+        - A formula calcula a diferença entre o TEMPO CADASTRO NO TOTEM e o TEMPO DE CHAMADA DO ATENDIMENTO ADMINISTRATIVO DA RECEPÇÃO
 
     </details>
 
@@ -130,7 +130,7 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
 > CONSIDERAÇÕES:
 
 - A forma como os cálculos foram criados apresenta falha lógica, pois retorna apenas um dos valores que serão manipulados por CROSS FILTER
-nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tipo de atendimento, pois espera-se o tempo entre os processos que 
+nos visuais, e isso não evidência os tempos entre as etapas exatas de cada tipo de atendimento, pois espera-se o tempo entre os processos que
 compõem o fluxo de atendimento, independentemente do tipo de fila.
 
 
@@ -156,9 +156,9 @@ compõem o fluxo de atendimento, independentemente do tipo de fila.
         <summary><strong>Query 'Tempo de Processo:'</strong></summary>
         <p></p>
 
-    - A tabela `sacr_tempo_processo` contém os tempos iniciais e finais de cada processo
-    - A tabela `sacr_tipo_tempo_processo` contém a descrição de cada processo
-    - A query abaixo retornam os MAIORES tempos dos atendimentos que chegaram a ser abertos com *´CD_ATENDIMENTO´*
+    - A tabela `sacr_tempo_processo` contém os tempos iniciais e finais de cada processo.
+    - A tabela `sacr_tipo_tempo_processo` contém a descrição de cada processo.
+    - A query abaixo retorna os MAIORES tempos dos atendimentos que chegaram a ser abertos com *´CD_ATENDIMENTO´*
     - Aparente o objetivo era retornar os maiores tempos entre os processos de atendimento ambulatorial (apenas exames)
     para permitir realizar o calculo de tempo entre as etapas no painel.
 
@@ -195,8 +195,8 @@ compõem o fluxo de atendimento, independentemente do tipo de fila.
 
     > CONSIDERAÇÕES:
 
-    - Query não permite calcular com precisam os KPI relacionados aos tempos entre os processos de forma real, pois além de
-    não retorna todos os atendimentos, até mesmo aqueles que não tem **´CD_ATENDIMENTO´**, também omite as linhas necessárias
+    - Query não permite calcular com precisão os KPI relacionados aos tempos entre os processos de forma real, pois além de
+    não retorna todos os atendimentos, até mesmo aqueles que não tem **´CD_ATENDIMENTO´**, omite as linhas necessárias
     para calcular os tempos entre cada um dos processos das filas que são geradas nos atendimentos.
 
     <br>
