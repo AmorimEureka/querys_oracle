@@ -417,7 +417,7 @@ WITH REPASSES
             rish.TP_REPASSE
         FROM DBAMV.IT_REPASSE_SIH sih
         LEFT JOIN DBAMV.REPASSE rish ON sih.CD_REPASSE = rish.CD_REPASSE
-),
+    ),
 REPASSES_MANUAL
     AS (
         SELECT
@@ -645,6 +645,74 @@ REPASSE_MEDICO
             NULL AS SN_REPASSADO
         FROM REPASSES_MANUAL r
         LEFT JOIN PRESTADORES p ON r.CD_PRESTADOR_REPASSE = p.CD_PRESTADOR
+        UNION ALL
+        SELECT
+            ra.CD_PRO_FAT,
+            ra.CD_REG_AMB AS CD_REG_FAT,
+            ra.CD_ATENDIMENTO AS cd_atendimento,
+            pa.NM_PACIENTE AS nm_paciente,
+            p.NM_PRESTADOR AS medico,
+            c.NM_CONVENIO AS convenio,
+            CAST('AMBULATORIAL' AS VARCHAR2(12)) AS tipo_de_conta,
+            ra.CD_REG_AMB AS cd_reg,
+            ra.CD_LANCAMENTO AS cd_lancamento,
+            ra.DS_PRO_FAT AS descricao_servico,
+            a.DT_ATENDIMENTO AS dt_atendimento,
+            EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
+            EXTRACT(YEAR FROM a.DT_ATENDIMENTO) AS ANO,
+            TO_CHAR(a.DT_ATENDIMENTO,'MM/YYYY') AS mes_atendimento,
+            ra.CD_REMESSA AS cd_remessa,
+            ra.DT_REMESSA AS dt_remessa,
+            NULL AS dt_competencia,
+            ra.CD_GRU_PRO AS cd_gru_pro,
+            gp.DS_GRU_PRO AS ds_gru_pro,
+            gf.DS_GRU_FAT AS ds_gru_fat,
+            ra.VL_TOTAL_CONTA AS vl_total_conta,
+            NULL AS vl_repasse,
+            NULL AS auxiliar,
+            ra.SN_REPASSADO
+        FROM ATENDIMENTO a
+        LEFT JOIN PACIENTES pa ON a.CD_PACIENTE = pa.CD_PACIENTE
+        INNER JOIN REGRA_AMBULATORIO ra ON a.CD_ATENDIMENTO = ra.CD_ATENDIMENTO
+        LEFT JOIN PRESTADORES p ON ra.CD_PRESTADOR = p.CD_PRESTADOR
+        LEFT JOIN GRUPO_PROCEDIMENTO gp ON ra.CD_GRU_PRO = gp.CD_GRU_PRO
+        LEFT JOIN GRUPO_FATURAMENTO gf ON ra.CD_GRU_FAT = gf.CD_GRU_FAT
+        LEFT JOIN CONVENIOS c ON ra.CD_CONVENIO = c.CD_CONVENIO
+        WHERE ra.CD_REMESSA IS NULL
+        UNION ALL
+        SELECT
+            rf.CD_PRO_FAT,
+            rf.CD_REG_FAT,
+            rf.CD_ATENDIMENTO AS cd_atendimento,
+            pa.NM_PACIENTE AS nm_paciente,
+            p.NM_PRESTADOR AS medico,
+            c.NM_CONVENIO AS convenio,
+            CAST('HOSPITALAR' AS VARCHAR2(12)) AS tipo_de_conta,
+            rf.CD_REG_FAT AS cd_reg,
+            rf.CD_LANCAMENTO AS cd_lancamento,
+            rf.DS_PRO_FAT AS descricao_servico,
+            rf.DT_LANCAMENTO AS dt_atendimento,
+            EXTRACT(MONTH FROM rf.DT_LANCAMENTO) AS MES,
+            EXTRACT(YEAR FROM rf.DT_LANCAMENTO) AS ANO,
+            TO_CHAR(rf.DT_LANCAMENTO,'MM/YYYY') AS mes_atendimento,
+            rf.CD_REMESSA AS cd_remessa,
+            rf.DT_REMESSA AS dt_remessa,
+            NULL AS dt_competencia,
+            rf.CD_GRU_PRO AS cd_gru_pro,
+            gp.DS_GRU_PRO AS ds_gru_pro,
+            gf.DS_GRU_FAT AS ds_gru_fat,
+            rf.VL_TOTAL_CONTA AS vl_total_conta,
+            NULL AS vl_repasse,
+            NULL AS auxiliar,
+            rf.SN_REPASSADO
+        FROM ATENDIMENTO a
+        LEFT JOIN PACIENTES pa ON a.CD_PACIENTE = pa.CD_PACIENTE
+        INNER JOIN REGRA_FATURAMENTO rf ON a.CD_ATENDIMENTO = rf.CD_ATENDIMENTO
+        LEFT JOIN PRESTADORES p ON rf.CD_PRESTADOR = p.CD_PRESTADOR
+        LEFT JOIN GRUPO_PROCEDIMENTO gp ON rf.CD_GRU_PRO = gp.CD_GRU_PRO
+        LEFT JOIN GRUPO_FATURAMENTO gf ON rf.CD_GRU_FAT = gf.CD_GRU_FAT
+        LEFT JOIN CONVENIOS c ON rf.CD_CONVENIO = c.CD_CONVENIO
+        WHERE rf.CD_REMESSA IS NULL
 ),
 VALIDACAO
     AS (
@@ -673,7 +741,7 @@ TOTALIZACAO
             NULL AS dt_competencia,
             NULL AS convenio,
             NULL AS descricao_servico,
-            NULL AS vl_total_conta,
+            SUM(vl_total_conta),
             SUM(vl_repasse),
             1
         FROM VALIDACAO
