@@ -134,3 +134,17 @@ GRANT SELECT ON DBAMV.SACR_TEMPO_PROCESSO                 TO upflux; -- TABELA N
 GRANT SELECT ON DBAMV.TRIAGEM_ATENDIMENTO                 TO upflux;
 GRANT SELECT ON DBAMV.sacr_tipo_tempo_processo            TO upflux;
 GRANT SELECT ON DBAMV.FILA_SENHA            TO upflux;
+GRANT SELECT ON DBAMV.VIA_DE_ACESSO            TO upflux;
+
+
+GRANT SELECT ON DBAMV.MOV_INT                   TO upflux;
+GRANT SELECT ON DBAMV.TIPO_SEXO                 TO upflux;
+GRANT SELECT ON DBAMV.RES_LEI                   TO upflux;
+GRANT SELECT ON DBAMV.ADMISSAO_CO               TO upflux;
+GRANT SELECT ON DBAMV.RECEM_NASCIDO             TO upflux;
+GRANT SELECT ON DBAMV.MOTIVO_PARTO              TO upflux;
+GRANT SELECT ON DBAMV.TIP_PARTO                 TO upflux;
+GRANT SELECT ON DBAMV.REG_AMB                   TO upflux;
+GRANT SELECT ON DBAMV.SOLIC_SANGUE              TO upflux;
+GRANT SELECT ON DBAMV.IT_SOLIC_SANGUE           TO upflux;
+GRANT SELECT ON DBAMV.SANGUE_DERIVADOS          TO upflux;
