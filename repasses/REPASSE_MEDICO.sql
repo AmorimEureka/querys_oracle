@@ -444,6 +444,7 @@ REPASSE_MEDICO
         LEFT JOIN CONVENIOS c ON ra.CD_CONVENIO = c.CD_CONVENIO
         LEFT JOIN ATENDIMENTO a ON ra.CD_ATENDIMENTO = a.CD_ATENDIMENTO
         LEFT JOIN PACIENTES pa ON a.CD_PACIENTE = pa.CD_PACIENTE
+        WHERE ra.CD_GRU_PRO <> 28
         UNION ALL
         SELECT
             rf.CD_PRO_FAT,
@@ -540,7 +541,7 @@ REPASSE_MEDICO
         LEFT JOIN GRUPO_PROCEDIMENTO gp ON ra.CD_GRU_PRO = gp.CD_GRU_PRO
         LEFT JOIN GRUPO_FATURAMENTO gf ON ra.CD_GRU_FAT = gf.CD_GRU_FAT
         LEFT JOIN CONVENIOS c ON ra.CD_CONVENIO = c.CD_CONVENIO
-        WHERE ra.CD_REMESSA IS NULL
+        WHERE ra.CD_REMESSA IS NULL AND ra.CD_GRU_PRO <> 28
         UNION ALL
         SELECT
             rf.CD_PRO_FAT,
@@ -575,7 +576,8 @@ REPASSE_MEDICO
         LEFT JOIN GRUPO_FATURAMENTO gf ON rf.CD_GRU_FAT = gf.CD_GRU_FAT
         LEFT JOIN CONVENIOS c ON rf.CD_CONVENIO = c.CD_CONVENIO
         WHERE rf.CD_REMESSA IS NULL
-),
+)
+,
 VALIDACAO
     AS (
         SELECT
@@ -586,7 +588,7 @@ VALIDACAO
             vl_total_conta,
             SUM(vl_repasse) AS vl_repasse
         FROM REPASSE_MEDICO
-        WHERE medico LIKE '%KLAUB%' AND TRUNC(dt_competencia) = TO_DATE('2024-12-01', 'YYYY-MM-DD')
+        WHERE medico LIKE '%KLAUB%' AND TRUNC(dt_competencia) = TO_DATE('2025-01-01', 'YYYY-MM-DD')
         GROUP BY
             medico,
             dt_competencia,
@@ -616,7 +618,21 @@ ORDER BY
     dt_competencia NULLS FIRST,
     convenio NULLS FIRST,
     descricao_servico NULLS FIRST,
-    vl_total_conta NULLS FIRST ;
+    vl_total_conta NULLS FIRST
+;
+
+
+SELECT * FROM REPASSE_MEDICO WHERE CD_GRU_PRO = 28
+;
+
+
+
+
+
+
+
+
+
 
 
 -- CD_ATENDIMENTO IN(192097, 196160, 197397) ;
