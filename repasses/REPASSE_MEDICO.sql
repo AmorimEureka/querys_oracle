@@ -18,8 +18,7 @@ WITH REPASSE_MEDICO AS (
         TO_CHAR(a.dt_atendimento,'MM/YYYY') mes_atendimento,
         NVL(rf.cd_remessa,ra.cd_remessa) cd_remessa,
         NVL(TO_CHAR(rf.dt_remessa,'MM/YYYY'),TO_CHAR(ra.dt_remessa,'MM/YYYY')) dt_remessa,
-        NVL(rs.dt_competencia,NVL(r1.dt_competencia,
-        .dt_competencia)) dt_competencia,
+        NVL(rs.dt_competencia,NVL(r1.dt_competencia, r2.dt_competencia)) dt_competencia,
         NVL(gp1.cd_gru_pro,gp2.cd_gru_pro) cd_gru_pro,
         NVL(gp1.ds_gru_pro,gp2.ds_gru_pro) ds_gru_pro,
         NVL(gf1.ds_gru_fat,gf2.ds_gru_fat) ds_gru_fat,
@@ -85,11 +84,11 @@ SELECT * FROM REPASSE_MEDICO WHERE cd_atendimento = 174234 ;
 
 
 -- ia.CD_ATENDIMENTO IN(176642, 149423)
-Avaliação da tabela ITREG_AMB
-- Resultado:
-    - Quando *`CD_GRUPO_FAT`* for igual a 8
-        - *`SN_REPASSADO`* será igual a "X" ou "N"
-        -
+-- Avaliação da tabela ITREG_AMB
+-- - Resultado:
+--     - Quando *`CD_GRUPO_FAT`* for igual a 8
+--         - *`SN_REPASSADO`* será igual a "X" ou "N"
+--         -
 SELECT
     ia.CD_REG_AMB,
     ia.CD_PRO_FAT,
@@ -300,6 +299,29 @@ REPASSES_MANUAL
         LEFT JOIN DBAMV.IT_REPASSE ir ON rp.CD_REPASSE = ir.CD_REPASSE AND rp.CD_PRESTADOR = ir.CD_PRESTADOR AND rp.CD_PRESTADOR_REPASSE = ir.CD_PRESTADOR_REPASSE
         WHERE r.TP_REPASSE = 'M'
     ),
+REPASSES_CONSOLIDADOS
+    AS (
+        SELECT
+            CD_ATENDIMENTO,
+            CD_PRO_FAT,
+            CD_REG_FAT,
+            CD_PRESTADOR_REPASSE,
+            CD_ATI_MED,
+            CD_LANC_FAT,
+            CD_GRU_FAT,
+            CD_GRU_PRO,
+            CD_PROCEDIMENTO,
+            DT_REPASSE,
+            DT_COMPETENCIA_FAT,
+            DT_COMPETENCIA_REP,
+            SN_PERTENCE_PACOTE,
+            VL_SP,
+            VL_ATO,
+            VL_REPASSE,
+            VL_TOTAL_CONTA,
+            VL_BASE_REPASSADO
+        FROM DBAMV.REPASSE_CONSOLIDADO
+    ),
 PRESTADORES
     AS (
         SELECT
@@ -468,7 +490,13 @@ REPASSE_MEDICO
             rf.CD_GRU_PRO AS cd_gru_pro,
             gp.DS_GRU_PRO AS ds_gru_pro,
             gf.DS_GRU_FAT AS ds_gru_fat,
-            rf.VL_TOTAL_CONTA AS vl_total_conta,
+
+            CASE WHEN rf.CD_PRO_FAT = 'X0000000' THEN
+                COALESCE(rc.VL_SP, 0) + COALESCE(rc.VL_ATO, 0)
+            ELSE rc.VL_TOTAL_CONTA
+            END AS vl_total_conta,
+
+            -- rf.VL_TOTAL_CONTA AS vl_total_conta,
             r.VL_REPASSE AS vl_repasse,
             am.DS_ATI_MED AS auxiliar,
             rf.SN_REPASSADO
@@ -481,6 +509,10 @@ REPASSE_MEDICO
         LEFT JOIN CONVENIOS c ON rf.CD_CONVENIO = c.CD_CONVENIO
         LEFT JOIN ATENDIMENTO a ON rf.CD_ATENDIMENTO = a.CD_ATENDIMENTO
         LEFT JOIN PACIENTES pa ON a.CD_PACIENTE = pa.CD_PACIENTE
+        LEFT JOIN REPASSES_CONSOLIDADOS rc ON r.CD_REG_FAT = rc.CD_REG_FAT
+                  AND r.CD_LANCAMENTO_FAT = rc.CD_LANC_FAT
+                  AND r.CD_PRESTADOR_REPASSE = rc.CD_PRESTADOR_REPASSE
+                  AND r.CD_ATI_MED = rc.CD_ATI_MED
         WHERE rf.CD_GRU_PRO <> 28
         UNION ALL
         SELECT
@@ -566,7 +598,13 @@ REPASSE_MEDICO
             rf.CD_GRU_PRO AS cd_gru_pro,
             gp.DS_GRU_PRO AS ds_gru_pro,
             gf.DS_GRU_FAT AS ds_gru_fat,
-            rf.VL_TOTAL_CONTA AS vl_total_conta,
+
+            CASE WHEN rf.CD_PRO_FAT = 'X0000000' THEN
+                COALESCE(rc.VL_SP, 0) + COALESCE(rc.VL_ATO, 0)
+            ELSE rc.VL_TOTAL_CONTA
+            END AS vl_total_conta,
+
+            -- rf.VL_TOTAL_CONTA AS vl_total_conta,
             NULL AS vl_repasse,
             NULL AS auxiliar,
             rf.SN_REPASSADO
@@ -577,6 +615,10 @@ REPASSE_MEDICO
         LEFT JOIN GRUPO_PROCEDIMENTO gp ON rf.CD_GRU_PRO = gp.CD_GRU_PRO
         LEFT JOIN GRUPO_FATURAMENTO gf ON rf.CD_GRU_FAT = gf.CD_GRU_FAT
         LEFT JOIN CONVENIOS c ON rf.CD_CONVENIO = c.CD_CONVENIO
+        LEFT JOIN REPASSES_CONSOLIDADOS rc ON rf.CD_REG_FAT = rc.CD_REG_FAT
+                  AND rf.CD_LANCAMENTO = rc.CD_LANC_FAT
+                  AND rf.CD_PRESTADOR = rc.CD_PRESTADOR_REPASSE
+                  AND rf.CD_ATI_MED = rc.CD_ATI_MED
         WHERE rf.CD_REMESSA IS NULL AND rf.CD_GRU_PRO <> 28 AND a.TP_ATENDIMENTO IN('I', 'U')
 ),
 VALIDACAO
@@ -621,15 +663,6 @@ ORDER BY
     descricao_servico NULLS FIRST,
     vl_total_conta NULLS FIRST
 ;
-
-
-
-
-
-
-
-
-
 
 
 
