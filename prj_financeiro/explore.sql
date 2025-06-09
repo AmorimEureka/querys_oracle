@@ -1,20 +1,6 @@
 
 
 SELECT
-    *
-FROM user_tab_columns
-WHERE COLUMN_NAME = 'CD_LCTO_MOVIMENTO'
-;
-
-
-SELECT
-    *
-FROM user_tab_columns
-WHERE  TABLE_NAME LIKE '%RECCON_REC%' AND COLUMN_NAME LIKE '%CAIXA%';
-
-
-
-SELECT
     cols.owner AS schema_name,          -- Nome do SCHEMA
     -- sa.COLUMN_ID,
     cols.table_name,                    -- Nome da Tabela
@@ -47,10 +33,7 @@ ORDER BY
     cols.table_name, cols.column_name;
 
 -- #################################################################################
--- CD_MOV_CAIXA = 53602
--- CD_CON_REC = 22691
 
--- #################################################################################
 
 
 SELECT
@@ -170,10 +153,8 @@ WHERE DT_MOVIMENTACAO  >= ADD_MONTHS(SYSDATE, -30)
     GROUP BY TP_ORIGEM_MOV ORDER BY COUNT(*);
 
 
--- ###################################################################################################################################################
-
 /*
- * ************************************* ASSOCIAR GRUPO e SUBGRUPO AS CONTAS ANALITICAS *************************************
+ * ******************************* ASSOCIAR GRUPO e SUBGRUPO AS CONTAS SINTETICAS/ANALITICAS ********************************
  *
  *
  * **************************************************************************************************************************
@@ -197,8 +178,8 @@ SELECT
   CD_GRUPO_CONTA,     -- 1, 2, 3 e 4
   DS_CONTA,
   DS_FINANC,
-  TP_CONTA,           -- SINTETICA | ANALITICA
-  TP_NATUREZA,        -- CREDORA   | DEVEDORA
+  TP_CONTA,           -- S-SINTETICA | A-ANALITICA
+  TP_NATUREZA,        -- C-CREDORA   | D-DEVEDORA
   TP_CONTA_FINANC,    -- R-RECEITA   | D-DESPESA   | G-GERAL
                           -- RELACAO C/ CAMPO CD_GRUPO_CONTA
                             --  1 - MAIORIA CD_GRUPO_CONTA = 'G'
@@ -214,19 +195,20 @@ ORDER BY CD_REDUZIDO, CD_GRUPO_CONTA
 ;
 
 
-
+/*
 -- ESTRUTURA DOS PROCESSOS FINANCEIROS
 
 -- COM HIERARQUIA DETERMNADA POR
 --      - CD_PROCESSO
 --      - CD_PROCESSO_PAI
--- O CAMPO 'CD_PROCESSO' É OBRIGATÓRIO:
+-- O CAMPO 'CD_PROCESSO' É OBRIGATÓRIO EM:
 --      - CON_PAG
 --      - PAGCON_PAG
 --      - ITCON_PAG
 --      - CON_REC
 --      - RECCON_REC
 --      - ITCON_REC   - CAMPO NAO EXISTE
+*/
 SELECT
   CD_PROCESSO,
   CD_MULTI_EMPRESA,
@@ -238,335 +220,126 @@ FROM DBAMV.PROCESSO
 ORDER BY CD_PROCESSO
 ;
 
-
-
 SELECT
   *
 FROM DBAMV.CON_PAG
-WHERE CD_REDUZIDO IS NULL AND EXTRACT(YEAR FROM DT_PAGAMENTO) = 2025
+WHERE CD_REDUZIDO IS NULL AND EXTRACT(YEAR FROM DT_LANCAMENTO) = 2025
 ORDER BY DT_LANCAMENTO DESC
-
 ;
 
 SELECT
   *
 FROM DBAMV.PAGCON_PAG
-WHERE CD_REDUZIDO IS NULL AND EXTRACT(YEAR FROM DT_PAGAMENTO) = 2025
-ORDER BY DT_PAGAMENTO DESC
+WHERE CD_REDUZIDO IS NULL AND EXTRACT(YEAR FROM DT_PAGAMENTO) = 2025 AND EXTRACT(MONTH FROM DT_PAGAMENTO) = 4
+ORDER BY CD_CON_COR DESC
 ;
-
-
 
 SELECT
   *
 FROM DBAMV.CON_REC
 WHERE CD_REDUZIDO IS NULL AND EXTRACT(YEAR FROM DT_EMISSAO) = 2025
 ORDER BY DT_EMISSAO DESC
-
 ;
 
+/*
+ *  Perfil da tabela de pagamento RECCON_REC em relacao ao PLANO_CONTAS
+ *  -- RECEBIMENTO EM CONTA CORRENTE
+ *  -- RECEBIMENTO EM DOC. CAIXA
+ *  -- RECEBIMENTO EM DINHEIRO
+ *      -- * TEORICAMENTE NAO DEVERIA TER OCORRENCIA DE RECEBIMENTO
+ *      --   EM DINHEIRO EM RECCON_REC; RECEBIMENTO DEVERIA OCORRER
+ *      --   ATRAVES DA TESOURARIA (INVESTIGAR COM O SETOR !!!)
+ */
+WITH jn_RECEBIMENTOS_SEM_PLANO -- ISTO É "CD_REDUZIDO IS NULL"
+  AS (
+      SELECT
+        TO_CHAR(rr.DT_RECEBIMENTO, 'MM/YYYY') AS COMPETENCIA,
+        rr.*
+      FROM DBAMV.RECCON_REC rr
+      WHERE EXTRACT(YEAR FROM rr.DT_RECEBIMENTO) = '2025' AND rr.CD_REDUZIDO IS NULL
+),
+jn_RECEBIMENTOS_TOTAL
+  AS (
+      SELECT
+        COMPETENCIA,
+        COUNT(*) AS TOTAL_SEM_PLANO_CONTAS
+      FROM jn_RECEBIMENTOS_SEM_PLANO
+      GROUP BY COMPETENCIA
+),
+jn_RECEBIMENTOS_CONTA_CORRENTE
+  AS (
+      SELECT
+        COMPETENCIA,
+        COUNT(*) AS TOTAL_RECEBIDO_EM_BANCO
+      FROM jn_RECEBIMENTOS_SEM_PLANO
+      WHERE CD_CON_COR IS NOT NULL AND CD_DOC_CAIXA IS NULL
+      GROUP BY COMPETENCIA
+),
+jn_RECEBIMENTOS_CAIXA
+  AS (
+      SELECT
+        COMPETENCIA,
+        COUNT(*) AS TOTAL_RECEBIDO_EM_DOC_CAIXA
+      FROM jn_RECEBIMENTOS_SEM_PLANO
+      WHERE CD_DOC_CAIXA IS NOT NULL AND CD_CON_COR IS NULL
+      GROUP BY COMPETENCIA
+),
+jn_RECEBIMENTOS_DINHEIRO
+  AS (
+      SELECT
+        TO_CHAR(rr.DT_RECEBIMENTO, 'MM/YYYY') AS COMPETENCIA,
+        COUNT(*) AS TOTAL_EM_DINHEIRO
+      FROM DBAMV.RECCON_REC rr
+      WHERE EXTRACT(YEAR FROM rr.DT_RECEBIMENTO) = '2025'
+        AND rr.CD_REDUZIDO IS NULL
+        AND rr.CD_DOC_CAIXA IS NULL
+        AND rr.CD_CON_COR IS NULL
+      GROUP BY TO_CHAR(rr.DT_RECEBIMENTO, 'MM/YYYY')
+),
+jn_TREATS
+  AS (
+      SELECT
+        rt.COMPETENCIA,
+        rt.TOTAL_SEM_PLANO_CONTAS,
+        cr.TOTAL_RECEBIDO_EM_BANCO,
+        cc.TOTAL_RECEBIDO_EM_DOC_CAIXA,
+        (cr.TOTAL_RECEBIDO_EM_BANCO + cc.TOTAL_RECEBIDO_EM_DOC_CAIXA) AS VALIDACAO,
+        d.TOTAL_EM_DINHEIRO
+      FROM jn_RECEBIMENTOS_TOTAL rt
+      INNER JOIN jn_RECEBIMENTOS_CONTA_CORRENTE cr ON rt.COMPETENCIA = cr.COMPETENCIA
+      INNER JOIN jn_RECEBIMENTOS_CAIXA cc ON rt.COMPETENCIA = cc.COMPETENCIA
+      INNER JOIN jn_RECEBIMENTOS_DINHEIRO d ON rt.COMPETENCIA = d.COMPETENCIA
+      ORDER BY rt.COMPETENCIA
+),
+jn_PERFIL_RECEBIMENTOS
+  AS (
+      SELECT COMPETENCIA, TOTAL_SEM_PLANO_CONTAS, TOTAL_RECEBIDO_EM_BANCO, TOTAL_RECEBIDO_EM_DOC_CAIXA, VALIDACAO, TOTAL_EM_DINHEIRO, 0 FROM jn_TREATS
+      UNION ALL
+      SELECT
+        'TOTAL GERAL' AS COMPETENCIA,
+        SUM(TOTAL_SEM_PLANO_CONTAS),
+        SUM(TOTAL_RECEBIDO_EM_BANCO),
+        SUM(TOTAL_RECEBIDO_EM_DOC_CAIXA),
+        SUM(VALIDACAO),
+        SUM(TOTAL_EM_DINHEIRO),
+        1
+      FROM jn_TREATS
+)
 SELECT
-  *
-FROM DBAMV.RECCON_REC
-WHERE CD_REDUZIDO IS NULL AND EXTRACT(YEAR FROM DT_RECEBIMENTO) = 2025
-ORDER BY DT_RECEBIMENTO DESC
+  COMPETENCIA,
+  TOTAL_SEM_PLANO_CONTAS,
+  TOTAL_RECEBIDO_EM_BANCO,
+  TOTAL_RECEBIDO_EM_DOC_CAIXA,
+  VALIDACAO, TOTAL_EM_DINHEIRO
+FROM jn_PERFIL_RECEBIMENTOS
+ORDER BY
+  CASE WHEN COMPETENCIA = 'TOTAL GERAL' THEN 1 ELSE 0 END,
+  COMPETENCIA NULLS FIRST,
+  TOTAL_SEM_PLANO_CONTAS NULLS FIRST,
+  TOTAL_RECEBIDO_EM_BANCO NULLS FIRST,
+  TOTAL_RECEBIDO_EM_DOC_CAIXA NULLS FIRST,
+  VALIDACAO NULLS FIRST,
+  TOTAL_EM_DINHEIRO NULLS FIRST
 ;
-
-
 
 -- ###################################################################################################################################################
-
-SELECT
-  1 id,
-  case when not e.cd_especie is null then e.cd_especie||'-'||e.ds_especie
-  end ESPECIE,
-  s.cd_setor,
-  s.nm_setor AS nm_setor,
-  i.cd_item_res,
-  i.ds_item_res AS ds_item_res,
-  r.cd_reduzido AS cd_reduzido,
-  p.ds_conta AS ds_conta,
-  r.vl_rateio vl_rateio,
-  to_char(r.dt_competencia, 'MM/YYYY') dt_competencia,
-  r.cd_multi_empresa,
-  c.cd_con_pag cd_identificador,
-  c.ds_fornecedor,
-  Decode(pr.cd_estrutural, NULL, ' ', pr.cd_estrutural || ' - ' || pr.ds_processo) processo,
-  to_char(c.dt_lancamento,'DD/MM/YYYY') dt_emissao,
-  c.nr_documento documento,
-  c.ds_con_pag descricao
-FROM dbamv.con_pag c,
-  dbamv.ratcon_pag r,
-  dbamv.plano_contas p,
-  dbamv.processo pr,
-  dbamv.item_res i,
-  dbamv.setor s,
-  dbamv.especie e
-WHERE c.cd_con_pag = r.cd_con_pag
-  AND i.cd_item_res = r.cd_item_res
-  AND s.cd_setor = r.cd_setor
-  AND c.cd_processo = pr.cd_processo (+)
-  AND r.cd_reduzido = p.cd_reduzido(+)
-  AND i.cd_item_res =e.cd_item_res(+)
-  AND to_char(r.dt_competencia, 'MM/YYYY') in '04/2025'
-;
-
-
-
-SELECT
-  setor.nm_setor,
-  Sum(itcon_pag.vl_duplicata - NVL (itcon_pag.vl_soma_baixada, 0)) vl_a_pagar,
-  Sum(ratcon_pag.vl_rateio) vl_rateio,
-  Sum(NVL (con_pag.vl_bruto_conta, 0)  + (NVL (con_pag.vl_desconto, 0) - NVL (con_pag.vl_acrescimo, 0))) vl_bruto
-FROM dbamv.itcon_pag itcon_pag,
-  dbamv.con_pag con_pag,
-  dbamv.ratcon_pag ratcon_pag,
-  dbamv.item_res item_res,
-  dbamv.gru_res gru_res,
-  dbamv.fornecedor fornecedor,
-  dbamv.historico_padrao hist_p,
-  dbamv.setor setor,
-  dbamv.tip_doc tip_doc
-WHERE ratcon_pag.cd_item_res = item_res.cd_item_res(+)
-  AND item_res.cd_gru_res = gru_res.cd_gru_res(+)
-  AND con_pag.cd_con_pag = ratcon_pag.cd_con_pag(+)
-  AND con_pag.cd_con_pag = itcon_pag.cd_con_pag
-  AND     itcon_pag.tp_quitacao not in ('Q', 'N', 'T', 'L')
-  AND con_pag.cd_fornecedor = fornecedor.cd_fornecedor(+)
-  AND con_pag.cd_historico_padrao = hist_p.cd_historico_padrao(+)
-  AND con_pag.cd_tip_doc = tip_doc.cd_tip_doc
---  AND con_pag.cd_multi_empresa IN ($pgmvCdEmpresa$)
-  AND NOT EXISTS (
-                  SELECT it.cd_con_pag
-                  FROM dbamv.itcon_pag it
-                  WHERE it.cd_con_pag_agrup = itcon_pag.cd_con_pag
-                )
-  AND con_pag.cd_previsao IS NULL
-  AND itcon_pag.dt_vencimento >=  trunc(sysdate)
-  AND itcon_pag.dt_vencimento <= trunc(sysdate) + 30
-  AND ratcon_pag.cd_setor = setor.cd_setor(+)
-  AND itcon_pag.vl_duplicata - NVL (itcon_pag.vl_soma_baixada, 0) > 0
-GROUP BY setor.nm_setor
-ORDER BY vl_a_pagar DESC
-;
-
-
-SELECT
-  plano_contas.cd_reduzido,
-  plano_contas.ds_conta ds_con_pag,
-  Sum(ratcon_pag.vl_rateio) vl_rateio
-  /*Sum(itcon_pag.vl_duplicata - NVL (itcon_pag.vl_soma_baixada, 0)) vl_a_pagar,
-  Sum(NVL (con_pag.vl_bruto_conta, 0) + (NVL (con_pag.vl_desconto, 0) - NVL (con_pag.vl_acrescimo, 0))) vl_bruto */
-FROM dbamv.itcon_pag itcon_pag,
-  dbamv.con_pag con_pag,
-  dbamv.ratcon_pag ratcon_pag,
-  dbamv.item_res item_res,
-  dbamv.gru_res gru_res,
-  dbamv.fornecedor fornecedor,
-  dbamv.historico_padrao hist_p,
-  dbamv.setor setor,
-  dbamv.tip_doc tip_doc,
-  dbamv.plano_contas plano_contas
-WHERE ratcon_pag.cd_item_res = item_res.cd_item_res(+)
-  AND item_res.cd_gru_res = gru_res.cd_gru_res(+)
-  AND con_pag.cd_con_pag = ratcon_pag.cd_con_pag(+)
-  AND con_pag.cd_con_pag = itcon_pag.cd_con_pag
-  AND itcon_pag.tp_quitacao not in ('Q', 'N', 'T', 'L')
-  AND con_pag.cd_fornecedor = fornecedor.cd_fornecedor(+)
-  AND con_pag.cd_historico_padrao = hist_p.cd_historico_padrao(+)
-  AND con_pag.cd_tip_doc = tip_doc.cd_tip_doc
---  AND con_pag.cd_multi_empresa IN ($pgmvCdEmpresa$)
-  AND NOT EXISTS (
-                  SELECT it.cd_con_pag
-                  FROM dbamv.itcon_pag it
-                  WHERE it.cd_con_pag_agrup = itcon_pag.cd_con_pag
-                )
-  AND con_pag.cd_previsao IS NULL
-  AND itcon_pag.dt_vencimento >= trunc(sysdate)
-  AND itcon_pag.dt_vencimento <= trunc(sysdate) + 30
-  AND ratcon_pag.cd_setor = setor.cd_setor(+)
-  AND itcon_pag.vl_duplicata - NVL (itcon_pag.vl_soma_baixada, 0) > 0
-  AND plano_contas.cd_reduzido = ratcon_pag.cd_reduzido
-GROUP BY plano_contas.cd_reduzido, plano_contas.ds_conta
-ORDER BY vl_rateio DESC
-;
-
-
-SELECT
-  mesano,
-  tipo,
-  valor
---  , Round(valor/ 1 ) Valor
-FROM (
-      SELECT
-        To_Char(itcon_rec.DT_PREVISTA_RECEBIMENTO,'mm/yyyy') mesano,
-        'Previsto' TIpo,
-        Sum(itcon_rec.vl_duplicata) Valor
-        FROM dbamv.con_rec,
-          dbamv.itcon_rec
-      WHERE con_rec.cd_con_rec = itcon_rec.cd_con_rec
-        AND con_rec.DT_CANCELAMENTO IS NULL
-        AND itcon_rec.DT_PREVISTA_RECEBIMENTO BETWEEN Add_Months(Trunc(SYSDATE,'mm'), - 6) AND Last_Day(Trunc(SYSDATE))
-        AND ITCON_REC.CD_CON_REC_AGRUP IS NULL
-      --   AND CD_MULTI_EMPRESA  IN ($pgmvCdEmpresa$)
-      GROUP BY To_Char(itcon_rec.DT_PREVISTA_RECEBIMENTO,'mm/yyyy')
-      UNION ALL
-      SELECT
-        To_Char(DT_RECEBIMENTO,'mm/yyyy') mesano,
-        'Recebido' Tipo,
-        Sum(VL_RECEBIDO) Valor
-      FROM dbamv.reccon_rec,
-        dbamv.itcon_rec
-      WHERE reccon_rec.cd_itcon_rec = itcon_rec.cd_itcon_rec
-        AND ITCON_REC.CD_CON_REC_AGRUP IS NULL
-        AND DT_RECEBIMENTO BETWEEN Add_Months(Trunc(SYSDATE,'mm'), - 6) AND Last_Day(Trunc(SYSDATE))
-      --  AND CD_MULTI_EMPRESA  IN ($pgmvCdEmpresa$)
-      GROUP BY To_Char(DT_RECEBIMENTO,'mm/yyyy')
-      )
-ORDER BY To_Date(mesano,'mm/yyyy'), 2
- ;
-
-
-
-SELECT
-  nm_fantasia,
-  Tipo,
-  Round(valor/ 1 ) Valor
-FROM (
-      SELECT
-        nm_fantasia,
-        'Previsto' Tipo,
-        Sum(itcon_rec.VL_DUPLICATA) valor
-      FROM dbamv.con_rec,
-        dbamv.itcon_rec,
-        dbamv.fornecedor
-      WHERE con_rec.cd_con_rec    = itcon_rec.cd_con_rec
-        AND con_rec.cd_fornecedor = fornecedor.cd_fornecedor
-        AND ITCON_REC.CD_CON_REC_AGRUP IS NULL
-        AND DT_PREVISTA_RECEBIMENTO BETWEEN trunc(sysdate)-30 AND  trunc(sysdate)
-        --   AND con_rec.cd_multi_empresa   IN ($pgmvCdEmpresa$)
-        AND itcon_rec.DT_CANCELAMENTO IS NULL
-      GROUP BY nm_fantasia
-      ORDER BY Valor DESC
-  )
-WHERE ROWNUM <= 1
-
-UNION ALL
-
-SELECT
-  nm_fantasia,
-  Tipo,
-  Valor
-FROM (
-      SELECT
-        nm_fantasia,
-        'Recebido' Tipo,
-        Sum(reccon_rec.VL_RECEBIDO) valor
-      FROM dbamv.con_rec,
-        dbamv.itcon_rec,
-        dbamv.fornecedor,
-        dbamv.reccon_rec
-      WHERE con_rec.cd_con_rec    = itcon_rec.cd_con_rec
-        AND con_rec.cd_fornecedor = fornecedor.cd_fornecedor
-        AND reccon_rec.cd_itcon_rec = itcon_rec.cd_itcon_rec
-        AND ITCON_REC.CD_CON_REC_AGRUP IS NULL
-        AND DT_RECEBIMENTO BETWEEN trunc(sysdate)-30 AND  trunc(sysdate)
-      --   AND con_rec.cd_multi_empresa   IN ($pgmvCdEmpresa$)
-        AND itcon_rec.DT_CANCELAMENTO IS NULL
-      GROUP BY nm_fantasia
-      ORDER BY valor desc
-      )
- WHERE ROWNUM <= 1
- ORDER BY 1, 2
- ;
-
-
- SELECT
-  to_number(dia) dia,
-  Tipo,
-  Round(valor/ 1 ) Valor
-FROM (
-      SELECT
-        To_Char(DT_PREVISTA_RECEBIMENTO,'dd') Dia,
-        'A Receber' Tipo,
-        Sum(itcon_rec.VL_DUPLICATA) valor
-      FROM dbamv.con_rec,
-        dbamv.itcon_rec,
-        dbamv.fornecedor
-      WHERE con_rec.cd_con_rec    = itcon_rec.cd_con_rec
-        AND con_rec.cd_fornecedor = fornecedor.cd_fornecedor
-      --   AND con_rec.cd_multi_empresa  IN ($pgmvCdEmpresa$)
-        AND ITCON_REC.CD_CON_REC_AGRUP IS NULL
-        AND DT_PREVISTA_RECEBIMENTO BETWEEN Trunc(SYSDATE) AND Trunc(SYSDATE) + 30
-        AND itcon_rec.DT_CANCELAMENTO IS NULL
-      GROUP BY To_Char(DT_PREVISTA_RECEBIMENTO,'dd')
-
-      UNION ALL
-
-      SELECT
-        To_Char(itcon_pag.dt_vencimento, 'dd') dia,
-        'A Pagar' Tipo,
-        Sum(itcon_pag.vl_duplicata - NVL (itcon_pag.vl_soma_baixada, 0)) vl_a_pagar
-      FROM dbamv.itcon_pag,
-        dbamv.con_pag
-      WHERE con_pag.cd_con_pag = itcon_pag.cd_con_pag
-        AND itcon_pag.tp_quitacao not in ('Q', 'N', 'T', 'L')
-      --   AND con_pag.cd_multi_empresa  IN ($pgmvCdEmpresa$)
-        AND itcon_pag.cd_con_pag_agrup IS NULL
-        AND con_pag.cd_previsao IS NULL
-        AND itcon_pag.dt_vencimento BETWEEN trunc(sysdate)-30 AND  trunc(sysdate)
-        AND itcon_pag.vl_duplicata - NVL (itcon_pag.vl_soma_baixada, 0) > 0
-      GROUP BY To_Char(itcon_pag.dt_vencimento, 'dd')
-       )
- ORDER BY to_number(dia), tipo
-;
-
-
-SELECT
-  To_Char(ent_pro.dt_entrada, 'mm/rrrr') ms,
-  Trunc(Sum(vl_total_custo_real),2) vl_total_custo_real,
-  'Entradas' situacao
-FROM dbamv.ent_pro,
-  dbamv.itent_pro,
-  dbamv.produto,
-  dbamv.estoque
-WHERE itent_pro.cd_produto = produto.cd_produto
-  AND ent_pro.cd_ent_pro = itent_pro.cd_ent_pro
-  AND estoque.cd_estoque = ent_pro.cd_estoque
---    AND produto.cd_especie  IN ($pgmvEspecie$)
---    AND estoque.cd_multi_empresa in ($pgmvCdEmpresa$)
-  AND ent_pro.dt_entrada BETWEEN trunc(sysdate)-30 AND  trunc(sysdate)
-GROUP BY To_Char(ent_pro.dt_entrada, 'mm/rrrr')
-
-UNION ALL
-
-SELECT
-  To_Char(mvto_estoque.dt_mvto_estoque, 'mm/rrrr') ms,
-  sum(decode(mvto_Estoque.tp_mvto_estoque,'D', -1, 'C', -1, 'N', -1, 1) *
-            (itmvto_estoque.qt_movimentacao * uni_pro.vl_fator) *
-            dbamv.verif_vl_custo_medio(
-                                        itmvto_estoque.cd_produto,
-                                        mvto_estoque.dt_mvto_estoque,
-                                        'H',
-                                        produto.vl_custo_medio,
-                                        mvto_estoque.hr_mvto_estoque,
-                                        estoque.cd_multi_empresa
-                                  )
-        ) VL_TOTAL_CUSTO_REAL,
-       'Saídas' situacao
-FROM dbamv.mvto_estoque,
-  dbamv.itmvto_estoque,
-  dbamv.produto,
-  dbamv.uni_pro,
-  dbamv.estoque
-WHERE mvto_estoque.cd_mvto_estoque = itmvto_estoque.cd_mvto_estoque
-  AND itmvto_estoque.cd_produto = produto.cd_produto
-  AND itmvto_estoque.CD_UNI_PRO = uni_pro.CD_UNI_PRO
-  AND mvto_estoque.cd_estoque =estoque.cd_estoque
-  --    AND produto.cd_especie  IN ($pgmvEspecie$)
-  AND mvto_estoque.tp_mvto_estoque IN ('S', 'P', 'D', 'C', 'N', 'V', 'E')
-  --    AND estoque.cd_multi_empresa in ($pgmvCdEmpresa$)
-  AND mvto_estoque.dt_mvto_estoque BETWEEN trunc(sysdate)-30 AND  trunc(sysdate)
-  GROUP BY To_Char(mvto_estoque.dt_mvto_estoque, 'mm/rrrr')
-ORDER BY ms, situacao
-;
