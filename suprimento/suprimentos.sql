@@ -838,8 +838,10 @@ WITH source_movimentacao
             itmv.CD_PRODUTO,
             mvto.CD_ESTOQUE,
             p.CD_ESPECIE,
-            TRUNC(mvto.DT_MVTO_ESTOQUE) AS MVTO_DIARIA,
+            -- TRUNC(mvto.DT_MVTO_ESTOQUE) AS MVTO_DIARIA,
+            TO_NUMBER(TO_CHAR(LAST_DAY(mvto.DT_MVTO_ESTOQUE), 'DD')) AS DIAS_MES,
             EXTRACT(YEAR FROM mvto.DT_MVTO_ESTOQUE) AS ANO,
+            TO_CHAR(mvto.DT_MVTO_ESTOQUE, 'MM/YYYY') AS MES_ANO,
 
             SUM(
                 CASE
@@ -864,9 +866,11 @@ WITH source_movimentacao
         GROUP BY
             itmv.CD_PRODUTO,
             mvto.CD_ESTOQUE,
+            TO_NUMBER(TO_CHAR(LAST_DAY(mvto.DT_MVTO_ESTOQUE), 'DD')),
             p.CD_ESPECIE,
-            TRUNC(mvto.DT_MVTO_ESTOQUE),
-            EXTRACT(YEAR FROM mvto.DT_MVTO_ESTOQUE)
+            -- TRUNC(mvto.DT_MVTO_ESTOQUE),
+            EXTRACT(YEAR FROM mvto.DT_MVTO_ESTOQUE),
+            TO_CHAR(mvto.DT_MVTO_ESTOQUE, 'MM/YYYY')
 ),
 source_estoque_prod
     AS (
@@ -877,22 +881,28 @@ source_custo_mensal
         SELECT
             cmm.CD_PRODUTO,
             p.CD_ESPECIE,
-            TRUNC(cmm.DH_CUSTO_MEDIO) AS MVTO_DIARIA,
+            -- TRUNC(cmm.DH_CUSTO_MEDIO) AS MVTO_DIARIA,
             EXTRACT(YEAR FROM cmm.DH_CUSTO_MEDIO) AS ANO,
+            TO_CHAR(cmm.DH_CUSTO_MEDIO, 'MM/YYYY') AS MES_ANO,
             SUM(cmm.VL_CUSTO_MEDIO) AS VL_CUSTO_MEDIO
         FROM DBAMV.CUSTO_MEDIO_MENSAL cmm
         JOIN DBAMV.PRODUTO p ON cmm.CD_PRODUTO = p.CD_PRODUTO
         WHERE cmm.CD_PRODUTO IN(14328)
-        GROUP BY cmm.CD_PRODUTO, p.CD_ESPECIE, TRUNC(cmm.DH_CUSTO_MEDIO), EXTRACT(YEAR FROM cmm.DH_CUSTO_MEDIO)
+        GROUP BY
+            cmm.CD_PRODUTO,
+            p.CD_ESPECIE,
+            -- TRUNC(cmm.DH_CUSTO_MEDIO),
+            EXTRACT(YEAR FROM cmm.DH_CUSTO_MEDIO),
+            TO_CHAR(cmm.DH_CUSTO_MEDIO, 'MM/YYYY')
 ),
 agg
     AS (
         SELECT
             m.CD_PRODUTO,
-            TO_CHAR(m.MVTO_DIARIA, 'MM/YYYY') AS MES_ANO,
-            TO_NUMBER(TO_CHAR(LAST_DAY(m.MVTO_DIARIA), 'DD')) AS DIAS_MES,
-            m.ANO,
             m.CD_ESTOQUE,
+            m.DIAS_MES,
+            m.MES_ANO,
+            m.ANO,
 
             SUM(m.QT_MOVIMENTACAO) AS QT_MOVIMENTACAO,
             SUM(cm.VL_CUSTO_MEDIO) AS VL_CUSTO_MEDIO,
@@ -900,15 +910,14 @@ agg
 
         FROM source_movimentacao m
         LEFT JOIN source_custo_mensal cm
-            ON m.CD_PRODUTO = cm.CD_PRODUTO AND m.MVTO_DIARIA = cm.MVTO_DIARIA AND m.ANO = cm.ANO
+            ON m.CD_PRODUTO = cm.CD_PRODUTO AND m.MES_ANO = cm.MES_ANO
         LEFT JOIN source_estoque_prod ep
             ON m.CD_PRODUTO = ep.CD_PRODUTO AND m.CD_ESTOQUE = ep.CD_ESTOQUE
-        -- WHERE TO_CHAR(m.MVTO_DIARIA, 'MM/YYYY') = '04/2024'
         GROUP BY
             m.CD_PRODUTO,
             m.CD_ESTOQUE,
-            TO_CHAR(m.MVTO_DIARIA, 'MM/YYYY'),
-            TO_NUMBER(TO_CHAR(LAST_DAY(m.MVTO_DIARIA), 'DD')),
+            m.DIAS_MES,
+            m.MES_ANO,
             m.ANO
 )
 SELECT
@@ -924,9 +933,44 @@ SELECT
   ROUND(FNC_MGCO_RETORNA_CONSUMO(CD_PRODUTO, MES_ANO, 1) / DIAS_MES, 2) AS CONSUMO_MEDIO_DIARIO,
   ROUND(QT_ESTOQUE_ATUAL / (FNC_MGCO_RETORNA_CONSUMO(CD_PRODUTO, MES_ANO, 1) / DIAS_MES), 0) AS DIAS_RUPTURA
 FROM agg
-WHERE ANO IN(2024)
+-- WHERE ANO IN(2024)
+-- WHERE MES_ANO IN('01/2025', '02/2025', '03/2025', '04/2025')
+WHERE MES_ANO IN('03/2025')
 ORDER BY MES_ANO
 ;
+
+
+
+SELECT
+    CD_PRODUTO,
+    CD_ESTOQUE,
+    DT_ULTIMA_MOVIMENTACAO,
+    QT_ESTOQUE_ATUAL,
+    QT_CONSUMO_MES
+FROM DBAMV.EST_PRO
+WHERE CD_PRODUTO = 14328 --AND CD_ESTOQUE=2 --AND TO_CHAR(DT_ULTIMA_MOVIMENTACAO, 'MM/YYYY') = '06/2025'
+ORDER BY DT_ULTIMA_MOVIMENTACAO DESC
+;
+
+
+
+SELECT DBAMV.FNC_MGCO_RETORNA_CONSUMO(14328, '03/2025', 1) AS CONSUMO_ FROM DUAL;
+-- OU
+SELECT
+  ROUND(AVG(CONSUMO) / DBAMV.VERIF_VL_FATOR_PROD(MAX(CD_PRODUTO)), 2) AS CONSUMO_MEDIO
+FROM (
+    SELECT
+        CD_PRODUTO,
+        CD_MES,
+        SUM(NVL(QT_SAIDA_PACIENTE,0)) + SUM(NVL(QT_SAIDA_SETOR,0)) -
+        (SUM(NVL(QT_DEVOLUCAO_PACIENTE,0)) + SUM(NVL(QT_DEVOLUCAO_SETOR,0))) AS CONSUMO
+    FROM DBAMV.C_CONEST
+    WHERE CD_ANO || LPAD(CD_MES, 2, '0') BETWEEN '202503' AND '202503'
+      AND CD_PRODUTO = 14328
+    GROUP BY CD_PRODUTO, CD_MES
+);
+
+
 
 
 
