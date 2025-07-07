@@ -57,7 +57,8 @@ FROM
 	ATENDIMENTO_N_AGENDADOS
 WHERE
 TO_CHAR(hr_agenda, 'MM/YYYY')='01/2024' AND tp_atendimento = 'Exame';
-GROUP BY STATUS_ATENDIMENTO;
+GROUP BY STATUS_ATENDIMENTO
+;
 --hr_agenda BETWEEN  TO_DATE('2024-06-01', 'YYYY-MM-DD') AND TO_DATE('2024-06-30', 'YYYY-MM-DD');
 
 
@@ -174,205 +175,9 @@ WHERE
 
 ---################################################################################################################
 
-    let
-    // Converte os parâmetros para texto no formato esperado pela query
-    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
-    RangeEndText = Date.ToText(RangEnd, "yyyy-MM-dd"),
 
-    //RangeStartText = "2025-05-01",
-    //RangeEndText = "2025-05-29",
-
-
-    // Sua query SQL com os parâmetros inseridos dinamicamente
-    Query =
-"WITH EXAMES
-    AS (
-        SELECT
-            PX.CD_PED_RX COD_PED,
-            PX.CD_SETOR COD_SETOR,
-            S.NM_SETOR NOME_SETOR,
-            PX.CD_PRESTADOR COD_MEDICO_SOL,
-            PR.NM_PRESTADOR NOME_MEDICO_SOL,
-            TRUNC(PX.HR_PEDIDO) AS DATA_PEDIDO,
-            IX.DT_REALIZADO,
-            PX.CD_ATENDIMENTO COD_ATEND,
-            A.CD_PACIENTE COD_PACIENTE,
-            P.NM_PACIENTE NOME_PACIENTE,
-            IX.CD_EXA_RX COD_EXAME,
-            EX.DS_EXA_RX NOME_EXA,
-            IB.CD_PRO_FAT PROCEDIMENTO,
-            IB.VL_TOTAL_CONTA VL_TOTAL,
-            PX.CD_CONVENIO COD_CONVENIO,
-            C.NM_CONVENIO CONVENIO,
-            IX.SN_REALIZADO,
-            IX.CD_PRESTADOR COD_MED_LAU
-        FROM
-            EXA_RX EX,
-            ITPED_RX IX,
-            PED_RX PX,
-            ATENDIME A,
-            ITREG_AMB IB,
-            --REG_FAT rf,
-            --ITREG_FAT if,
-            SETOR S,
-            PRO_FAT pf,
-            prestador pr,
-            PACIENTE P,
-            CONVENIO C
-        WHERE
-            A.CD_ATENDIMENTO = PX.CD_ATENDIMENTO
-            AND PX.CD_PED_RX = IX.CD_PED_RX
-            AND IX.CD_EXA_RX = EX.CD_EXA_RX
-            AND C.CD_CONVENIO = IB.CD_CONVENIO
-            AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
-            AND P.CD_PACIENTE = A.CD_PACIENTE
-            AND PR.CD_PRESTADOR = PX.CD_PRESTADOR
-            --AND A.TP_ATENDIMENTO = 'E'
-            AND IB.CD_PRO_FAT = PF.CD_PRO_FAT
-            AND EX.EXA_RX_CD_PRO_FAT = IB.CD_PRO_FAT
-            AND S.CD_SETOR = IB.CD_SETOR
-            AND TRUNC(PX.HR_PEDIDO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD')
-
-        UNION ALL
-
-        SELECT
-            PX.CD_PED_RX COD_PED,
-            PX.CD_SETOR COD_SETOR,
-            S.NM_SETOR NOME_SETOR,
-            PX.CD_PRESTADOR COD_MEDICO,
-            PR.NM_PRESTADOR NOME_MEDICO,
-            TRUNC(PX.HR_PEDIDO)  AS DATA_PEDIDO,
-            IX.DT_REALIZADO,
-            PX.CD_ATENDIMENTO COD_ATEND,
-            A.CD_PACIENTE COD_PACIENTE,
-            P.NM_PACIENTE NOME_PACIENTE,
-            IX.CD_EXA_RX COD_EXAME,
-            EX.DS_EXA_RX NOME_EXA,
-            IF.CD_PRO_FAT PROCEDIMENTO,
-            -- PF.DS_PRO_FAT NOME_EXAME,
-            IF.VL_TOTAL_CONTA VL_TOTAL,
-            PX.CD_CONVENIO COD_CONVENIO,
-            C.NM_CONVENIO CONVENIO,
-            IX.SN_REALIZADO,
-            IX.CD_PRESTADOR COD_MED_LAU
-        FROM
-            EXA_RX EX,
-            ITPED_RX IX,
-            PED_RX PX,
-            ATENDIME A,
-            --ITREG_AMB IB,
-            REG_FAT rf,
-            ITREG_FAT if,
-            SETOR S,
-            PRO_FAT pf,
-            prestador pr,
-            PACIENTE P,
-            CONVENIO C
-        WHERE PX.CD_ATENDIMENTO = RF.CD_ATENDIMENTO
-            AND PX.CD_PED_RX = IX.CD_PED_RX
-            AND IX.CD_EXA_RX = EX.CD_EXA_RX
-            AND C.CD_CONVENIO = rf.CD_CONVENIO
-            AND RF.CD_ATENDIMENTO = A.CD_ATENDIMENTO
-            AND IF.CD_REG_FAT = RF.CD_REG_FAT
-            --AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
-            AND P.CD_PACIENTE = A.CD_PACIENTE
-            AND PR.CD_PRESTADOR = PX.CD_PRESTADOR
-            --AND A.TP_ATENDIMENTO = 'E'
-            AND IF.CD_PRO_FAT = PF.CD_PRO_FAT
-            AND EX.EXA_RX_CD_PRO_FAT = IF.CD_PRO_FAT
-            AND S.CD_SETOR = If.CD_SETOR
-            AND TRUNC(PX.HR_PEDIDO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD')",
-    // Chamada Oracle com a query final montada
-    Fonte = Oracle.Database(
-        "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
-        [Query = Query]
-    )
-in
-    Fonte
-
--- RangeStar
-#date(2025, 5, 28) meta [IsParameterQuery=true, Type="Date", IsParameterQueryRequired=true]
-
--- RangEnd
-#date(2025, 5, 29) meta [IsParameterQuery=true, Type="Date", IsParameterQueryRequired=true]
-
-
----################################################################################################################
-    let
-    // Converte os parâmetros para texto no formato esperado pela query
-    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
-    RangeEndText = Date.ToText(RangEnd, "yyyy-MM-dd"),
-
-    //RangeStartText = "2025-05-01",
-    //RangeEndText = "2025-05-29",
-
-
-    // Sua query SQL com os parâmetros inseridos dinamicamente
-    Query = "
-        SELECT
-            ITCONTAGEM.CD_PRODUTO                          AS                             CD_PRODUTO,
-            INITCAP(PRODUTO.DS_PRODUTO)                    AS                             DS_PRODUTO,
-            NVL(
-                NVL(
-                    NVL(Produto.Vl_Custo_Medio,AVG(ITENT_PRO.VL_UNITARIO)),
-                    VALOR_INICIAL_PRODUTO.VL_CUSTO_MEDIO
-                    ),
-                0
-                )                                          AS                           VL_CUSTO_MEDIO,
-            INITCAP(UNI_PRO.DS_UNIDADE)                    AS                             DS_UNIDADE,
-            sum( NVL(ITCONTAGEM.QT_ESTOQUE,0) + NVL( ITCONTAGEM.QT_ESTOQUE_DOADO,0)) AS   QUANTIDADE,
-            TRUNC(CONTAGEM.DT_GERACAO)                                               AS   DT_GERACAO,
-            to_char(CONTAGEM.HR_GERACAO,'hh24:mi:ss')                                AS   HORA,
-            CONTAGEM.CD_CONTAGEM                                                     AS   DOCUMENTO,
-            'Contagem - ' || INITCAP(ESTOQUE.DS_ESTOQUE)                             AS   DS_DESTINO,
-            'Contagem'                                                               AS   OPERACAO,
-            0                                                                        AS   VALOR,
-            ESTOQUE.CD_ESTOQUE                                                       AS   CD_ESTOQUE,
-            INITCAP(ESTOQUE.DS_ESTOQUE)                                              AS   DS_ESTOQUE,
-            UNI_PRO.VL_FATOR                                                         AS   VL_FATOR,
-            '1'                                                                      AS   TP_ORDEM,
-            'N'                                                                      AS   SN_CONSIGNADO,
-            0                                                                        AS   cd_itmvto_estoque
-        FROM
-            dbamv.ITCONTAGEM            ITCONTAGEM,
-            dbamv.CONTAGEM              CONTAGEM,
-            dbamv.PRODUTO               PRODUTO,
-            dbamv.UNI_PRO               UNI_PRO,
-            dbamv.ESTOQUE               ESTOQUE,
-            dbamv.ITENT_PRO             ITENT_PRO,
-            dbamv.VALOR_INICIAL_PRODUTO VALOR_INICIAL_PRODUTO
-        WHERE
-            ITCONTAGEM.CD_PRODUTO       = PRODUTO.CD_PRODUTO
-            AND PRODUTO.CD_PRODUTO       = ITENT_PRO.CD_PRODUTO
-            AND PRODUTO.CD_PRODUTO       = valor_inicial_produto.CD_PRODUTO
-            AND  ITCONTAGEM.CD_CONTAGEM = CONTAGEM.CD_CONTAGEM
-            AND  ITCONTAGEM.CD_UNI_PRO  = UNI_PRO.CD_UNI_PRO
-            AND CONTAGEM.CD_ESTOQUE     = ESTOQUE.CD_ESTOQUE
-            AND TRUNC(CONTAGEM.DT_GERACAO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')
-        GROUP BY
-            ITCONTAGEM.CD_PRODUTO,
-            PRODUTO.DS_PRODUTO,
-            PRODUTO.VL_CUSTO_MEDIO,
-            ITENT_PRO.VL_UNITARIO,
-            VALOR_INICIAL_PRODUTO.VL_CUSTO_MEDIO,
-            UNI_PRO.DS_UNIDADE,
-            CONTAGEM.DT_GERACAO,
-            CONTAGEM.HR_GERACAO,
-            CONTAGEM.CD_CONTAGEM,
-            ESTOQUE.CD_ESTOQUE,
-            ESTOQUE.DS_ESTOQUE,
-            UNI_PRO.VL_FATOR" ,
-
-    // Chamada Oracle com a query final montada
-    Fonte = Oracle.Database(
-        "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
-        [Query = Query]
-    )
-in
-    Fonte
-
-
-    let
+-- CONSULTA AGENDAMENTO - PAINEL HPC-CLINICA-Agendamentos
+let
     // Converte os parâmetros para texto no formato esperado pela query
     RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
     RangeEndText = Date.ToText(RangEnd, "yyyy-MM-dd"),
@@ -432,7 +237,17 @@ WHERE i.hr_agenda BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO
 in
     Fonte
 
+-- RangeStar
+#date(2025, 5, 28) meta [IsParameterQuery=true, Type="Date", IsParameterQueryRequired=true]
 
+-- RangEnd
+#date(2025, 5, 29) meta [IsParameterQuery=true, Type="Date", IsParameterQueryRequired=true]
+
+
+---################################################################################################################
+
+
+-- CONSULTA AGEN_EXAM - PAINEL HPC-CLINICA-Agendamentos
 let
     // Converte os parâmetros para texto no formato esperado pela query
     RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
@@ -497,9 +312,626 @@ SELECT
         [Query = Query]
     )
 in
-    Fonte,
+    Fonte
 
-     -- AND a.cd_recurso_central   = $aPgRecursoCentral
-     --  AND i.hr_agenda            BETWEEN $aPgDataInicialProntocardio$ AND $aPgDataFinalProntocardio$
-     --  AND a.cd_prestador         = $aPglistaprestadores
-     --  AND  a.cd_setor            = $AlistaSetor
+---################################################################################################################
+
+
+-- CONSULTA EXA_REA - PAINEL HPC-CLINICA-Agendamentos
+
+let
+    // Converte os parâmetros para texto no formato esperado pela query
+    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
+    RangeEndText = Date.ToText(RangEnd, "yyyy-MM-dd"),
+
+    //RangeStartText = "2025-05-01",
+    //RangeEndText = "2025-05-29",
+
+
+    // Sua query SQL com os parâmetros inseridos dinamicamente
+    Query =
+"SELECT
+            PX.CD_PED_RX COD_PED,
+            PX.CD_SETOR COD_SETOR,
+            S.NM_SETOR NOME_SETOR,
+            PX.CD_PRESTADOR COD_MEDICO_SOL,
+            PR.NM_PRESTADOR NOME_MEDICO_SOL,
+            TRUNC(PX.HR_PEDIDO) AS DATA_PEDIDO,
+            IX.DT_REALIZADO,
+            PX.CD_ATENDIMENTO COD_ATEND,
+            A.CD_PACIENTE COD_PACIENTE,
+            P.NM_PACIENTE NOME_PACIENTE,
+            IX.CD_EXA_RX COD_EXAME,
+            EX.DS_EXA_RX NOME_EXA,
+            IB.CD_PRO_FAT PROCEDIMENTO,
+            IB.VL_TOTAL_CONTA VL_TOTAL,
+            PX.CD_CONVENIO COD_CONVENIO,
+            C.NM_CONVENIO CONVENIO,
+            IX.SN_REALIZADO,
+            IX.CD_PRESTADOR COD_MED_LAU
+        FROM
+            EXA_RX EX,
+            ITPED_RX IX,
+            PED_RX PX,
+            ATENDIME A,
+            ITREG_AMB IB,
+            --REG_FAT rf,
+            --ITREG_FAT if,
+            SETOR S,
+            PRO_FAT pf,
+            prestador pr,
+            PACIENTE P,
+            CONVENIO C
+        WHERE
+            A.CD_ATENDIMENTO = PX.CD_ATENDIMENTO
+            AND PX.CD_PED_RX = IX.CD_PED_RX
+            AND IX.CD_EXA_RX = EX.CD_EXA_RX
+            AND C.CD_CONVENIO = IB.CD_CONVENIO
+            AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+            AND P.CD_PACIENTE = A.CD_PACIENTE
+            AND PR.CD_PRESTADOR = PX.CD_PRESTADOR
+            --AND A.TP_ATENDIMENTO = 'E'
+            AND IB.CD_PRO_FAT = PF.CD_PRO_FAT
+            AND EX.EXA_RX_CD_PRO_FAT = IB.CD_PRO_FAT
+            AND S.CD_SETOR = IB.CD_SETOR
+            AND TRUNC(PX.HR_PEDIDO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')
+
+        UNION ALL
+
+        SELECT
+            PX.CD_PED_RX COD_PED,
+            PX.CD_SETOR COD_SETOR,
+            S.NM_SETOR NOME_SETOR,
+            PX.CD_PRESTADOR COD_MEDICO,
+            PR.NM_PRESTADOR NOME_MEDICO,
+            TRUNC(PX.HR_PEDIDO)  AS DATA_PEDIDO,
+            IX.DT_REALIZADO,
+            PX.CD_ATENDIMENTO COD_ATEND,
+            A.CD_PACIENTE COD_PACIENTE,
+            P.NM_PACIENTE NOME_PACIENTE,
+            IX.CD_EXA_RX COD_EXAME,
+            EX.DS_EXA_RX NOME_EXA,
+            IF.CD_PRO_FAT PROCEDIMENTO,
+            -- PF.DS_PRO_FAT NOME_EXAME,
+            IF.VL_TOTAL_CONTA VL_TOTAL,
+            PX.CD_CONVENIO COD_CONVENIO,
+            C.NM_CONVENIO CONVENIO,
+            IX.SN_REALIZADO,
+            IX.CD_PRESTADOR COD_MED_LAU
+        FROM
+            EXA_RX EX,
+            ITPED_RX IX,
+            PED_RX PX,
+            ATENDIME A,
+            --ITREG_AMB IB,
+            REG_FAT rf,
+            ITREG_FAT if,
+            SETOR S,
+            PRO_FAT pf,
+            prestador pr,
+            PACIENTE P,
+            CONVENIO C
+        WHERE PX.CD_ATENDIMENTO = RF.CD_ATENDIMENTO
+            AND PX.CD_PED_RX = IX.CD_PED_RX
+            AND IX.CD_EXA_RX = EX.CD_EXA_RX
+            AND C.CD_CONVENIO = rf.CD_CONVENIO
+            AND RF.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+            AND IF.CD_REG_FAT = RF.CD_REG_FAT
+            --AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+            AND P.CD_PACIENTE = A.CD_PACIENTE
+            AND PR.CD_PRESTADOR = PX.CD_PRESTADOR
+            --AND A.TP_ATENDIMENTO = 'E'
+            AND IF.CD_PRO_FAT = PF.CD_PRO_FAT
+            AND EX.EXA_RX_CD_PRO_FAT = IF.CD_PRO_FAT
+            AND S.CD_SETOR = If.CD_SETOR
+            AND TRUNC(PX.HR_PEDIDO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')",
+    // Chamada Oracle com a query final montada
+    Fonte = Oracle.Database(
+        "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+        [Query = Query]
+    )
+in
+    Fonte
+
+---################################################################################################################
+---################################################################################################################
+
+-- CONSULTA FATURAMENTO - PAINEL HPC-FATURAMENTO-Emergência e Produção MV
+
+let
+    // Converte os parâmetros para texto no formato esperado pela query
+    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
+    RangeEndText = Date.ToText(RangeEnd, "yyyy-MM-dd"),
+
+    //RangeStartText = "2025-05-01",
+    //RangeEndText = "2025-05-29",
+
+
+    // Sua query SQL com os parâmetros inseridos dinamicamente
+    Query =
+"WITH FATURAMENTO
+    AS (
+SELECT
+    a.cd_atendimento as COD_ATEND,
+    RF.CD_REG_FAT as CONTA,
+    a.cd_paciente as COD_PACIENTE,
+    p.nm_paciente as NOME_PACIENTE,
+    a.cd_convenio as COD_CONVENIO,
+    c.nm_convenio as NOME_CONVENIO,
+    if.cd_pro_fat as COD_PROCEDIMENTO,
+    p.cd_produto  AS PRODUTO,
+    pf.ds_pro_fat as NOME_PROCEDIMENTO,
+    IF.CD_SETOR as SETOR,
+    S.NM_SETOR as NOME_SETOR,
+    a.dt_atendimento as DATA_ATENDIMENTO,
+    a.hr_alta as DATA_ALTA,
+    rf.dt_fechamento as DATA_FECHAMENTO,
+    rf.sn_fechada,
+    rf.sn_fatura_impressa,
+    if.qt_lancamento as QNT,
+    if.vl_unitario as VL_UNIT,
+    round(cmm.vl_custo_medio,3) AS CUSTO_MEDIO,
+    if.vl_total_conta as VL_TOTAL,
+    CASE
+        WHEN A.TP_ATENDIMENTO = 'A' THEN 'AMBULATORIO'
+        WHEN A.TP_ATENDIMENTO = 'E' THEN 'EXAMES'
+        WHEN A.TP_ATENDIMENTO = 'U' THEN 'URGENCIA/EMERGENCIA'
+        WHEN A.TP_ATENDIMENTO = 'I' THEN 'INTERNACAO'
+    END AS TIPO
+FROM
+    atendime a,
+    paciente p,
+    convenio c,
+    itreg_fat if,
+    pro_fat pf,
+    reg_fat rf,
+    produto p,
+    setor s,
+    valor_inicial_produto cmm
+WHERE P.CD_PACIENTE = A.CD_PACIENTE
+AND PF.CD_PRO_FAT = IF.CD_PRO_FAT
+AND RF.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+AND RF.CD_CONVENIO = C.CD_CONVENIO
+AND RF.CD_REG_FAT = IF.CD_REG_FAT
+AND S.CD_SETOR = IF.CD_SETOR
+AND IF.CD_PRO_FAT = P.CD_PRO_FAT (+)
+AND P.CD_PRODUTO = CMM.CD_PRODUTO (+)
+UNION ALL
+SELECT
+    a.cd_atendimento as COD_ATEND,
+    RB.CD_REG_AMB as CONTA,
+    a.cd_paciente as COD_PACIENTE,
+    p.nm_paciente as NOME_PACIENTE,
+    a.cd_convenio as COD_CONVENIO,
+    c.nm_convenio as NOME_CONVENIO,
+    ib.cd_pro_fat as COD_PROCEDIMENTO,
+    p.cd_produto  AS PRODUTO,
+    pf.ds_pro_fat as NOME_PROCEDIMENTO,
+    IB.CD_SETOR as SETOR,
+    S.NM_SETOR as NOME_SETOR,
+    a.dt_atendimento as DATA_ATENDIMENTO,
+    A.HR_ALTA as DATA_ALTA,
+    ib.dt_fechamento as DATA_FECHAMENTO,
+    ib.sn_fechada,
+    ib.sn_fatura_impressa,
+    ib.qt_lancamento as QNT,
+    ib.vl_unitario VL_UNIT,
+    round(cmm.vl_custo_medio,3) AS CUSTO_MEDIO,
+    ib.vl_total_conta VL_TOTAL,
+    CASE
+        WHEN A.TP_ATENDIMENTO = 'A' THEN 'AMBULATORIO'
+        WHEN A.TP_ATENDIMENTO = 'E' THEN 'EXAMES'
+        WHEN A.TP_ATENDIMENTO = 'U' THEN 'URGENCIA/EMERGENCIA'
+        WHEN A.TP_ATENDIMENTO = 'I' THEN 'INTERNACAO'
+    END AS TIPO
+FROM
+    atendime a,
+    paciente p,
+    convenio c,
+    itreg_amb ib,
+        pro_fat pf,
+    reg_amb rb,
+    produto p,
+    setor s,
+    valor_inicial_produto cmm
+WHERE P.CD_PACIENTE = A.CD_PACIENTE
+AND PF.CD_PRO_FAT = IB.CD_PRO_FAT
+AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+AND RB.CD_CONVENIO = C.CD_CONVENIO
+AND RB.CD_REG_AMB = IB.CD_REG_AMB
+AND S.CD_SETOR = IB.CD_SETOR
+AND IB.CD_PRO_FAT = P.CD_PRO_FAT (+)
+AND P.CD_PRODUTO = CMM.CD_PRODUTO (+)
+)
+SELECT * FROM FATURAMENTO WHERE DATA_ATENDIMENTO BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')",
+
+// Chamada Oracle com a query final montada
+Fonte = Oracle.Database(
+    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+    [Query = Query]
+)
+
+---################################################################################################################
+
+-- CONSULTA MOVIMENTAÇÃO - PAINEL HPC-FATURAMENTO-Emergência e Produção MV
+
+let
+    // Converte os parâmetros para texto no formato esperado pela query
+    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
+    RangeEndText = Date.ToText(RangeEnd, "yyyy-MM-dd"),
+
+    //RangeStartText = "2025-05-01",
+    //RangeEndText = "2025-05-29",
+
+
+    // Sua query SQL com os parâmetros inseridos dinamicamente
+    Query =
+"SELECT
+    PD.CD_PROTOCOLO_DOC,
+    IPD.CD_ATENDIMENTO,
+    P.NM_PACIENTE,
+    A.CD_CONVENIO,
+    C.NM_CONVENIO,
+    IPD.CD_REG_AMB,
+    IPD.CD_REG_FAT,
+    IPD.DT_DEVOLUCAO,
+    IPD.NM_USUARIO_DEVOLUCAO,
+    IPD.DT_REALIZACAO,
+    IPD.HR_REALIZACAO,
+    IPD.DT_RECEBIMENTO,
+    IPD.NM_USUARIO_RECEBIMENTO,
+    PD.DT_ENVIO,
+    PD.NM_USUARIO_ENVIO,
+    PD.CD_SETOR,
+    S.NM_SETOR,
+    PD.CD_SETOR_DESTINO,
+    CASE
+        WHEN PD.CD_SETOR_DESTINO = '1' THEN 'DIRECAO ADMINISTRATIVA'
+        WHEN PD.CD_SETOR_DESTINO = '2' THEN 'ADMINISTRACAO'
+        WHEN PD.CD_SETOR_DESTINO = '3' THEN 'AUTORIZACAO'
+        WHEN PD.CD_SETOR_DESTINO = '4' THEN 'AUDITORIA'
+        WHEN PD.CD_SETOR_DESTINO = '5' THEN 'COMERCIAL'
+        WHEN PD.CD_SETOR_DESTINO = '6' THEN 'COMPRAS'
+        WHEN PD.CD_SETOR_DESTINO = '7' THEN 'CONTABILIDADE'
+        WHEN PD.CD_SETOR_DESTINO = '8' THEN 'DIRETORIA'
+        WHEN PD.CD_SETOR_DESTINO = '9' THEN 'FATURAMENTO'
+        WHEN PD.CD_SETOR_DESTINO = '10' THEN 'FINANCEIRO'
+        WHEN PD.CD_SETOR_DESTINO = '11' THEN 'MARKETING'
+        WHEN PD.CD_SETOR_DESTINO = '12' THEN 'TI'
+        WHEN PD.CD_SETOR_DESTINO = '13' THEN 'PATRIMONIO'
+        WHEN PD.CD_SETOR_DESTINO = '14' THEN 'DH/JURIDICO'
+        WHEN PD.CD_SETOR_DESTINO = '15' THEN 'DP'
+        WHEN PD.CD_SETOR_DESTINO = '16' THEN 'JURIDICO'
+        WHEN PD.CD_SETOR_DESTINO = '17' THEN 'RH'
+        WHEN PD.CD_SETOR_DESTINO = '18' THEN 'SESMT'
+        WHEN PD.CD_SETOR_DESTINO = '19' THEN 'ASSISTENCIAL'
+        WHEN PD.CD_SETOR_DESTINO = '20' THEN 'CCIH'
+        WHEN PD.CD_SETOR_DESTINO = '21' THEN 'CME'
+        WHEN PD.CD_SETOR_DESTINO = '22' THEN 'CENTRO CIRURGICO'
+        WHEN PD.CD_SETOR_DESTINO = '23' THEN 'COORDENACAO ASSISTENCIAL'
+        WHEN PD.CD_SETOR_DESTINO = '24' THEN 'FARMACIA'
+        WHEN PD.CD_SETOR_DESTINO = '25' THEN 'FISIOTERAPIA'
+        WHEN PD.CD_SETOR_DESTINO = '26' THEN 'HEMODINAMICA'
+        WHEN PD.CD_SETOR_DESTINO = '27' THEN 'LABORATORIO'
+        WHEN PD.CD_SETOR_DESTINO = '28' THEN 'NUTRICAO'
+        WHEN PD.CD_SETOR_DESTINO = '29' THEN 'POSTO 1'
+        WHEN PD.CD_SETOR_DESTINO = '30' THEN 'POSTO 2'
+        WHEN PD.CD_SETOR_DESTINO = '31' THEN 'POSTO 3'
+        WHEN PD.CD_SETOR_DESTINO = '32' THEN 'EMERGENCIA'
+        WHEN PD.CD_SETOR_DESTINO = '33' THEN 'UTI 1'
+        WHEN PD.CD_SETOR_DESTINO = '34' THEN 'UTI 2'
+        WHEN PD.CD_SETOR_DESTINO = '35' THEN 'UTI 3'
+        WHEN PD.CD_SETOR_DESTINO = '36' THEN 'UTI 4'
+        WHEN PD.CD_SETOR_DESTINO = '37' THEN 'APOIO'
+        WHEN PD.CD_SETOR_DESTINO = '38' THEN 'ALMOXARIFADO'
+        WHEN PD.CD_SETOR_DESTINO = '39' THEN 'CALL CENTER'
+        WHEN PD.CD_SETOR_DESTINO = '40' THEN 'HIGIENE E LIMPEZA'
+        WHEN PD.CD_SETOR_DESTINO = '41' THEN 'HOTELARIA'
+        WHEN PD.CD_SETOR_DESTINO = '42' THEN 'MANUTENCAO CLINICA'
+        WHEN PD.CD_SETOR_DESTINO = '43' THEN 'MANUTENCAO PREDIAL'
+        WHEN PD.CD_SETOR_DESTINO = '44' THEN 'OBRAS E REFORMAS'
+        WHEN PD.CD_SETOR_DESTINO = '45' THEN 'RECEPCAO EMERGENCIA'
+        WHEN PD.CD_SETOR_DESTINO = '46' THEN 'SAME'
+        WHEN PD.CD_SETOR_DESTINO = '47' THEN 'SERVICO DE TRANSPORTE'
+        WHEN PD.CD_SETOR_DESTINO = '48' THEN 'QUALIDADE'
+        WHEN PD.CD_SETOR_DESTINO = '49' THEN 'CLINICA'
+        WHEN PD.CD_SETOR_DESTINO = '50' THEN 'ECOCARDIOGRAMA'
+        WHEN PD.CD_SETOR_DESTINO = '51' THEN 'ELETROCARDIOGRAMA'
+        WHEN PD.CD_SETOR_DESTINO = '52' THEN 'ERGOMETRIA'
+        WHEN PD.CD_SETOR_DESTINO = '53' THEN 'HOLTER'
+        WHEN PD.CD_SETOR_DESTINO = '54' THEN 'MAPA'
+        WHEN PD.CD_SETOR_DESTINO = '55' THEN 'RAIO X'
+        WHEN PD.CD_SETOR_DESTINO = '56' THEN 'RECEPCAO CLINICA'
+        WHEN PD.CD_SETOR_DESTINO = '57' THEN 'TOMOGRAFIA'
+        WHEN PD.CD_SETOR_DESTINO = '58' THEN 'ULTRASSONOGRAFIA'
+        WHEN PD.CD_SETOR_DESTINO = '59' THEN 'ECG'
+        WHEN PD.CD_SETOR_DESTINO = '60' THEN 'NIR (NUCLEO DE INTERNACAO E REGULACAO)'
+    END AS NM_SETOR_DESTINO
+FROM
+    DBAMV.IT_PROTOCOLO_DOC ipd,
+    DBAMV.SETOR s,
+    DBAMV.PROTOCOLO_DOC pd,
+    DBAMV.ATENDIME a,
+    DBAMV.PACIENTE p,
+    DBAMV.CONVENIO c
+WHERE
+    IPD.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+    AND PD.CD_PROTOCOLO_DOC = IPD.CD_PROTOCOLO_DOC
+    AND PD.CD_SETOR = S.CD_SETOR
+    AND P.CD_PACIENTE = A.CD_PACIENTE
+    AND C.CD_CONVENIO = A.CD_CONVENIO
+    AND PD.DT_ENVIO BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')",
+
+// Chamada Oracle com a query final montada
+Fonte = Oracle.Database(
+    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+    [Query = Query]
+)
+
+
+---################################################################################################################
+
+
+-- CONSULTA BASEDATA - PAINEL HPC-FATURAMENTO-Emergência e Produção MV
+
+let
+    // Converte os parâmetros para texto no formato esperado pela query
+    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
+    RangeEndText = Date.ToText(RangeEnd, "yyyy-MM-dd"),
+
+    //RangeStartText = "2025-05-01",
+    //RangeEndText = "2025-05-29",
+
+
+    // Sua query SQL com os parâmetros inseridos dinamicamente
+    Query =
+"
+WITH BASEDATA
+    AS (
+SELECT
+    a.cd_atendimento as COD_ATEND,
+    RF.CD_REG_FAT as CONTA,
+    a.cd_paciente as COD_PACIENTE,
+    p.nm_paciente as NOME_PACIENTE,
+    a.cd_convenio as COD_CONVENIO,
+    c.nm_convenio as NOME_CONVENIO,
+    if.cd_pro_fat as COD_PROCEDIMENTO,
+    p.cd_produto  AS PRODUTO,
+    pf.ds_pro_fat as NOME_PROCEDIMENTO,
+    IF.CD_SETOR as SETOR,
+    S.NM_SETOR as NOME_SETOR,
+    a.dt_atendimento as DATA_ATENDIMENTO,
+    a.hr_alta as DATA_ALTA,
+    rf.dt_fechamento as DATA_FECHAMENTO,
+    rf.sn_fechada,
+    rf.sn_fatura_impressa,
+    if.qt_lancamento as QNT,
+    if.vl_unitario as VL_UNIT,
+    round(cmm.vl_custo_medio,3) AS CUSTO_MEDIO,
+    if.vl_total_conta as VL_TOTAL,
+    CASE
+        WHEN A.TP_ATENDIMENTO = 'A' THEN 'AMBULATORIO'
+        WHEN A.TP_ATENDIMENTO = 'E' THEN 'EXAMES'
+        WHEN A.TP_ATENDIMENTO = 'U' THEN 'URGENCIA/EMERGENCIA'
+        WHEN A.TP_ATENDIMENTO = 'I' THEN 'INTERNACAO'
+    END AS TIPO
+FROM
+    atendime a,
+    paciente p,
+    convenio c,
+    itreg_fat if,
+        pro_fat pf,
+    reg_fat rf,
+    produto p,
+    setor s,
+    valor_inicial_produto cmm
+WHERE
+    P.CD_PACIENTE = A.CD_PACIENTE
+    AND PF.CD_PRO_FAT = IF.CD_PRO_FAT
+    AND RF.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+    AND RF.CD_CONVENIO = C.CD_CONVENIO
+    AND RF.CD_REG_FAT = IF.CD_REG_FAT
+    AND S.CD_SETOR = IF.CD_SETOR
+    AND IF.CD_PRO_FAT = P.CD_PRO_FAT (+)
+    AND P.CD_PRODUTO = CMM.CD_PRODUTO (+)
+UNION ALL
+SELECT
+    a.cd_atendimento as COD_ATEND,
+    RB.CD_REG_AMB as CONTA,
+    a.cd_paciente as COD_PACIENTE,
+    p.nm_paciente as NOME_PACIENTE,
+    a.cd_convenio as COD_CONVENIO,
+    c.nm_convenio as NOME_CONVENIO,
+    ib.cd_pro_fat as COD_PROCEDIMENTO,
+    p.cd_produto  AS PRODUTO,
+    pf.ds_pro_fat as NOME_PROCEDIMENTO,
+    IB.CD_SETOR as SETOR,
+    S.NM_SETOR as NOME_SETOR,
+    a.dt_atendimento as DATA_ATENDIMENTO,
+    A.HR_ALTA as DATA_ALTA,
+    ib.dt_fechamento as DATA_FECHAMENTO,
+    ib.sn_fechada,
+    ib.sn_fatura_impressa,
+    ib.qt_lancamento as QNT,
+    ib.vl_unitario VL_UNIT,
+    round(cmm.vl_custo_medio,3) AS CUSTO_MEDIO,
+    ib.vl_total_conta VL_TOTAL,
+    CASE
+        WHEN A.TP_ATENDIMENTO = 'A' THEN 'AMBULATORIO'
+        WHEN A.TP_ATENDIMENTO = 'E' THEN 'EXAMES'
+        WHEN A.TP_ATENDIMENTO = 'U' THEN 'URGENCIA/EMERGENCIA'
+        WHEN A.TP_ATENDIMENTO = 'I' THEN 'INTERNACAO'
+    END AS TIPO
+FROM
+    atendime a,
+    paciente p,
+    convenio c,
+    itreg_amb ib,
+    pro_fat pf,
+    reg_amb rb,
+    produto p,
+    setor s,
+    valor_inicial_produto cmm
+WHERE
+    P.CD_PACIENTE = A.CD_PACIENTE
+    AND PF.CD_PRO_FAT = IB.CD_PRO_FAT
+    AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+    AND RB.CD_CONVENIO = C.CD_CONVENIO
+    AND RB.CD_REG_AMB = IB.CD_REG_AMB
+    AND S.CD_SETOR = IB.CD_SETOR
+    AND IB.CD_PRO_FAT = P.CD_PRO_FAT (+)
+    AND P.CD_PRODUTO = CMM.CD_PRODUTO (+)
+)
+SELECT * FROM BASEDATA WHERE DATA_ATENDIMENTO BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')",
+
+// Chamada Oracle com a query final montada
+Fonte = Oracle.Database(
+    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+    [Query = Query]
+)
+
+
+--- **************************************************************************************************************************
+
+-- CONSULTA BASEDATA - PAINEL HPC-FATURAMENTO-Emergência e Produção MV
+
+let
+    // Converte os parâmetros para texto no formato esperado pela query
+    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
+    RangeEndText = Date.ToText(RangeEnd, "yyyy-MM-dd"),
+
+    //RangeStartText = "2025-05-01",
+    //RangeEndText = "2025-05-29",
+
+
+    // Sua query SQL com os parâmetros inseridos dinamicamente
+    Query =
+"
+WITH BASEDATA
+    AS (
+SELECT
+    a.cd_atendimento as COD_ATEND,
+    RF.CD_REG_FAT as CONTA,
+    a.cd_paciente as COD_PACIENTE,
+    p.nm_paciente as NOME_PACIENTE,
+    a.cd_convenio as COD_CONVENIO,
+    c.nm_convenio as NOME_CONVENIO,
+    if.cd_pro_fat as COD_PROCEDIMENTO,
+    p.cd_produto  AS PRODUTO,
+    pf.ds_pro_fat as NOME_PROCEDIMENTO,
+    IF.CD_SETOR as SETOR,
+    S.NM_SETOR as NOME_SETOR,
+    a.dt_atendimento as DATA_ATENDIMENTO,
+    a.hr_alta as DATA_ALTA,
+    rf.dt_fechamento as DATA_FECHAMENTO,
+    rf.sn_fechada,
+    rf.sn_fatura_impressa,
+    if.qt_lancamento as QNT,
+    if.vl_unitario as VL_UNIT,
+    round(cmm.vl_custo_medio,3) AS CUSTO_MEDIO,
+    if.vl_total_conta as VL_TOTAL,
+    CASE
+        WHEN A.TP_ATENDIMENTO = 'A' THEN 'AMBULATORIO'
+        WHEN A.TP_ATENDIMENTO = 'E' THEN 'EXAMES'
+        WHEN A.TP_ATENDIMENTO = 'U' THEN 'URGENCIA/EMERGENCIA'
+        WHEN A.TP_ATENDIMENTO = 'I' THEN 'INTERNACAO'
+    END AS TIPO
+FROM
+    atendime a,
+    paciente p,
+    convenio c,
+    itreg_fat if,
+        pro_fat pf,
+    reg_fat rf,
+    produto p,
+    setor s,
+    valor_inicial_produto cmm
+WHERE
+    P.CD_PACIENTE = A.CD_PACIENTE
+    AND PF.CD_PRO_FAT = IF.CD_PRO_FAT
+    AND RF.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+    AND RF.CD_CONVENIO = C.CD_CONVENIO
+    AND RF.CD_REG_FAT = IF.CD_REG_FAT
+    AND S.CD_SETOR = IF.CD_SETOR
+    AND IF.CD_PRO_FAT = P.CD_PRO_FAT (+)
+    AND P.CD_PRODUTO = CMM.CD_PRODUTO (+)
+UNION ALL
+SELECT
+    a.cd_atendimento as COD_ATEND,
+    RB.CD_REG_AMB as CONTA,
+    a.cd_paciente as COD_PACIENTE,
+    p.nm_paciente as NOME_PACIENTE,
+    a.cd_convenio as COD_CONVENIO,
+    c.nm_convenio as NOME_CONVENIO,
+    ib.cd_pro_fat as COD_PROCEDIMENTO,
+    p.cd_produto  AS PRODUTO,
+    pf.ds_pro_fat as NOME_PROCEDIMENTO,
+    IB.CD_SETOR as SETOR,
+    S.NM_SETOR as NOME_SETOR,
+    a.dt_atendimento as DATA_ATENDIMENTO,
+    A.HR_ALTA as DATA_ALTA,
+    ib.dt_fechamento as DATA_FECHAMENTO,
+    ib.sn_fechada,
+    ib.sn_fatura_impressa,
+    ib.qt_lancamento as QNT,
+    ib.vl_unitario VL_UNIT,
+    round(cmm.vl_custo_medio,3) AS CUSTO_MEDIO,
+    ib.vl_total_conta VL_TOTAL,
+    CASE
+        WHEN A.TP_ATENDIMENTO = 'A' THEN 'AMBULATORIO'
+        WHEN A.TP_ATENDIMENTO = 'E' THEN 'EXAMES'
+        WHEN A.TP_ATENDIMENTO = 'U' THEN 'URGENCIA/EMERGENCIA'
+        WHEN A.TP_ATENDIMENTO = 'I' THEN 'INTERNACAO'
+    END AS TIPO
+FROM
+    atendime a,
+    paciente p,
+    convenio c,
+    itreg_amb ib,
+    pro_fat pf,
+    reg_amb rb,
+    produto p,
+    setor s,
+    valor_inicial_produto cmm
+WHERE
+    P.CD_PACIENTE = A.CD_PACIENTE
+    AND PF.CD_PRO_FAT = IB.CD_PRO_FAT
+    AND IB.CD_ATENDIMENTO = A.CD_ATENDIMENTO
+    AND RB.CD_CONVENIO = C.CD_CONVENIO
+    AND RB.CD_REG_AMB = IB.CD_REG_AMB
+    AND S.CD_SETOR = IB.CD_SETOR
+    AND IB.CD_PRO_FAT = P.CD_PRO_FAT (+)
+    AND P.CD_PRODUTO = CMM.CD_PRODUTO (+)
+)
+SELECT * FROM BASEDATA WHERE DATA_ATENDIMENTO BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')",
+
+// Chamada Oracle com a query final montada
+Fonte = Oracle.Database(
+    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+    [Query = Query]
+),
+    #"Data Inserida" = Table.AddColumn(Fonte, "DATA", each Date.From([DATA_ATENDIMENTO]), type date),
+    #"Coluna Condicional Adicionada" = Table.AddColumn(#"Data Inserida", "AMB/INT", each if [TIPO] = "AMBULATORIO" then "AMBULATORIO" else if [TIPO] = "EXAMES" then "AMBULATORIO" else if [TIPO] = "URGENCIA/EMERGENCIA" then "AMBULATORIO" else "INTERNACAO"),
+    #"Coluna Condicional Adicionada1" = Table.AddColumn(#"Coluna Condicional Adicionada", "CATEGORIA_CONVENIOS", each if [NOME_SETOR] = "PARTICULAR" then "PARTICULAR" else if [NOME_SETOR] = "SUS - INTERNACAO" then "SUS" else "CONVENIO"),
+    #"Coluna Condicional Adicionada2" = Table.AddColumn(#"Coluna Condicional Adicionada1", "NOVA", each if [NOME_CONVENIO] = "PARTICULAR" then "PARTICULAR" else if [NOME_CONVENIO] = "SUS - INTERNACAO" then "SUS" else "CONVENIO"),
+    #"Colunas Removidas" = Table.RemoveColumns(#"Coluna Condicional Adicionada2",{"CATEGORIA_CONVENIOS"}),
+    #"Colunas Renomeadas" = Table.RenameColumns(#"Colunas Removidas",{{"NOVA", "CATEGORIA_CONVENIO"}}),
+    #"Coluna Condicional Adicionada3" = Table.AddColumn(#"Colunas Renomeadas", "COM OU SEM ALTA", each if [DATA_ALTA] = null then "SEM ALTA" else "COM ALTA"),
+    #"Tipo Alterado" = Table.TransformColumnTypes(#"Coluna Condicional Adicionada3",{{"PRODUTO", type text}}),
+    #"Linhas Filtradas" = Table.SelectRows(#"Tipo Alterado", each true),
+    #"Colunas Renomeadas1" = Table.RenameColumns(#"Linhas Filtradas",{{"NOME_CONVENIO", "CONVENIO"}}),
+    #"Tipo Alterado1" = Table.TransformColumnTypes(#"Colunas Renomeadas1",{{"CONTA", type text}}),
+    #"Dia Inserido" = Table.AddColumn(#"Tipo Alterado1", "Dia", each Date.Day([DATA_ATENDIMENTO]), Int64.Type),
+    #"Linhas Filtradas1" = Table.SelectRows(#"Dia Inserido", each true),
+    #"Colunas Removidas1" = Table.RemoveColumns(#"Linhas Filtradas1",{"COD_ATEND", "CONTA", "COD_PACIENTE", "NOME_PACIENTE", "COD_CONVENIO", "CONVENIO", "COD_PROCEDIMENTO", "PRODUTO", "NOME_PROCEDIMENTO", "SETOR", "NOME_SETOR", "DATA_ALTA", "DATA_FECHAMENTO", "SN_FECHADA", "SN_FATURA_IMPRESSA", "QNT", "VL_UNIT", "CUSTO_MEDIO", "VL_TOTAL", "TIPO", "DATA", "AMB/INT", "CATEGORIA_CONVENIO", "COM OU SEM ALTA", "Dia"}),
+    #"Duplicatas Removidas" = Table.Distinct(#"Colunas Removidas1"),
+    #"Linhas Classificadas" = Table.Sort(#"Duplicatas Removidas",{{"DATA_ATENDIMENTO", Order.Ascending}})
+in
+    #"Linhas Classificadas"
+
+--- **************************************************************************************************************************
+
+
+---################################################################################################################
+
+
