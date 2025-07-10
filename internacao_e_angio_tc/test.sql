@@ -171,45 +171,45 @@ UNPIVOT(
 
 
 
-let
-    // Converte os parâmetros para texto no formato esperado pela query
-    RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
-    RangeEndText = Date.ToText(RangeEnd, "yyyy-MM-dd"),
+-- let
+--     // Converte os parâmetros para texto no formato esperado pela query
+--     RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
+--     RangeEndText = Date.ToText(RangeEnd, "yyyy-MM-dd"),
 
-    //RangeStartText = "2025-05-01",
-    //RangeEndText = "2025-05-29",
+--     //RangeStartText = "2025-05-01",
+--     //RangeEndText = "2025-05-29",
 
 
-    // Sua query SQL com os parâmetros inseridos dinamicamente
-    Query =
-        "WITH QUANTIDADE_EXAMES
-            AS (
-                SELECT
-                    er.CD_EXA_RX,
-                    er.DS_EXA_RX,
-                    rx.DT_PEDIDO AS DT_PEDIDO,
-                    TO_CHAR(rx.DT_PEDIDO, 'MMYYYY') AS MES_ANO,
-                    COUNT(DISTINCT rx.CD_ATENDIMENTO) AS QTD_ATENDIMENTO,
-                    COUNT(DISTINCT rx.CD_PED_RX)      AS QTD_EXAMES
-                FROM DBAMV.PED_RX rx
-                JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
-                JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
-                WHERE TRUNC(rx.HR_PEDIDO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')
-                    --AND irx.CD_EXA_RX = 706
-                    AND irx.SN_REALIZADO = 'S'
-                GROUP BY er.CD_EXA_RX, er.DS_EXA_RX, rx.DT_PEDIDO, TO_CHAR(rx.DT_PEDIDO, 'MMYYYY')
-        )
-        SELECT
-            CD_EXA_RX, DS_EXA_RX, DT_PEDIDO, MES_ANO, QTD_ATENDIMENTO, QTD_EXAMES
-        FROM QUANTIDADE_EXAMES",
+--     // Sua query SQL com os parâmetros inseridos dinamicamente
+--     Query =
+--         "WITH QUANTIDADE_EXAMES
+--             AS (
+--                 SELECT
+--                     er.CD_EXA_RX,
+--                     er.DS_EXA_RX,
+--                     rx.DT_PEDIDO AS DT_PEDIDO,
+--                     TO_CHAR(rx.DT_PEDIDO, 'MMYYYY') AS MES_ANO,
+--                     COUNT(DISTINCT rx.CD_ATENDIMENTO) AS QTD_ATENDIMENTO,
+--                     COUNT(DISTINCT rx.CD_PED_RX)      AS QTD_EXAMES
+--                 FROM DBAMV.PED_RX rx
+--                 JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
+--                 JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
+--                 WHERE TRUNC(rx.HR_PEDIDO) BETWEEN TO_DATE('" & RangeStartText & "', 'YYYY-MM-DD') AND TO_DATE('" & RangeEndText & "', 'YYYY-MM-DD')
+--                     --AND irx.CD_EXA_RX = 706
+--                     AND irx.SN_REALIZADO = 'S'
+--                 GROUP BY er.CD_EXA_RX, er.DS_EXA_RX, rx.DT_PEDIDO, TO_CHAR(rx.DT_PEDIDO, 'MMYYYY')
+--         )
+--         SELECT
+--             CD_EXA_RX, DS_EXA_RX, DT_PEDIDO, MES_ANO, QTD_ATENDIMENTO, QTD_EXAMES
+--         FROM QUANTIDADE_EXAMES",
 
-// Chamada Oracle com a query final montada
-Fonte = Oracle.Database(
-    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
-    [Query = Query]
-)
-in
-    Fonte
+-- // Chamada Oracle com a query final montada
+-- Fonte = Oracle.Database(
+--     "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--     [Query = Query]
+-- )
+-- in
+--     Fonte
 
 
 --- ###########################################################################################################################
@@ -299,13 +299,8 @@ ORDER BY
 --  VERSÃO DETALHADA COM INFORMAÇÕES DOS EXAMES
 --- ################################################
 
-let
 
-    Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
-    Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
-
-    Query =
-        "WITH pacientes_internados
+WITH pacientes_internados
     AS (
         SELECT DISTINCT
             ai.CD_PACIENTE,
@@ -314,7 +309,7 @@ let
             TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO
         FROM DBAMV.ATENDIME ai
         WHERE ai.TP_ATENDIMENTO = 'I'
-          AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(SYSDATE, -'" & Intervalo_Meses_dos_Internados & "') AND ai.DT_ATENDIMENTO
+          AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(SYSDATE, -6) AND ai.DT_ATENDIMENTO
 ),
 detalhes_consultas_e_exames
     AS (
@@ -338,7 +333,7 @@ detalhes_consultas_e_exames
         INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
         INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
         WHERE aa.TP_ATENDIMENTO <> 'I'
-          AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_INTERNACAO, -'" & Intervalor_Dias_a_Recuar & "') AND pi.DT_INTERNACAO
+          AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_INTERNACAO, -6) AND pi.DT_INTERNACAO
 )
 SELECT
     MES_ANO_INTERNACAO,
@@ -352,13 +347,72 @@ SELECT
     DIAS_ENTRE_EXAME_INTERN
 FROM detalhes_consultas_e_exames
 GROUP BY MES_ANO_INTERNACAO, DT_INTERNACAO, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, DIAS_ENTRE_EXAME_INTERN
-ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC",
+ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC
+;
 
-// Chamada Oracle com a query final montada
-Fonte = Oracle.Database(
-    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
-    [Query = Query]
-)
-in
-    Fonte
+
+
+
+-- let
+
+--     Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
+--     Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
+
+--     Query =
+--         "WITH pacientes_internados
+--     AS (
+--         SELECT DISTINCT
+--             ai.CD_PACIENTE,
+--             ai.CD_ATENDIMENTO AS CD_ATENDIMENTO_INTERNACAO,
+--             ai.DT_ATENDIMENTO AS DT_INTERNACAO,
+--             TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO
+--         FROM DBAMV.ATENDIME ai
+--         WHERE ai.TP_ATENDIMENTO = 'I'
+--           AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(SYSDATE, -'" & Intervalo_Meses_dos_Internados & "') AND ai.DT_ATENDIMENTO
+-- ),
+-- detalhes_consultas_e_exames
+--     AS (
+--         SELECT
+--             pi.CD_PACIENTE,
+--             aa.TP_ATENDIMENTO,
+--             pi.MES_ANO_INTERNACAO,
+--             LAST_DAY(pi.DT_INTERNACAO) AS DT_INTERNACAO,
+--             aa.CD_ATENDIMENTO AS CD_ATENDIMENTO_ANTERIOR,
+--             aa.DT_ATENDIMENTO AS DT_CONSULTA_ANTERIORL,
+--             (pi.DT_INTERNACAO - aa.DT_ATENDIMENTO) AS DIAS_ENTRE_EXAME_INTERN,
+--             er.CD_EXA_RX,
+--             er.DS_EXA_RX,
+--             rx.CD_PED_RX,
+--             TRUNC(rx.HR_PEDIDO) AS DT_PEDIDO_EXAME,
+--             irx.SN_REALIZADO,
+--             irx.DT_REALIZADO
+--         FROM pacientes_internados pi
+--         INNER JOIN DBAMV.ATENDIME aa ON aa.CD_PACIENTE = pi.CD_PACIENTE
+--         INNER JOIN DBAMV.PED_RX rx ON rx.CD_ATENDIMENTO = aa.CD_ATENDIMENTO
+--         INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
+--         INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
+--         WHERE aa.TP_ATENDIMENTO <> 'I'
+--           AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_INTERNACAO, -'" & Intervalor_Dias_a_Recuar & "') AND pi.DT_INTERNACAO
+-- )
+-- SELECT
+--     MES_ANO_INTERNACAO,
+--     DT_INTERNACAO,
+--     CD_EXA_RX,
+--     DS_EXA_RX,
+--     TP_ATENDIMENTO,
+--     COUNT(DISTINCT CD_PACIENTE) AS QTD_PACIENTES,
+--     COUNT(DISTINCT CD_PED_RX) AS QTD_PEDIDOS_EXAME,
+--     COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) AS QTD_EXAMES_REALIZADOS,
+--     DIAS_ENTRE_EXAME_INTERN
+-- FROM detalhes_consultas_e_exames
+-- GROUP BY MES_ANO_INTERNACAO, DT_INTERNACAO, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, DIAS_ENTRE_EXAME_INTERN
+-- ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC",
+
+-- // Chamada Oracle com a query final montada
+-- Fonte = Oracle.Database(
+--     "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--     [Query = Query]
+-- )
+-- in
+--     Fonte
 ;
