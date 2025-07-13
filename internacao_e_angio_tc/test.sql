@@ -358,68 +358,68 @@ ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CAS
 
 
 
-let
+-- let
 
-    Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
-    Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
+--     Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
+--     Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
 
-    Query =
-        "WITH pacientes_internados
-    AS (
-        SELECT DISTINCT
-            ai.CD_PACIENTE,
-            ai.CD_ATENDIMENTO AS CD_ATENDIMENTO_INTERNACAO,
-            ai.DT_ATENDIMENTO AS DT_ATENDIMENTO_INTERNACAO,
-            TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO
-        FROM DBAMV.ATENDIME ai
-        WHERE ai.TP_ATENDIMENTO = 'I'
-          AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(SYSDATE, -'" & Intervalo_Meses_dos_Internados & "') AND ai.DT_ATENDIMENTO
-),
-detalhes_consultas_e_exames
-    AS (
-        SELECT
-            pi.CD_PACIENTE,
-            aa.TP_ATENDIMENTO,
-            pi.MES_ANO_INTERNACAO,
-            COUNT(pi.CD_ATENDIMENTO_INTERNACAO) OVER(PARTITION BY pi.MES_ANO_INTERNACAO ) AS QTD_INTERNADOS,
-            LAST_DAY(pi.DT_ATENDIMENTO_INTERNACAO) AS DT_COMPETENCIA,
-            aa.CD_ATENDIMENTO AS CD_ATENDIMENTO_EXAME_ANTERIOR,
-            aa.DT_ATENDIMENTO AS DT_EXAME_ANTERIORL,
-            pi.CD_ATENDIMENTO_INTERNACAO,
-            pi.DT_ATENDIMENTO_INTERNACAO,
-            er.CD_EXA_RX,
-            er.DS_EXA_RX,
-            rx.CD_PED_RX,
-            TRUNC(rx.HR_PEDIDO) AS DT_PEDIDO_EXAME,
-            irx.SN_REALIZADO,
-            irx.DT_REALIZADO
-        FROM pacientes_internados pi
-        INNER JOIN DBAMV.ATENDIME aa ON aa.CD_PACIENTE = pi.CD_PACIENTE
-        INNER JOIN DBAMV.PED_RX rx ON rx.CD_ATENDIMENTO = aa.CD_ATENDIMENTO
-        INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
-        INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
-        WHERE aa.TP_ATENDIMENTO <> 'I'
-          AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_ATENDIMENTO_INTERNACAO, -'" & Intervalor_Dias_a_Recuar & "') AND pi.DT_ATENDIMENTO_INTERNACAO
-)
-SELECT
-    MES_ANO_INTERNACAO,
-    DT_COMPETENCIA,
-    CD_EXA_RX,
-    DS_EXA_RX,
-    TP_ATENDIMENTO,
-    QTD_INTERNADOS,
-    COUNT(DISTINCT CD_PACIENTE) AS QTD_PACIENTES,
-    COUNT(DISTINCT CD_PED_RX) AS QTD_PEDIDOS_EXAME,
-    COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) AS QTD_EXAMES_REALIZADOS
-FROM detalhes_consultas_e_exames
-GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS
-ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC",
+--     Query =
+--         "WITH pacientes_internados
+--     AS (
+--         SELECT DISTINCT
+--             ai.CD_PACIENTE,
+--             ai.CD_ATENDIMENTO AS CD_ATENDIMENTO_INTERNACAO,
+--             ai.DT_ATENDIMENTO AS DT_ATENDIMENTO_INTERNACAO,
+--             TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO
+--         FROM DBAMV.ATENDIME ai
+--         WHERE ai.TP_ATENDIMENTO = 'I'
+--           AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(SYSDATE, -'" & Intervalo_Meses_dos_Internados & "') AND ai.DT_ATENDIMENTO
+-- ),
+-- detalhes_consultas_e_exames
+--     AS (
+--         SELECT
+--             pi.CD_PACIENTE,
+--             aa.TP_ATENDIMENTO,
+--             pi.MES_ANO_INTERNACAO,
+--             COUNT(pi.CD_ATENDIMENTO_INTERNACAO) OVER(PARTITION BY pi.MES_ANO_INTERNACAO ) AS QTD_INTERNADOS,
+--             LAST_DAY(pi.DT_ATENDIMENTO_INTERNACAO) AS DT_COMPETENCIA,
+--             aa.CD_ATENDIMENTO AS CD_ATENDIMENTO_EXAME_ANTERIOR,
+--             aa.DT_ATENDIMENTO AS DT_EXAME_ANTERIORL,
+--             pi.CD_ATENDIMENTO_INTERNACAO,
+--             pi.DT_ATENDIMENTO_INTERNACAO,
+--             er.CD_EXA_RX,
+--             er.DS_EXA_RX,
+--             rx.CD_PED_RX,
+--             TRUNC(rx.HR_PEDIDO) AS DT_PEDIDO_EXAME,
+--             irx.SN_REALIZADO,
+--             irx.DT_REALIZADO
+--         FROM pacientes_internados pi
+--         INNER JOIN DBAMV.ATENDIME aa ON aa.CD_PACIENTE = pi.CD_PACIENTE
+--         INNER JOIN DBAMV.PED_RX rx ON rx.CD_ATENDIMENTO = aa.CD_ATENDIMENTO
+--         INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
+--         INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
+--         WHERE aa.TP_ATENDIMENTO <> 'I'
+--           AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_ATENDIMENTO_INTERNACAO, -'" & Intervalor_Dias_a_Recuar & "') AND pi.DT_ATENDIMENTO_INTERNACAO
+-- )
+-- SELECT
+--     MES_ANO_INTERNACAO,
+--     DT_COMPETENCIA,
+--     CD_EXA_RX,
+--     DS_EXA_RX,
+--     TP_ATENDIMENTO,
+--     QTD_INTERNADOS,
+--     COUNT(DISTINCT CD_PACIENTE) AS QTD_PACIENTES,
+--     COUNT(DISTINCT CD_PED_RX) AS QTD_PEDIDOS_EXAME,
+--     COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) AS QTD_EXAMES_REALIZADOS
+-- FROM detalhes_consultas_e_exames
+-- GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS
+-- ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC",
 
-// Chamada Oracle com a query final montada
-Fonte = Oracle.Database(
-    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
-    [Query = Query]
-)
-in
-    Fonte
+-- // Chamada Oracle com a query final montada
+-- Fonte = Oracle.Database(
+--     "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--     [Query = Query]
+-- )
+-- in
+--     Fonte
 ;
