@@ -956,7 +956,7 @@ ORDER BY DT_ULTIMA_MOVIMENTACAO DESC
 
 
 
-SELECT DBAMV.FNC_MGCO_RETORNA_CONSUMO(14328, '03/2025', 1) AS CONSUMO_ FROM DUAL;
+SELECT DBAMV.FNC_MGCO_RETORNA_CONSUMO(14328, '07/2025', 1) AS CONSUMO_ FROM DUAL;
 -- OU
 SELECT
   ROUND(AVG(CONSUMO) / DBAMV.VERIF_VL_FATOR_PROD(MAX(CD_PRODUTO)), 2) AS CONSUMO_MEDIO
@@ -1038,3 +1038,87 @@ GROUP BY Cd_Produto_Mov, TRUNC(Dt_Movimentacao, 'MM')
 ORDER BY Cd_Produto_Mov, TRUNC(Dt_Movimentacao, 'MM')
 ;
 
+
+
+
+-- CONSUMO FINAL
+WITH CONSUMO_FINAL_POR_MES
+    AS (
+        SELECT
+            TO_CHAR(sp.DT_SOLSAI_PRO, 'YYYY-MM') AS MES_ANO,
+            sp.CD_SETOR,
+            st.NM_SETOR,
+
+            pr.CD_PRODUTO,
+            pr.DS_PRODUTO,
+
+            CASE sp.TP_SITUACAO
+                WHEN 'P' THEN 'Pedido'
+                WHEN 'C' THEN 'Confirmada'
+                WHEN 'S' THEN 'Suspensa'
+                WHEN 'A' THEN 'Cancelada'
+                ELSE 'Desconhecida'
+            END AS TP_SITUACAO,
+
+            CASE sp.TP_SOLSAI_PRO
+                WHEN 'C' THEN 'Consumo'
+                WHEN 'D' THEN 'Devolução'
+                WHEN 'E' THEN 'Transferência entre Empresas'
+                WHEN 'P' THEN 'Prescrição / Padrão'
+                WHEN 'R' THEN 'Reposição / Romaneio'
+                WHEN 'T' THEN 'Transferência entre Estoques'
+                ELSE 'Desconhecido'
+            END AS DS_TP_SOLSAI_PRO,
+
+            ip.QT_ATENDIDA,
+            DBAMV.VERIF_VL_FATOR_PROD(pR.CD_PRODUTO, 'G') AS FATOR_CONVERSAO,
+
+            CASE
+                WHEN sp.TP_SOLSAI_PRO = 'C' THEN
+                    ip.QT_ATENDIDA * DBAMV.fnc_mges_custo_medio_produto(pr.CD_PRODUTO, sp.HR_SOLSAI_PRO)
+                WHEN sp.TP_SOLSAI_PRO = 'D' THEN
+                    DBAMV.fnc_mges_custo_medio_produto(pr.CD_PRODUTO, sp.HR_SOLSAI_PRO) * -1
+                ELSE 0
+            END AS VL_CUSTO_MEDIO
+        FROM
+            DBAMV.ITSOLSAI_PRO ip
+        JOIN
+            DBAMV.SOLSAI_PRO sp ON ip.CD_SOLSAI_PRO = sp.CD_SOLSAI_PRO
+        LEFT JOIN
+            DBAMV.PRODUTO pr ON ip.CD_PRODUTO = pr.CD_PRODUTO
+        LEFT JOIN
+            DBAMV.SETOR st ON sp.CD_SETOR = st.CD_SETOR
+        WHERE
+            sp.DT_SOLSAI_PRO IS NOT NULL
+            AND sp.TP_SOLSAI_PRO IN ( 'C', 'D') -- VÊ ESSES TIPOS
+)
+SELECT
+    CD_SETOR,
+    NM_SETOR,
+    MES_ANO,
+    CD_PRODUTO,
+    DS_PRODUTO,
+    SUM(QT_ATENDIDA * FATOR_CONVERSAO) AS QT_QUANTIDADE,
+    ROUND(
+        SUM((QT_ATENDIDA * FATOR_CONVERSAO) * VL_CUSTO_MEDIO) /
+        NULLIF(SUM(QT_ATENDIDA * FATOR_CONVERSAO), 0),
+        3
+    ) AS VL_CUSTO_MEDIO,
+    ROUND(
+        ROUND(SUM(QT_ATENDIDA * FATOR_CONVERSAO), 3) *
+        ROUND(
+            SUM((QT_ATENDIDA * FATOR_CONVERSAO) * VL_CUSTO_MEDIO)
+            / NULLIF(SUM(QT_ATENDIDA * FATOR_CONVERSAO), 0),
+            3
+        ),
+    3) AS VL_TOTAL_CONSUMIDO
+FROM CONSUMO_FINAL_POR_MES
+WHERE MES_ANO = '2025-07'
+GROUP BY
+    CD_SETOR,
+    NM_SETOR,
+    MES_ANO,
+    CD_PRODUTO,
+    DS_PRODUTO
+ORDER BY CD_SETOR, MES_ANO, CD_PRODUTO
+;
