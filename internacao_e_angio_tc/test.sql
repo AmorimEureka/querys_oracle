@@ -144,6 +144,11 @@ WHERE COD_ATEND IS NOT NULL AND COD_EXAME = 706   -- 1.686 / 1.648 / 1.686
 
 --- ###########################################################################################################################
 
+
+/*
+    QUERY PARA CONTABILIZAR O QUANTITATIVO DE EXAMES
+        - VALIDADA COM O RELATÓRIO R_EXAME_PACIENTE
+*/
 WITH QUANTIDADE_EXAMES
     AS (
         SELECT
@@ -170,7 +175,7 @@ UNPIVOT(
 ;
 
 
-
+-- CONSULTA NO POWERQUERY
 -- let
 --     // Converte os parâmetros para texto no formato esperado pela query
 --     RangeStartText = Date.ToText(RangeStar, "yyyy-MM-dd"),
@@ -214,6 +219,11 @@ UNPIVOT(
 
 --- ###########################################################################################################################
 
+
+-- QUANTIDADEDE PACIENTES INTERNADOS
+--      - POR MES_ANO
+--      - UNIDADE
+--      - LEITO
 WITH source_atendimento
     AS (
         SELECT
@@ -295,9 +305,11 @@ ORDER BY
 
 
 
---- ################################################
---  VERSÃO DETALHADA COM INFORMAÇÕES DOS EXAMES
---- ################################################
+--- ###########################################################
+--   PACIENTES INTERNADOS NOS ULTIMOS 6 MESES QUE REALIZARAM
+--   EXAMES DE IMAGEM NOS ULTIMOS 6 MESES ANTES DA INTERNACAO
+
+--- ###########################################################
 
 
 WITH pacientes_internados
@@ -351,12 +363,6 @@ FROM detalhes_consultas_e_exames
 GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS
 ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC
 ;
--- SELECT * FROM detalhes_consultas_e_exames WHERE SN_REALIZADO = 'S' ORDER BY DT_COMPETENCIA, CD_PACIENTE;
-
-
-
-
-
 
 -- let
 
@@ -425,9 +431,11 @@ ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CAS
 -- ;
 
 
+--- ###########################################################################################################################
 
 
 
+-- VALIDACAO ANGIO TC - OBTER PRESTADOR PARA MICKELY UPFLUX
 -- CD_PRESTADOR = 356
 SELECT
     CD_PRESTADOR
@@ -466,3 +474,10 @@ SELECT
 FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN
 WHERE id_exame_pedido = 321211
 ;
+
+
+--- ###########################################################################################################################
+
+
+
+
