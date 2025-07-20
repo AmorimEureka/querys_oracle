@@ -306,9 +306,9 @@ ORDER BY
 
 
 --- ###########################################################
---   PACIENTES INTERNADOS NOS ULTIMOS 6 MESES QUE REALIZARAM
---   EXAMES DE IMAGEM NOS ULTIMOS 6 MESES ANTES DA INTERNACAO
-
+--   QUANTIDADE DE EXAMES DE IMAGEM DOS ULTIMOS 6 MESES DOS
+--   DOS PACIENTES INTERNADOS QUE REALIZARAM EXAMES DE IMAGEM
+--   NOS ULTIMOS 6 MESES
 --- ###########################################################
 
 
@@ -438,12 +438,6 @@ ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CAS
 -- VALIDACAO ANGIO TC - OBTER PRESTADOR PARA MICKELY UPFLUX
 -- CD_PRESTADOR = 356
 SELECT
-    CD_PRESTADOR
-FROM DBAMV.ITPED_RX
-WHERE CD_PED_RX = 310189
-;
-
-SELECT
     CD_PED_RX,
     CD_PRESTADOR,
     NM_PRESTADOR,
@@ -451,6 +445,14 @@ SELECT
 FROM DBAMV.PED_RX
 WHERE CD_PED_RX = 310189
 ;
+
+
+SELECT
+    CD_PRESTADOR
+FROM DBAMV.ITPED_RX
+WHERE CD_PED_RX = 310189
+;
+
 
 SELECT
     cd_laudo_integra,
@@ -462,12 +464,6 @@ FROM DBAMV.LAUDO_RX
 WHERE CD_PED_RX = 310189
 ;
 
-SELECT
-    NM_PRESTADOR
-FROM DBAMV.PRESTADOR
-WHERE CD_PRESTADOR = 356
-;
-
 
 SELECT
     *
@@ -476,8 +472,296 @@ WHERE id_exame_pedido = 321211
 ;
 
 
+SELECT
+    NM_PRESTADOR
+FROM DBAMV.PRESTADOR
+WHERE CD_PRESTADOR = 356
+;
+
+
 --- ###########################################################################################################################
 
 
 
 
+SELECT
+    CD_PED_RX,
+    DT_PEDIDO,
+    HR_PEDIDO,
+    DT_SOLICITACAO,
+    DT_AUTORIZACAO,
+    DT_VALIDADE,
+    DT_ENTREGA
+FROM DBAMV.PED_RX
+WHERE CD_PED_RX = 309337
+;
+
+
+SELECT
+    CD_ITPED_RX,
+    CD_PED_RX,
+    CD_EXA_RX,
+    CD_LAUDO,
+    CD_ITPRE_MED,
+    DT_REALIZADO, -- IGUAL A LAUDO_RX.DT_LAUDO
+    DT_ENTREGA,
+    SN_REALIZADO,
+    SN_EXAME_LAUDADO
+FROM DBAMV.ITPED_RX
+WHERE CD_PED_RX = 309337  -- RESULTADO 320350 E 320351
+;
+
+
+SELECT
+    CD_LAUDO,
+    CD_LAUDO_INTEGRA,
+    CD_PED_RX,
+    DT_LAUDO,
+    HR_LAUDO,
+    DT_INTEGRA
+FROM DBAMV.LAUDO_RX
+-- WHERE CD_LAUDO IN( 320350, 320351)         --SEM RESULTADO
+-- WHERE CD_LAUDO_INTEGRA IN( 320350, 320351) --RETORNA APENAS 320350
+-- WHERE CD_PED_RX = 309337                   --RETORNA APENAS 320350
+;
+
+
+SELECT
+    idc.CD_PEDIDO_HIS,
+    idc.CD_ATENDIMENTO_HIS,
+    idc.CD_EXAME_HIS,
+    idc.ID_EXAME_PEDIDO, -- CD_LAUDO
+    idc.ID_PEDIDO_EXAME, -- CD_LAUDO
+    idc.ID_EXAME,
+    idc.NM_EXAME,
+    idc.DT_PEDIDO,
+    idc.DT_CADASTRO,     -- IGUAL DT_PEDIDO
+    -- DT_ENTRADA_EXAME,
+    -- DT_ENTREGA,
+    idc.DT_STUDY,        -- INTEGRACAO MV/VIVACE
+    idc.DT_LAUDADO,
+    idc.SN_ATRASADO,
+
+    idc.CD_STATUS,
+
+    idc.ID_MEDICO,
+    idc.NM_MEDICO_SOLICITANTE,
+
+    idc.ID_MEDICO_EXECUTANTE,
+    idc.NM_MEDICO_EXECUTANTE,
+
+    idc.ID_MEDICO_REVISOR,
+    idc.NM_MEDICO_REVISOR,
+
+    idc.ID_MEDICO_REVISOR_FINAL,
+    idc.NM_MEDICO_REVISOR_FINAL,
+
+    idc.ID_MEDICO_DITADO,
+    idc.ID_MEDICO_DITADO,
+
+    idc.SN_EXECUTANTE_REVISOR
+FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+WHERE
+    idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+    AND idc.CD_STATUS <> 'I'
+    AND idc.CD_PEDIDO_HIS = 309337
+    -- AND DT_LAUDADO < DT_STUDY
+ORDER BY CD_ATENDIMENTO_HIS
+;
+
+
+WITH main
+    AS (
+        SELECT
+            idc.CD_PEDIDO_HIS,
+            idc.CD_ATENDIMENTO_HIS,
+            idc.CD_HIS_EXECUTANTE,
+            idc.NM_MEDICO_EXECUTANTE,
+            idc.ID_EXAME,
+            idc.ID_EXAME_PEDIDO, -- CD_LAUDO
+            idc.ID_PEDIDO_EXAME, -- CD_LAUDO
+            idc.NM_PACIENTE,
+            idc.NM_EXAME,
+            idc.DT_PEDIDO,
+            idc.DT_STUDY,
+            idc.CD_STATUS,
+            COALESCE(idc.DT_LAUDADO, lr.DT_LAUDO) AS DT_LAUDADO,
+            idc.DT_ENTREGA
+        FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+        INNER JOIN DBAMV.PED_RX pr
+            ON idc.CD_PEDIDO_HIS = pr.CD_PED_RX
+        INNER JOIN DBAMV.LAUDO_RX lr
+            ON idc.ID_EXAME_PEDIDO = lr.CD_LAUDO_INTEGRA
+        WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+          AND idc.CD_STATUS <> 'I'
+          AND idc.DS_LAUDO_TXT IS NOT NULL
+        ORDER BY idc.CD_ATENDIMENTO_HIS
+),
+source_duplicados_dt_study
+    AS (
+        SELECT
+            idc.CD_PEDIDO_HIS,
+            idc.ID_EXAME,
+            idc.DT_STUDY,
+            ROW_NUMBER() OVER (
+                PARTITION BY idc.CD_PEDIDO_HIS, idc.ID_EXAME
+                ORDER BY
+                    CASE WHEN idc.DT_STUDY IS NOT NULL THEN 0 ELSE 1 END,
+                    idc.DT_STUDY DESC
+            ) AS rn
+        FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+        WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+          AND idc.CD_STATUS <> 'I'
+),
+source_filtro
+    AS (
+        SELECT
+            CD_PEDIDO_HIS,
+            ID_EXAME,
+            DT_STUDY
+        FROM source_duplicados_dt_study
+        WHERE rn = 1
+),
+treats
+    AS (
+        SELECT
+            m.CD_PEDIDO_HIS,
+            m.CD_ATENDIMENTO_HIS,
+            m.ID_EXAME_PEDIDO, -- CD_LAUDO
+            m.ID_PEDIDO_EXAME, -- CD_LAUDO
+            m.CD_HIS_EXECUTANTE,
+            m.NM_MEDICO_EXECUTANTE,
+            m.CD_STATUS,
+            m.NM_PACIENTE,
+            m.NM_EXAME,
+            m.DT_PEDIDO,
+            sf.DT_STUDY,
+            m.DT_LAUDADO,
+            m.DT_ENTREGA,
+        -- TEMPO - SOLICITACAO ATE REALIZACAO
+        -- CONSIDERAR HR_PRE_MED - DT_PEDIDO
+        --    - TP_ATENDIMENTO = 'U' -> PEDIDO É GERADO AUTOMATICAMENTE
+        --        - VE A TP_ATENDIMENTO = 'A' NAS ÚLTIMAS 48H
+        --    - TP_ATENDIMENTO = 'E' -> PEDIDO É GERADO AUTOMATICAMENTE
+        --        - VE A TP_ATENDIMENTO = 'A' NOS ÚLTIMAS 30DIAS ANTERIORES AO AGENDAMENTO
+          (sf.DT_STUDY - m.DT_PEDIDO) * 24 AS HORAS_PEDIDO_REALIZACAO,
+
+        -- TEMPO - REALIZACAO ATE LAUDO
+          (m.DT_LAUDADO - sf.DT_STUDY) * 24 AS HORAS_REALIZACAO_LAUDO,
+
+        -- TEMPO - LAUDO ATE CONDUTA (ENTREGA)
+          (m.DT_ENTREGA - m.DT_LAUDADO) * 24 AS HORAS_LAUDO_CONDUTA,
+
+        -- TEMPO TOTAL - PEDIDO ATE ENTREGA
+          (COALESCE(m.DT_ENTREGA, m.DT_LAUDADO) - m.DT_PEDIDO) * 24 AS HORAS_TOTAL_FLUXO
+        FROM main m
+        INNER JOIN source_filtro sf
+            ON m.CD_PEDIDO_HIS = sf.CD_PEDIDO_HIS AND m.ID_EXAME = sf.ID_EXAME
+)
+SELECT * FROM treats --WHERE CD_PEDIDO_HIS = 309337
+;
+
+
+-- let
+
+--     Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
+--     Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
+
+--     Query =
+--         "WITH main
+--     AS (
+--         SELECT
+--             idc.CD_PEDIDO_HIS,
+--             idc.CD_ATENDIMENTO_HIS,
+--             idc.CD_HIS_EXECUTANTE,
+--             idc.NM_MEDICO_EXECUTANTE,
+--             idc.ID_EXAME,
+--             idc.ID_EXAME_PEDIDO, -- CD_LAUDO
+--             idc.ID_PEDIDO_EXAME, -- CD_LAUDO
+--             idc.NM_PACIENTE,
+--             idc.NM_EXAME,
+--             idc.DT_PEDIDO,
+--             idc.DT_STUDY,
+--             idc.CD_STATUS,
+--             COALESCE(idc.DT_LAUDADO, lr.DT_LAUDO) AS DT_LAUDADO,
+--             idc.DT_ENTREGA
+--         FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+--         INNER JOIN DBAMV.PED_RX pr
+--             ON idc.CD_PEDIDO_HIS = pr.CD_PED_RX
+--         INNER JOIN DBAMV.LAUDO_RX lr
+--             ON idc.ID_EXAME_PEDIDO = lr.CD_LAUDO_INTEGRA
+--         WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+--           AND idc.CD_STATUS <> 'I'
+--           AND idc.DS_LAUDO_TXT IS NOT NULL
+--         ORDER BY idc.CD_ATENDIMENTO_HIS
+-- ),
+-- source_duplicados_dt_study
+--     AS (
+--         SELECT
+--             idc.CD_PEDIDO_HIS,
+--             idc.ID_EXAME,
+--             idc.DT_STUDY,
+--             ROW_NUMBER() OVER (
+--                 PARTITION BY idc.CD_PEDIDO_HIS, idc.ID_EXAME
+--                 ORDER BY
+--                     CASE WHEN idc.DT_STUDY IS NOT NULL THEN 0 ELSE 1 END,
+--                     idc.DT_STUDY DESC
+--             ) AS rn
+--         FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+--         WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+--           AND idc.CD_STATUS <> 'I'
+-- ),
+-- source_filtro
+--     AS (
+--         SELECT
+--             CD_PEDIDO_HIS,
+--             ID_EXAME,
+--             DT_STUDY
+--         FROM source_duplicados_dt_study
+--         WHERE rn = 1
+-- ),
+-- treats
+--     AS (
+--         SELECT
+--             m.CD_PEDIDO_HIS,
+--             m.CD_ATENDIMENTO_HIS,
+--             m.ID_EXAME_PEDIDO, -- CD_LAUDO
+--             m.ID_PEDIDO_EXAME, -- CD_LAUDO
+--             m.CD_HIS_EXECUTANTE,
+--             m.NM_MEDICO_EXECUTANTE,
+--             m.CD_STATUS,
+--             m.NM_PACIENTE,
+--             m.NM_EXAME,
+--             m.DT_PEDIDO,
+--             sf.DT_STUDY,
+--             m.DT_LAUDADO,
+--             m.DT_ENTREGA,
+--         -- TEMPO - SOLICITACAO ATE REALIZACAO
+--         -- CONSIDERAR HR_PRE_MED - DT_PEDIDO
+--         --    - TP_ATENDIMENTO = 'U' -> PEDIDO É GERADO AUTOMATICAMENTE
+--         --        - VE A TP_ATENDIMENTO = 'A' NAS ÚLTIMAS 48H
+--         --    - TP_ATENDIMENTO = 'E' -> PEDIDO É GERADO AUTOMATICAMENTE
+--         --        - VE A TP_ATENDIMENTO = 'A' NOS ÚLTIMAS 30DIAS ANTERIORES AO AGENDAMENTO
+--           (sf.DT_STUDY - m.DT_PEDIDO) * 24 AS HORAS_PEDIDO_REALIZACAO,
+
+--         -- TEMPO - REALIZACAO ATE LAUDO
+--           (m.DT_LAUDADO - sf.DT_STUDY) * 24 AS HORAS_REALIZACAO_LAUDO,
+
+--         -- TEMPO - LAUDO ATE CONDUTA (ENTREGA)
+--           (m.DT_ENTREGA - m.DT_LAUDADO) * 24 AS HORAS_LAUDO_CONDUTA,
+
+--         -- TEMPO TOTAL - PEDIDO ATE ENTREGA
+--           (COALESCE(m.DT_ENTREGA, m.DT_LAUDADO) - m.DT_PEDIDO) * 24 AS HORAS_TOTAL_FLUXO
+--         FROM main m
+--         INNER JOIN source_filtro sf
+--             ON m.CD_PEDIDO_HIS = sf.CD_PEDIDO_HIS AND m.ID_EXAME = sf.ID_EXAME
+-- )
+-- SELECT * FROM treats",
+
+-- // Chamada Oracle com a query final montada
+-- Fonte = Oracle.Database(
+--     "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--     [Query = Query]
+-- )
+-- in
+--     Fonte
