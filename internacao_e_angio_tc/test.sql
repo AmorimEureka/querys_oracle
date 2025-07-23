@@ -540,6 +540,8 @@ SELECT
     -- DT_ENTREGA,
     idc.DT_STUDY,        -- INTEGRACAO MV/VIVACE
     idc.DT_LAUDADO,
+    idc.DT_ALTERACAO,
+
     idc.SN_ATRASADO,
 
     idc.CD_STATUS,
@@ -563,12 +565,20 @@ SELECT
 FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
 WHERE
     idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
-    AND idc.CD_STATUS <> 'I'
+    AND idc.CD_STATUS IN('I', 'U')
     -- AND idc.CD_PEDIDO_HIS = 309337
     AND DT_LAUDADO < DT_STUDY
-    AND idc.CD_HIS_EXECUTANTE = 277
+    -- AND idc.CD_HIS_EXECUTANTE = 277
 ORDER BY CD_ATENDIMENTO_HIS DESC
 ;
+
+
+SELECT
+    *
+FROM IDCE.RS_LAU_EXAME_PEDIDO
+WHERE DT_LAUDADO < DT_STUDY
+;
+
 
 
 WITH main
@@ -645,6 +655,8 @@ treats
         --        - VE A TP_ATENDIMENTO = 'A' NAS ÚLTIMAS 48H
         --    - TP_ATENDIMENTO = 'E' -> PEDIDO É GERADO AUTOMATICAMENTE
         --        - VE A TP_ATENDIMENTO = 'A' NOS ÚLTIMAS 30DIAS ANTERIORES AO AGENDAMENTO
+          TO_CHAR(NUMTODSINTERVAL(sf.DT_STUDY - m.DT_PEDIDO, 'DAY'), 'HH24:MI:SS') AS INTERVALO,
+          TRUNC(sf.DT_STUDY - m.DT_PEDIDO) || ' dias ' || TO_CHAR(NUMTODSINTERVAL(sf.DT_STUDY - m.DT_PEDIDO, 'DAY'), 'HH24:MI:SS') AS INTERVALO_LEGIVEL,
           (sf.DT_STUDY - m.DT_PEDIDO) * 24 AS HORAS_PEDIDO_REALIZACAO,
 
         -- TEMPO - REALIZACAO ATE LAUDO
@@ -768,6 +780,95 @@ SELECT * FROM treats --WHERE CD_PEDIDO_HIS = 309337
 --     Fonte
 
 
+
+
+WITH main
+    AS (
+        SELECT
+            idc.CD_PEDIDO_HIS,
+            idc.CD_ATENDIMENTO_HIS,
+            idc.CD_HIS_EXECUTANTE,
+            idc.NM_MEDICO_EXECUTANTE,
+            idc.ID_EXAME,
+            idc.ID_EXAME_PEDIDO,
+            idc.ID_PEDIDO_EXAME,
+            idc.NM_PACIENTE,
+            idc.NM_EXAME,
+            idc.DT_PEDIDO,
+            idc.DT_STUDY,
+            idc.CD_STATUS,
+            COALESCE(idc.DT_LAUDADO, lr.DT_LAUDO) AS DT_LAUDADO,
+            idc.DT_ENTREGA,
+            idc.DT_IMPRESSO
+        FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+        INNER JOIN DBAMV.PED_RX pr
+            ON idc.CD_PEDIDO_HIS = pr.CD_PED_RX
+        INNER JOIN DBAMV.LAUDO_RX lr
+            ON idc.ID_EXAME_PEDIDO = lr.CD_LAUDO_INTEGRA
+        WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+          AND idc.CD_STATUS <> 'I'
+          AND idc.DS_LAUDO_TXT IS NOT NULL
+        ORDER BY idc.CD_ATENDIMENTO_HIS
+),
+source_duplicados_dt_study
+    AS (
+        SELECT
+            idc.CD_PEDIDO_HIS,
+            idc.ID_EXAME,
+            idc.DT_STUDY,
+            ROW_NUMBER() OVER (
+                PARTITION BY idc.CD_PEDIDO_HIS, idc.ID_EXAME
+                ORDER BY
+                    CASE WHEN idc.DT_STUDY IS NOT NULL THEN 0 ELSE 1 END,
+                    idc.DT_STUDY DESC
+            ) AS rn
+        FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+        WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+          AND idc.CD_STATUS <> 'I'
+),
+source_filtro
+    AS (
+        SELECT
+            CD_PEDIDO_HIS,
+            ID_EXAME,
+            DT_STUDY
+        FROM source_duplicados_dt_study
+        WHERE rn = 1
+),
+treats
+    AS (
+        SELECT
+            m.CD_PEDIDO_HIS,
+            m.CD_ATENDIMENTO_HIS,
+            m.ID_EXAME_PEDIDO,
+            m.ID_PEDIDO_EXAME,
+            m.CD_HIS_EXECUTANTE,
+            m.NM_MEDICO_EXECUTANTE,
+            m.CD_STATUS,
+            m.NM_PACIENTE,
+            m.NM_EXAME,
+            m.DT_PEDIDO,
+            sf.DT_STUDY,
+            m.DT_LAUDADO,
+            m.DT_ENTREGA,
+            m.DT_IMPRESSO,
+        -- TEMPO - PEDIDO ATE REALIZACAO
+          (sf.DT_STUDY - m.DT_PEDIDO) * 24 AS HORAS_PEDIDO_REALIZACAO,
+
+        -- TEMPO - REALIZACAO ATE LAUDO
+          (m.DT_LAUDADO - sf.DT_STUDY) * 24 AS HORAS_REALIZACAO_LAUDO,
+
+        -- TEMPO - LAUDO ATE CONDUTA (ENTREGA)
+          (m.DT_ENTREGA - m.DT_LAUDADO) * 24 AS HORAS_LAUDO_CONDUTA,
+
+        -- TEMPO TOTAL - PEDIDO ATE ENTREGA
+          (COALESCE(m.DT_ENTREGA, m.DT_LAUDADO) - m.DT_PEDIDO) * 24 AS HORAS_TOTAL_FLUXO
+        FROM main m
+        INNER JOIN source_filtro sf
+            ON m.CD_PEDIDO_HIS = sf.CD_PEDIDO_HIS AND m.ID_EXAME = sf.ID_EXAME
+)
+SELECT * FROM treats
+;
 
 
 
