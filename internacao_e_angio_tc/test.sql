@@ -798,15 +798,14 @@ WITH main
             idc.DT_STUDY,
             idc.CD_STATUS,
             COALESCE(idc.DT_LAUDADO, lr.DT_LAUDO) AS DT_LAUDADO,
-            idc.DT_ENTREGA,
-            idc.DT_IMPRESSO
+            idc.DT_ENTREGA
         FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
         INNER JOIN DBAMV.PED_RX pr
             ON idc.CD_PEDIDO_HIS = pr.CD_PED_RX
         INNER JOIN DBAMV.LAUDO_RX lr
             ON idc.ID_EXAME_PEDIDO = lr.CD_LAUDO_INTEGRA
         WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
-          AND idc.CD_STATUS <> 'I'
+          AND idc.CD_STATUS IN('I', 'U')
           AND idc.DS_LAUDO_TXT IS NOT NULL
         ORDER BY idc.CD_ATENDIMENTO_HIS
 ),
@@ -824,7 +823,7 @@ source_duplicados_dt_study
             ) AS rn
         FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
         WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
-          AND idc.CD_STATUS <> 'I'
+          AND idc.CD_STATUS IN('I', 'U')
 ),
 source_filtro
     AS (
@@ -848,10 +847,10 @@ treats
             m.NM_PACIENTE,
             m.NM_EXAME,
             m.DT_PEDIDO,
+            TO_CHAR(m.DT_PEDIDO, 'MMYYYY') AS MES_ANO,
             sf.DT_STUDY,
             m.DT_LAUDADO,
             m.DT_ENTREGA,
-            m.DT_IMPRESSO,
         -- TEMPO - PEDIDO ATE REALIZACAO
           (sf.DT_STUDY - m.DT_PEDIDO) * 24 AS HORAS_PEDIDO_REALIZACAO,
 
@@ -866,11 +865,188 @@ treats
         FROM main m
         INNER JOIN source_filtro sf
             ON m.CD_PEDIDO_HIS = sf.CD_PEDIDO_HIS AND m.ID_EXAME = sf.ID_EXAME
+),
+agrupamento_por_medico_tempo
+    AS (
+        SELECT
+            CD_HIS_EXECUTANTE,
+            NM_MEDICO_EXECUTANTE,
+            NM_EXAME,
+            CD_STATUS,
+            MES_ANO,
+
+
+            CASE
+                WHEN HORAS_PEDIDO_REALIZACAO < 1 THEN '< 1 hora'
+                WHEN HORAS_PEDIDO_REALIZACAO < 2 THEN '1-2 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 4 THEN '2-4 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 8 THEN '4-8 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 12 THEN '8-12 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 24 THEN '12-24 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 48 THEN '1-2 dias'
+                WHEN HORAS_PEDIDO_REALIZACAO < 72 THEN '2-3 dias'
+                WHEN HORAS_PEDIDO_REALIZACAO < 168 THEN '3-7 dias'
+                ELSE '> 7 dias'
+            END AS FAIXA_TEMPO_PEDIDO_REALIZACAO,
+
+            CASE
+                WHEN HORAS_REALIZACAO_LAUDO < 1 THEN '< 1 hora'
+                WHEN HORAS_REALIZACAO_LAUDO < 2 THEN '1-2 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 4 THEN '2-4 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 8 THEN '4-8 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 12 THEN '8-12 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 24 THEN '12-24 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 48 THEN '1-2 dias'
+                WHEN HORAS_REALIZACAO_LAUDO < 72 THEN '2-3 dias'
+                WHEN HORAS_REALIZACAO_LAUDO < 168 THEN '3-7 dias'
+                ELSE '> 7 dias'
+            END AS FAIXA_TEMPO_REALIZACAO_LAUDO,
+
+            CASE
+                WHEN HORAS_LAUDO_CONDUTA < 1 THEN '< 1 hora'
+                WHEN HORAS_LAUDO_CONDUTA < 2 THEN '1-2 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 4 THEN '2-4 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 8 THEN '4-8 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 12 THEN '8-12 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 24 THEN '12-24 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 48 THEN '1-2 dias'
+                WHEN HORAS_LAUDO_CONDUTA < 72 THEN '2-3 dias'
+                WHEN HORAS_LAUDO_CONDUTA < 168 THEN '3-7 dias'
+                ELSE '> 7 dias'
+            END AS FAIXA_TEMPO_LAUDO_CONDUTA,
+
+            COUNT(*) AS QTD_EXAMES
+            -- ROUND(AVG(HORAS_PEDIDO_REALIZACAO), 2) AS MEDIA_HORAS_PEDIDO_REALIZACAO,
+            -- ROUND(MIN(HORAS_PEDIDO_REALIZACAO), 2) AS MIN_HORAS_PEDIDO_REALIZACAO,
+            -- ROUND(MAX(HORAS_PEDIDO_REALIZACAO), 2) AS MAX_HORAS_PEDIDO_REALIZACAO
+        FROM treats
+        WHERE HORAS_PEDIDO_REALIZACAO IS NOT NULL
+        GROUP BY
+            CD_HIS_EXECUTANTE,
+            NM_MEDICO_EXECUTANTE,
+            NM_EXAME,
+            CD_STATUS,
+            MES_ANO,
+
+            CASE
+                WHEN HORAS_PEDIDO_REALIZACAO < 1 THEN '< 1 hora'
+                WHEN HORAS_PEDIDO_REALIZACAO < 2 THEN '1-2 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 4 THEN '2-4 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 8 THEN '4-8 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 12 THEN '8-12 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 24 THEN '12-24 horas'
+                WHEN HORAS_PEDIDO_REALIZACAO < 48 THEN '1-2 dias'
+                WHEN HORAS_PEDIDO_REALIZACAO < 72 THEN '2-3 dias'
+                WHEN HORAS_PEDIDO_REALIZACAO < 168 THEN '3-7 dias'
+                ELSE '> 7 dias'
+            END,
+
+            CASE
+                WHEN HORAS_REALIZACAO_LAUDO < 1 THEN '< 1 hora'
+                WHEN HORAS_REALIZACAO_LAUDO < 2 THEN '1-2 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 4 THEN '2-4 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 8 THEN '4-8 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 12 THEN '8-12 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 24 THEN '12-24 horas'
+                WHEN HORAS_REALIZACAO_LAUDO < 48 THEN '1-2 dias'
+                WHEN HORAS_REALIZACAO_LAUDO < 72 THEN '2-3 dias'
+                WHEN HORAS_REALIZACAO_LAUDO < 168 THEN '3-7 dias'
+                ELSE '> 7 dias'
+            END,
+
+            CASE
+                WHEN HORAS_LAUDO_CONDUTA < 1 THEN '< 1 hora'
+                WHEN HORAS_LAUDO_CONDUTA < 2 THEN '1-2 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 4 THEN '2-4 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 8 THEN '4-8 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 12 THEN '8-12 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 24 THEN '12-24 horas'
+                WHEN HORAS_LAUDO_CONDUTA < 48 THEN '1-2 dias'
+                WHEN HORAS_LAUDO_CONDUTA < 72 THEN '2-3 dias'
+                WHEN HORAS_LAUDO_CONDUTA < 168 THEN '3-7 dias'
+                ELSE '> 7 dias'
+            END
+),
+resultado_unpivot
+    AS (
+        SELECT
+            CD_HIS_EXECUTANTE,
+            NM_MEDICO_EXECUTANTE,
+            NM_EXAME,
+            CD_STATUS,
+            MES_ANO,
+            'PEDIDO_REALIZACAO' AS FAIXA,
+            1 AS ORDEM_FAIXA,
+            FAIXA_TEMPO_PEDIDO_REALIZACAO AS FAIXA_TEMPO,
+            QTD_EXAMES
+        FROM agrupamento_por_medico_tempo
+        WHERE FAIXA_TEMPO_PEDIDO_REALIZACAO IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+            CD_HIS_EXECUTANTE,
+            NM_MEDICO_EXECUTANTE,
+            NM_EXAME,
+            CD_STATUS,
+            MES_ANO,
+            'REALIZACAO_LAUDO' AS FAIXA,
+            2 AS ORDEM_FAIXA,
+            FAIXA_TEMPO_REALIZACAO_LAUDO AS FAIXA_TEMPO,
+            QTD_EXAMES
+        FROM agrupamento_por_medico_tempo
+        WHERE FAIXA_TEMPO_REALIZACAO_LAUDO IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+            CD_HIS_EXECUTANTE,
+            NM_MEDICO_EXECUTANTE,
+            NM_EXAME,
+            CD_STATUS,
+            MES_ANO,
+            'LAUDO_CONDUTA' AS FAIXA,
+            3 AS ORDEM_FAIXA,
+            FAIXA_TEMPO_LAUDO_CONDUTA AS FAIXA_TEMPO,
+            QTD_EXAMES
+        FROM agrupamento_por_medico_tempo
+        WHERE FAIXA_TEMPO_LAUDO_CONDUTA IS NOT NULL
 )
-SELECT * FROM treats
+SELECT
+    *
+FROM (
+        SELECT
+            CD_HIS_EXECUTANTE,
+            NM_MEDICO_EXECUTANTE,
+            NM_EXAME,
+            CD_STATUS,
+            MES_ANO,
+            FAIXA,
+            ORDEM_FAIXA,
+            FAIXA_TEMPO,
+            QTD_EXAMES
+        FROM resultado_unpivot
+)
+PIVOT (
+    SUM(QTD_EXAMES)
+    FOR FAIXA_TEMPO IN (
+        '< 1 hora' AS ATE_1H,
+        '1-2 horas' AS ENTRE_1_2H,
+        '2-4 horas' AS ENTRE_2_4H,
+        '4-8 horas' AS ENTRE_4_8H,
+        '8-12 horas' AS ENTRE_8_12H,
+        '12-24 horas' AS ENTRE_12_24H,
+        '1-2 dias' AS ENTRE_1_2D,
+        '2-3 dias' AS ENTRE_2_3D,
+        '3-7 dias' AS ENTRE_3_7D,
+        '> 7 dias' AS MAIS_7D
+    )
+)
+ORDER BY
+    MES_ANO,
+    CD_HIS_EXECUTANTE,
+    NM_MEDICO_EXECUTANTE,
+    NM_EXAME,
+    CD_STATUS,
+    ORDEM_FAIXA
 ;
-
-
-
-
-SELECT DT_VENCIMENTO FROM DBAMV.ITCON_PAG WHERE CD_CON_PAG IN(64969, 66837);
