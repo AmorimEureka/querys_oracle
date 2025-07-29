@@ -339,8 +339,7 @@ WITH pacientes_internados
             ai.CD_ATENDIMENTO AS CD_ATENDIMENTO_INTERNACAO,
             ai.DT_ATENDIMENTO AS DT_ATENDIMENTO_INTERNACAO,
             TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO,
-            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') ) AS QTD_INTERNADOS,
-            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY'), ai.CD_CONVENIO ) AS QTD_CONVENIO_INTERNADOS
+            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') ) AS QTD_INTERNADOS
         FROM DBAMV.ATENDIME ai
         WHERE ai.TP_ATENDIMENTO = 'I'
           AND ai.CD_CONVENIO NOT IN(1,2,3,56) -- REMOVE SUS, PARTICULAR e CORTESIAS
@@ -351,13 +350,10 @@ detalhes_consultas_e_exames
         SELECT
             pi.CD_PACIENTE,
             aa.TP_ATENDIMENTO,
-            co.NM_CONVENIO,
             pi.MES_ANO_INTERNACAO,
             LAST_DAY(pi.DT_ATENDIMENTO_INTERNACAO) AS DT_COMPETENCIA,
             pi.QTD_INTERNADOS,
-            pi.QTD_CONVENIO_INTERNADOS,
             COUNT(DISTINCT pi.CD_PACIENTE) OVER( PARTITION BY pi.MES_ANO_INTERNACAO ) AS QTD_PACIENTES,
-            COUNT(DISTINCT pi.CD_PACIENTE) OVER( PARTITION BY pi.MES_ANO_INTERNACAO, co.NM_CONVENIO ) AS QTD_CONVENIO,
             aa.CD_ATENDIMENTO AS CD_ATENDIMENTO_EXAME_ANTERIOR,
             aa.DT_ATENDIMENTO AS DT_EXAME_ANTERIORL,
             pi.CD_ATENDIMENTO_INTERNACAO,
@@ -370,7 +366,6 @@ detalhes_consultas_e_exames
             irx.DT_REALIZADO
         FROM pacientes_internados pi
         INNER JOIN DBAMV.ATENDIME aa ON aa.CD_PACIENTE = pi.CD_PACIENTE
-        INNER JOIN DBAMV.CONVENIO co ON aa.CD_CONVENIO = co.CD_CONVENIO
         INNER JOIN DBAMV.PED_RX rx ON rx.CD_ATENDIMENTO = aa.CD_ATENDIMENTO
         INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
         INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
@@ -383,98 +378,89 @@ SELECT
     DT_COMPETENCIA,
     CD_EXA_RX,
     DS_EXA_RX,
-    NM_CONVENIO,
     TP_ATENDIMENTO,
     QTD_INTERNADOS,
     QTD_PACIENTES,
-    QTD_CONVENIO_INTERNADOS,
-    QTD_CONVENIO,
     COUNT(DISTINCT CD_PED_RX) AS QTD_PEDIDOS_EXAME,
     COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) AS QTD_EXAMES_REALIZADOS
 FROM detalhes_consultas_e_exames
 WHERE MES_ANO_INTERNACAO = '012025'
-GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS, QTD_CONVENIO_INTERNADOS, QTD_PACIENTES, NM_CONVENIO, QTD_CONVENIO
+GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS, QTD_PACIENTES
 ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC
 ;
 
 
 
-let
+-- let
 
-    Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
-    Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
+--     Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
+--     Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
 
-    Query =
-        "WITH pacientes_internados
-    AS (
-        SELECT DISTINCT
-            ai.CD_PACIENTE,
-            ai.CD_ATENDIMENTO AS CD_ATENDIMENTO_INTERNACAO,
-            ai.DT_ATENDIMENTO AS DT_ATENDIMENTO_INTERNACAO,
-            TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO,
-            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') ) AS QTD_INTERNADOS,
-            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY'), ai.CD_CONVENIO ) AS QTD_CONVENIO_INTERNADOS
-        FROM DBAMV.ATENDIME ai
-        WHERE ai.TP_ATENDIMENTO = 'I'
-          AND ai.CD_CONVENIO NOT IN(1,2,3,56)
-          AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -'" & Intervalo_Meses_dos_Internados & "') AND TRUNC(SYSDATE)
-),
-detalhes_consultas_e_exames
-    AS (
-        SELECT
-            pi.CD_PACIENTE,
-            aa.TP_ATENDIMENTO,
-            co.NM_CONVENIO,
-            pi.MES_ANO_INTERNACAO,
-            LAST_DAY(pi.DT_ATENDIMENTO_INTERNACAO) AS DT_COMPETENCIA,
-            pi.QTD_INTERNADOS,
-            pi.QTD_CONVENIO_INTERNADOS,
-            COUNT(DISTINCT pi.CD_PACIENTE) OVER( PARTITION BY pi.MES_ANO_INTERNACAO ) AS QTD_PACIENTES,
-            COUNT(DISTINCT pi.CD_PACIENTE) OVER( PARTITION BY pi.MES_ANO_INTERNACAO, co.NM_CONVENIO ) AS QTD_CONVENIO,
-            aa.CD_ATENDIMENTO AS CD_ATENDIMENTO_EXAME_ANTERIOR,
-            aa.DT_ATENDIMENTO AS DT_EXAME_ANTERIORL,
-            pi.CD_ATENDIMENTO_INTERNACAO,
-            pi.DT_ATENDIMENTO_INTERNACAO,
-            er.CD_EXA_RX,
-            er.DS_EXA_RX,
-            rx.CD_PED_RX,
-            TRUNC(rx.HR_PEDIDO) AS DT_PEDIDO_EXAME,
-            irx.SN_REALIZADO,
-            irx.DT_REALIZADO
-        FROM pacientes_internados pi
-        INNER JOIN DBAMV.ATENDIME aa ON aa.CD_PACIENTE = pi.CD_PACIENTE
-        INNER JOIN DBAMV.CONVENIO co ON aa.CD_CONVENIO = co.CD_CONVENIO
-        INNER JOIN DBAMV.PED_RX rx ON rx.CD_ATENDIMENTO = aa.CD_ATENDIMENTO
-        INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
-        INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
-        WHERE aa.TP_ATENDIMENTO <> 'I'
-          AND aa.CD_CONVENIO NOT IN(1,2,3,56)
-          AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_ATENDIMENTO_INTERNACAO, -'" & Intervalor_Dias_a_Recuar & "') AND pi.DT_ATENDIMENTO_INTERNACAO
-)
-SELECT
-    MES_ANO_INTERNACAO,
-    DT_COMPETENCIA,
-    CD_EXA_RX,
-    DS_EXA_RX,
-    NM_CONVENIO,
-    TP_ATENDIMENTO,
-    QTD_INTERNADOS,
-    QTD_PACIENTES,
-    QTD_CONVENIO_INTERNADOS,
-    QTD_CONVENIO,
-    COUNT(DISTINCT CD_PED_RX) AS QTD_PEDIDOS_EXAME,
-    COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) AS QTD_EXAMES_REALIZADOS
-FROM detalhes_consultas_e_exames
-GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS, QTD_CONVENIO_INTERNADOS, QTD_PACIENTES, NM_CONVENIO, QTD_CONVENIO
-ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC",
+--     Query =
+--         "WITH pacientes_internados
+--     AS (
+--         SELECT DISTINCT
+--             ai.CD_PACIENTE,
+--             ai.CD_ATENDIMENTO AS CD_ATENDIMENTO_INTERNACAO,
+--             ai.DT_ATENDIMENTO AS DT_ATENDIMENTO_INTERNACAO,
+--             TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO,
+--             COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') ) AS QTD_INTERNADOS
+--         FROM DBAMV.ATENDIME ai
+--         WHERE ai.TP_ATENDIMENTO = 'I'
+--           AND ai.CD_CONVENIO NOT IN(1,2,3,56)
+--           AND ai.DT_ATENDIMENTO BETWEEN ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -'" & Intervalo_Meses_dos_Internados & "') AND TRUNC(SYSDATE)
+-- ),
+-- detalhes_consultas_e_exames
+--     AS (
+--         SELECT
+--             pi.CD_PACIENTE,
+--             aa.TP_ATENDIMENTO,
+--             pi.MES_ANO_INTERNACAO,
+--             LAST_DAY(pi.DT_ATENDIMENTO_INTERNACAO) AS DT_COMPETENCIA,
+--             pi.QTD_INTERNADOS,
+--             COUNT(DISTINCT pi.CD_PACIENTE) OVER( PARTITION BY pi.MES_ANO_INTERNACAO ) AS QTD_PACIENTES,
+--             aa.CD_ATENDIMENTO AS CD_ATENDIMENTO_EXAME_ANTERIOR,
+--             aa.DT_ATENDIMENTO AS DT_EXAME_ANTERIORL,
+--             pi.CD_ATENDIMENTO_INTERNACAO,
+--             pi.DT_ATENDIMENTO_INTERNACAO,
+--             er.CD_EXA_RX,
+--             er.DS_EXA_RX,
+--             rx.CD_PED_RX,
+--             TRUNC(rx.HR_PEDIDO) AS DT_PEDIDO_EXAME,
+--             irx.SN_REALIZADO,
+--             irx.DT_REALIZADO
+--         FROM pacientes_internados pi
+--         INNER JOIN DBAMV.ATENDIME aa ON aa.CD_PACIENTE = pi.CD_PACIENTE
+--         INNER JOIN DBAMV.PED_RX rx ON rx.CD_ATENDIMENTO = aa.CD_ATENDIMENTO
+--         INNER JOIN DBAMV.ITPED_RX irx ON irx.CD_PED_RX = rx.CD_PED_RX
+--         INNER JOIN DBAMV.EXA_RX er ON irx.CD_EXA_RX = er.CD_EXA_RX
+--         WHERE aa.TP_ATENDIMENTO <> 'I'
+--           AND aa.CD_CONVENIO NOT IN(1,2,3,56)
+--           AND aa.DT_ATENDIMENTO BETWEEN ADD_MONTHS(pi.DT_ATENDIMENTO_INTERNACAO, -'" & Intervalor_Dias_a_Recuar & "') AND pi.DT_ATENDIMENTO_INTERNACAO
+-- )
+-- SELECT
+--     MES_ANO_INTERNACAO,
+--     DT_COMPETENCIA,
+--     CD_EXA_RX,
+--     DS_EXA_RX,
+--     TP_ATENDIMENTO,
+--     QTD_INTERNADOS,
+--     QTD_PACIENTES,
+--     COUNT(DISTINCT CD_PED_RX) AS QTD_PEDIDOS_EXAME,
+--     COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) AS QTD_EXAMES_REALIZADOS
+-- FROM detalhes_consultas_e_exames
+-- GROUP BY MES_ANO_INTERNACAO, DT_COMPETENCIA, CD_EXA_RX, DS_EXA_RX, TP_ATENDIMENTO, QTD_INTERNADOS, QTD_PACIENTES
+-- ORDER BY MES_ANO_INTERNACAO, COUNT(DISTINCT CD_PED_RX) DESC , COUNT(DISTINCT CASE WHEN SN_REALIZADO = 'S' THEN CD_PED_RX END) DESC",
 
-// Chamada Oracle com a query final montada
-Fonte = Oracle.Database(
-    "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
-    [Query = Query]
-)
-in
-    Fonte
+-- // Chamada Oracle com a query final montada
+-- Fonte = Oracle.Database(
+--     "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--     [Query = Query]
+-- )
+-- in
+--     Fonte
+
+
 
 
 
@@ -642,6 +628,8 @@ FROM IDCE.RS_LAU_EXAME_PEDIDO
 WHERE DT_LAUDADO < DT_STUDY
 ;
 
+
+--- ###########################################################################################################################
 
 
 WITH main
@@ -842,6 +830,8 @@ SELECT * FROM treats --WHERE CD_PEDIDO_HIS = 309337
 -- in
 --     Fonte
 
+
+--- ###########################################################################################################################
 
 
 /*
@@ -1118,7 +1108,7 @@ ORDER BY
 
 
 
-
+--- ###########################################################################################################################
 
 
 -- QUERY FINAL P/ PAINEL
@@ -1371,3 +1361,267 @@ SELECT
 FROM resultado_unpivot
 ORDER BY MES_ANO, CD_HIS_EXECUTANTE, NM_EXAME, ORDEM_FAIXA
 ;
+
+
+
+-- let
+
+--     Intervalo_Meses_dos_Internados = Text.From(Intervalo_Meses_dos_Internados),
+--     Intervalor_Dias_a_Recuar = Text.From(Intervalor_Dias_a_Recuar),
+
+--     Query =
+--         "WITH main
+--     AS (
+--         SELECT
+--             idc.CD_PEDIDO_HIS,
+--             idc.CD_ATENDIMENTO_HIS,
+--             idc.CD_HIS_EXECUTANTE,
+--             idc.NM_MEDICO_EXECUTANTE,
+--             idc.ID_EXAME,
+--             idc.ID_EXAME_PEDIDO,
+--             idc.ID_PEDIDO_EXAME,
+--             idc.NM_PACIENTE,
+--             idc.NM_EXAME,
+--             idc.DT_PEDIDO,
+--             FIRST_VALUE( idc.DT_STUDY ) OVER( PARTITION BY idc.CD_ATENDIMENTO_HIS, TRUNC(idc.DT_PEDIDO), idc.ID_MEDICO ORDER BY idc.DT_PEDIDO ) AS DT_STUDY,
+--             -- idc.DT_STUDY,
+--             idc.CD_STATUS,
+--             idc.DT_LAUDADO,
+--             -- COALESCE(idc.DT_LAUDADO, lr.DT_LAUDO) AS DT_LAUDADO,
+--             idc.DT_ENTREGA
+--         FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+--         -- INNER JOIN DBAMV.PED_RX pr
+--         --     ON idc.CD_PEDIDO_HIS = pr.CD_PED_RX
+--         -- INNER JOIN DBAMV.LAUDO_RX lr
+--         --     ON idc.ID_EXAME_PEDIDO = lr.CD_LAUDO_INTEGRA
+--         WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -2) AND TRUNC(SYSDATE)
+--           AND idc.CD_STATUS IN('I', 'U', 'E')
+--           AND idc.DS_LAUDO_TXT IS NOT NULL
+--           AND idc.CD_HIS_EXECUTANTE IS NOT NULL
+--         --   AND idc.CD_ATENDIMENTO_HIS = 229694
+--         ORDER BY idc.CD_ATENDIMENTO_HIS
+-- ),
+-- source_duplicados_dt_study
+--     AS (
+--         SELECT
+--             idc.CD_PEDIDO_HIS,
+--             idc.ID_EXAME,
+--             idc.DT_STUDY,
+--             ROW_NUMBER() OVER (
+--                 PARTITION BY idc.CD_PEDIDO_HIS, idc.ID_EXAME
+--                 ORDER BY
+--                     CASE WHEN idc.DT_STUDY IS NOT NULL THEN 0 ELSE 1 END,
+--                     idc.DT_STUDY DESC
+--             ) AS rn
+--         FROM IDCE.EXAME_PEDIDO_MULTI_LOGIN idc
+--         WHERE idc.DT_PEDIDO BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -2) AND TRUNC(SYSDATE)
+--           AND idc.CD_STATUS IN('I', 'U', 'E')
+--         --   AND idc.CD_ATENDIMENTO_HIS = 229694
+-- ),
+-- source_filtro
+--     AS (
+--         SELECT
+--             CD_PEDIDO_HIS,
+--             ID_EXAME,
+--             DT_STUDY
+--         FROM source_duplicados_dt_study
+--         WHERE rn = 1
+-- ),
+-- treats
+--     AS (
+--         SELECT
+--             m.CD_PEDIDO_HIS,
+--             m.CD_ATENDIMENTO_HIS,
+--             m.ID_EXAME_PEDIDO,
+--             m.ID_PEDIDO_EXAME,
+--             m.CD_HIS_EXECUTANTE,
+--             m.NM_MEDICO_EXECUTANTE,
+--             m.CD_STATUS,
+--             m.NM_PACIENTE,
+--             m.NM_EXAME,
+--             m.DT_PEDIDO,
+--             TO_CHAR(m.DT_PEDIDO, 'MMYYYY') AS MES_ANO,
+--             m.DT_STUDY,
+--             m.DT_LAUDADO,
+--             m.DT_ENTREGA,
+--         -- TEMPO - PEDIDO ATE REALIZACAO
+--           (m.DT_STUDY - m.DT_PEDIDO) * 24 AS HORAS_PEDIDO_REALIZACAO,
+
+--         -- TEMPO - REALIZACAO ATE LAUDO
+--           (m.DT_LAUDADO - m.DT_STUDY) * 24 AS HORAS_REALIZACAO_LAUDO,
+
+--         -- TEMPO - LAUDO ATE CONDUTA (ENTREGA)
+--           (m.DT_ENTREGA - m.DT_LAUDADO) * 24 AS HORAS_LAUDO_CONDUTA,
+
+--         -- TEMPO TOTAL - PEDIDO ATE ENTREGA
+--           (COALESCE(m.DT_ENTREGA, m.DT_LAUDADO) - m.DT_PEDIDO) * 24 AS HORAS_TOTAL_FLUXO
+--         FROM main m
+--         INNER JOIN source_filtro sf
+--             ON m.CD_PEDIDO_HIS = sf.CD_PEDIDO_HIS AND m.ID_EXAME = sf.ID_EXAME
+-- ),
+-- agg_por_tempo_medico_exame
+--     AS (
+--         SELECT
+--             CD_HIS_EXECUTANTE,
+--             NM_MEDICO_EXECUTANTE,
+--             NM_EXAME,
+--             CD_STATUS,
+--             MES_ANO,
+
+--             CASE
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 1 THEN '< 1 hora'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 2 THEN '1-2 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 4 THEN '2-4 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 8 THEN '4-8 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 12 THEN '8-12 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 24 THEN '12-24 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 48 THEN '1-2 dias'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 72 THEN '2-3 dias'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 168 THEN '3-7 dias'
+--                 ELSE '> 7 dias'
+--             END AS FAIXA_TEMPO_PEDIDO_REALIZACAO,
+
+--             CASE
+--                 WHEN HORAS_REALIZACAO_LAUDO < 1 THEN '< 1 hora'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 2 THEN '1-2 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 4 THEN '2-4 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 8 THEN '4-8 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 12 THEN '8-12 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 24 THEN '12-24 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 48 THEN '1-2 dias'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 72 THEN '2-3 dias'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 168 THEN '3-7 dias'
+--                 ELSE '> 7 dias'
+--             END AS FAIXA_TEMPO_REALIZACAO_LAUDO,
+
+--             CASE
+--                 WHEN HORAS_LAUDO_CONDUTA < 1 THEN '< 1 hora'
+--                 WHEN HORAS_LAUDO_CONDUTA < 2 THEN '1-2 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 4 THEN '2-4 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 8 THEN '4-8 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 12 THEN '8-12 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 24 THEN '12-24 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 48 THEN '1-2 dias'
+--                 WHEN HORAS_LAUDO_CONDUTA < 72 THEN '2-3 dias'
+--                 WHEN HORAS_LAUDO_CONDUTA < 168 THEN '3-7 dias'
+--                 ELSE '> 7 dias'
+--             END AS FAIXA_TEMPO_LAUDO_CONDUTA,
+
+--             COUNT(*) AS QTD_EXAMES
+--         FROM treats
+--         WHERE HORAS_PEDIDO_REALIZACAO IS NOT NULL
+--         GROUP BY
+--             CD_HIS_EXECUTANTE,
+--             NM_MEDICO_EXECUTANTE,
+--             NM_EXAME,
+--             CD_STATUS,
+--             MES_ANO,
+
+--             CASE
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 1 THEN '< 1 hora'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 2 THEN '1-2 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 4 THEN '2-4 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 8 THEN '4-8 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 12 THEN '8-12 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 24 THEN '12-24 horas'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 48 THEN '1-2 dias'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 72 THEN '2-3 dias'
+--                 WHEN HORAS_PEDIDO_REALIZACAO < 168 THEN '3-7 dias'
+--                 ELSE '> 7 dias'
+--             END,
+
+--             CASE
+--                 WHEN HORAS_REALIZACAO_LAUDO < 1 THEN '< 1 hora'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 2 THEN '1-2 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 4 THEN '2-4 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 8 THEN '4-8 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 12 THEN '8-12 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 24 THEN '12-24 horas'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 48 THEN '1-2 dias'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 72 THEN '2-3 dias'
+--                 WHEN HORAS_REALIZACAO_LAUDO < 168 THEN '3-7 dias'
+--                 ELSE '> 7 dias'
+--             END,
+
+--             CASE
+--                 WHEN HORAS_LAUDO_CONDUTA < 1 THEN '< 1 hora'
+--                 WHEN HORAS_LAUDO_CONDUTA < 2 THEN '1-2 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 4 THEN '2-4 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 8 THEN '4-8 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 12 THEN '8-12 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 24 THEN '12-24 horas'
+--                 WHEN HORAS_LAUDO_CONDUTA < 48 THEN '1-2 dias'
+--                 WHEN HORAS_LAUDO_CONDUTA < 72 THEN '2-3 dias'
+--                 WHEN HORAS_LAUDO_CONDUTA < 168 THEN '3-7 dias'
+--                 ELSE '> 7 dias'
+--             END
+-- ),
+-- resultado_unpivot
+--     AS (
+--         SELECT
+--             CD_HIS_EXECUTANTE,
+--             NM_MEDICO_EXECUTANTE,
+--             NM_EXAME,
+--             CD_STATUS,
+--             MES_ANO,
+--             'PEDIDO_REALIZACAO' AS FAIXA,
+--             FAIXA_TEMPO_PEDIDO_REALIZACAO AS TEMPO,
+--             1 AS ORDEM_FAIXA,
+--             FAIXA_TEMPO_PEDIDO_REALIZACAO AS FAIXA_TEMPO,
+--             QTD_EXAMES
+--         FROM agg_por_tempo_medico_exame
+--         WHERE FAIXA_TEMPO_PEDIDO_REALIZACAO IS NOT NULL
+
+--         UNION ALL
+
+--         SELECT
+--             CD_HIS_EXECUTANTE,
+--             NM_MEDICO_EXECUTANTE,
+--             NM_EXAME,
+--             CD_STATUS,
+--             MES_ANO,
+--             'REALIZACAO_LAUDO' AS FAIXA,
+--             FAIXA_TEMPO_REALIZACAO_LAUDO AS TEMPO,
+--             2 AS ORDEM_FAIXA,
+--             FAIXA_TEMPO_REALIZACAO_LAUDO AS FAIXA_TEMPO,
+--             QTD_EXAMES
+--         FROM agg_por_tempo_medico_exame
+--         WHERE FAIXA_TEMPO_REALIZACAO_LAUDO IS NOT NULL
+
+--         UNION ALL
+
+--         SELECT
+--             CD_HIS_EXECUTANTE,
+--             NM_MEDICO_EXECUTANTE,
+--             NM_EXAME,
+--             CD_STATUS,
+--             MES_ANO,
+--             'LAUDO_CONDUTA' AS FAIXA,
+--             FAIXA_TEMPO_LAUDO_CONDUTA AS TEMPO,
+--             3 AS ORDEM_FAIXA,
+--             FAIXA_TEMPO_LAUDO_CONDUTA AS FAIXA_TEMPO,
+--             QTD_EXAMES
+--         FROM agg_por_tempo_medico_exame
+--         WHERE FAIXA_TEMPO_LAUDO_CONDUTA IS NOT NULL
+-- )
+-- SELECT
+--     MES_ANO,
+--     CD_HIS_EXECUTANTE,
+--     NM_MEDICO_EXECUTANTE,
+--     NM_EXAME,
+--     CD_STATUS,
+--     ORDEM_FAIXA,
+--     FAIXA,
+--     TEMPO,
+--     FAIXA_TEMPO,
+--     QTD_EXAMES
+-- FROM resultado_unpivot
+-- ORDER BY MES_ANO, CD_HIS_EXECUTANTE, NM_EXAME, ORDEM_FAIXA",
+
+-- // Chamada Oracle com a query final montada
+-- Fonte = Oracle.Database(
+--     "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--     [Query = Query]
+-- )
+-- in
+--     Fonte
