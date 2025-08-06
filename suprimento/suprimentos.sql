@@ -1053,25 +1053,25 @@ WITH CONSUMO_FINAL_POR_MES
             pr.DS_PRODUTO,
 
             CASE sp.TP_SITUACAO
-                WHEN 'P' THEN 'Pedido'
-                WHEN 'C' THEN 'Confirmada'
-                WHEN 'S' THEN 'Suspensa'
-                WHEN 'A' THEN 'Cancelada'
-                ELSE 'Desconhecida'
+                WHEN 'P' THEN 'PEDIDO'
+                WHEN 'C' THEN 'CONFIRMADO PARCIALMENTE'
+                WHEN 'S' THEN 'CONFIRMADO'
+                WHEN 'A' THEN 'CANCELADA'
+                ELSE 'DESCONHECIDO'
             END AS TP_SITUACAO,
 
             CASE sp.TP_SOLSAI_PRO
-                WHEN 'C' THEN 'Consumo'
-                WHEN 'D' THEN 'Devolução'
-                WHEN 'E' THEN 'Transferência entre Empresas'
-                WHEN 'P' THEN 'Prescrição / Padrão'
-                WHEN 'R' THEN 'Reposição / Romaneio'
-                WHEN 'T' THEN 'Transferência entre Estoques'
-                ELSE 'Desconhecido'
+                WHEN 'C' THEN 'DEVOLUCAO PACIENTE'
+                WHEN 'D' THEN 'DEVOLUCAO SETOR'
+                WHEN 'E' THEN 'PEDIDO ESTOQUE'
+                WHEN 'P' THEN 'PEDIDO PACIENTE'
+                WHEN 'T' THEN 'TRANSFERENCIA ENTRE EMPRESAS'
+                ELSE 'DESCONHECIDO'
             END AS DS_TP_SOLSAI_PRO,
 
             ip.QT_ATENDIDA,
-            DBAMV.VERIF_VL_FATOR_PROD(pR.CD_PRODUTO, 'G') AS FATOR_CONVERSAO,
+
+            DBAMV.VERIF_VL_FATOR_PROD(pr.CD_PRODUTO, 'G') AS FATOR_CONVERSAO,
 
             CASE
                 WHEN sp.TP_SOLSAI_PRO = 'C' THEN
@@ -1080,6 +1080,7 @@ WITH CONSUMO_FINAL_POR_MES
                     DBAMV.fnc_mges_custo_medio_produto(pr.CD_PRODUTO, sp.HR_SOLSAI_PRO) * -1
                 ELSE 0
             END AS VL_CUSTO_MEDIO
+
         FROM
             DBAMV.ITSOLSAI_PRO ip
         JOIN
@@ -1090,7 +1091,7 @@ WITH CONSUMO_FINAL_POR_MES
             DBAMV.SETOR st ON sp.CD_SETOR = st.CD_SETOR
         WHERE
             sp.DT_SOLSAI_PRO IS NOT NULL
-            AND sp.TP_SOLSAI_PRO IN ( 'C', 'D') -- VÊ ESSES TIPOS
+            -- AND sp.TP_SOLSAI_PRO IN ( 'C', 'D')
 )
 SELECT
     CD_SETOR,
@@ -1098,12 +1099,15 @@ SELECT
     MES_ANO,
     CD_PRODUTO,
     DS_PRODUTO,
+
     SUM(QT_ATENDIDA * FATOR_CONVERSAO) AS QT_QUANTIDADE,
+
     ROUND(
         SUM((QT_ATENDIDA * FATOR_CONVERSAO) * VL_CUSTO_MEDIO) /
         NULLIF(SUM(QT_ATENDIDA * FATOR_CONVERSAO), 0),
         3
     ) AS VL_CUSTO_MEDIO,
+
     ROUND(
         ROUND(SUM(QT_ATENDIDA * FATOR_CONVERSAO), 3) *
         ROUND(
@@ -1111,7 +1115,9 @@ SELECT
             / NULLIF(SUM(QT_ATENDIDA * FATOR_CONVERSAO), 0),
             3
         ),
-    3) AS VL_TOTAL_CONSUMIDO
+        3
+    ) AS VL_TOTAL_CONSUMIDO
+
 FROM CONSUMO_FINAL_POR_MES
 WHERE MES_ANO = '2025-07'
 GROUP BY
@@ -1122,3 +1128,22 @@ GROUP BY
     DS_PRODUTO
 ORDER BY CD_SETOR, MES_ANO, CD_PRODUTO
 ;
+
+
+
+SELECT
+    sp.*
+FROM DBAMV.SOLSAI_PRO sp
+WHERE sp.CD_SOLSAI_PRO = 469744
+;
+
+
+SELECT
+    sp.TP_SOLSAI_PRO,
+    count(*) AS FREQUENCIA
+FROM DBAMV.SOLSAI_PRO sp
+WHERE TO_CHAR(sp.DT_SOLSAI_PRO, 'MMYYYY') IN('012025', '022025', '032025', '042025', '052025', '062025', '072025')
+GROUP BY sp.TP_SOLSAI_PRO
+ORDER BY count(*) DESC
+;
+
