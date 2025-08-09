@@ -73,8 +73,13 @@ WITH OBITOS
             a.CD_ATENDIMENTO ,
             a.TP_ATENDIMENTO ,
             a.SN_OBITO ,
-            s.NM_SETOR AS LOCAL,
+            CASE
+                WHEN s.NM_SETOR LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE s.NM_SETOR
+            END AS LOCAL,
             a.DT_ALTA ,
+            MAX(a.DT_ALTA) OVER( PARTITION BY CASE WHEN s.NM_SETOR LIKE '%POSTO%' THEN 'POSTO' ELSE s.NM_SETOR END, EXTRACT(YEAR FROM a.DT_ALTA) ) AS ULTIMO_OBITO,
             EXTRACT(MONTH FROM a.DT_ALTA) AS MES ,
             EXTRACT(YEAR FROM a.DT_ALTA) AS ANO ,
             ma.TP_MOT_ALTA
@@ -82,6 +87,15 @@ WITH OBITOS
         LEFT JOIN SETOR s ON s.CD_SETOR = a.CD_SETOR_OBITO
         LEFT JOIN DBAMV.MOT_ALT ma ON ma.CD_MOT_ALT = a.CD_MOT_ALT
         WHERE EXTRACT(YEAR FROM a.DT_ALTA) = EXTRACT(YEAR FROM SYSDATE) AND a.SN_OBITO = 'S'
+        ORDER BY
+            CASE
+                WHEN s.NM_SETOR LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE s.NM_SETOR
+            END,
+            EXTRACT(MONTH FROM a.DT_ALTA),
+            EXTRACT(YEAR FROM a.DT_ALTA),
+            a.DT_ALTA
 ),
 MOVIMENTACAO_UNIDADES
     AS (
@@ -130,7 +144,8 @@ SELECT
         WHEN o.MES = 10 THEN 'Out'
         WHEN o.MES = 11 THEN 'Nov'
         WHEN o.MES = 11 THEN 'Dez'
-    END AS MES,
+    END AS NOME_MES,
+    o.ULTIMO_OBITO,
     o.ANO,
     o.LOCAL,
     COUNT(o.CD_ATENDIMENTO) AS QTD_OBITOS,
@@ -153,6 +168,7 @@ GROUP BY
         WHEN o.MES = 11 THEN 'Nov'
         WHEN o.MES = 11 THEN 'Dez'
     END,
+    o.ULTIMO_OBITO,
     o.ANO,
     m.SAI_TRANSFPARA,
     o.LOCAL
