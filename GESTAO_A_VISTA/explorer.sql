@@ -3,12 +3,14 @@
 /* ************************************************************************************************************************* */
 
 
--- 9377 - AJUSTAR PAINEL HPC-DIRETORIA-Altas e Óbitos QUERY CONSULTA OBTITOS
--- QUERY FINAL AJUSTADA
---  a.SN_OBITO    = 'S'  -> RETORNA 'TP_ATENDIMENTO' IN('I', 'U')
--- ma.TP_MOT_ALTA = 'O'  -> RETORNA APENAS 'TP_ATENDIMENTO' = 'I'
---  a.DT_ALTA            -> CAMPO QUE FILTRA OS OBITOS CORRETAMENTE
--- M_CONTR_DECLARA_OBITO -> TELA DE VALIDACAO
+
+-- QUERY OBTITOS - PAINEL HPC-DIRETORIA-Altas e Óbitos
+-- AO FILTRAR OS CAMPOS:
+--      - a.SN_OBITO     = 'S'  -> RETORNA 'TP_ATENDIMENTO' IN('I', 'U')
+--      - ma.TP_MOT_ALTA = 'O'  -> RETORNA APENAS 'TP_ATENDIMENTO' = 'I'
+-- AO FILTRAR O CAMPO a.DT_ALTA:
+--      - A QUANTIDADE DE PACIENTES MOVIMENTADOS NA QUERY BATE COM O
+--      - RELATORIO 'M_CONTR_DECLARA_OBITO'
 SELECT
 	a.CD_ATENDIMENTO Cod_Atend,
 	a.CD_PACIENTE Cod_Paciente,
@@ -151,39 +153,12 @@ ORDER BY
 ;
 
 /* ******************************************************************************************** */
-
- --- ENTRADAS EM TRANSFERENCIA
-SELECT
-    EXTRACT(MONTH FROM mov_int.DT_MOV_INT) AS MES,
-    EXTRACT(YEAR FROM mov_int.DT_MOV_INT) AS ANO,
-    unid_int.cd_unid_int       AS cd_unid_int,
-    unid_int.ds_unid_int       AS ds_unidade,
-    COUNT(*)                   AS ent_transf
-FROM
-dbamv.mov_int
-JOIN dbamv.leito ON mov_int.cd_leito = leito.cd_leito
-JOIN dbamv.leito leito1 ON mov_int.cd_leito_anterior = leito1.cd_leito
-JOIN dbamv.unid_int unid_int ON leito.cd_unid_int = unid_int.cd_unid_int
-JOIN dbamv.unid_int unid_int1 ON leito1.cd_unid_int = unid_int1.cd_unid_int
-JOIN dbamv.atendime ON atendime.cd_atendimento = mov_int.cd_atendimento
-WHERE
-    mov_int.tp_mov = 'O'
-    AND unid_int.cd_unid_int <> unid_int1.cd_unid_int
-    AND atendime.tp_atendimento IN ('I')
-    AND EXTRACT(YEAR FROM mov_int.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE)
-GROUP BY
-    unid_int.cd_unid_int,
-    unid_int.ds_unid_int,
-    EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
-    EXTRACT(YEAR FROM mov_int.DT_MOV_INT)
-ORDER BY
-    EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
-    unid_int.cd_unid_int
- ;
+/* ********************************** QUERY's DE MOVIMENTACAO ********************************* */
 
 
--- SAIDA EM TRANSFERENCIA
--- RELATORIO 'R_MOV_UNID_INT'
+
+-- SAIDA TRANSFERENCIA DAS UNIDADES
+-- VALIDADO C/ RELATORIO 'R_MOV_UNID_INT'
 SELECT
     EXTRACT(MONTH FROM mi.DT_MOV_INT) AS MES,
     EXTRACT(YEAR FROM mi.DT_MOV_INT) AS ANO,
@@ -213,7 +188,38 @@ ORDER BY
 ;
 
 
- --- SAIDAS COM OBITOS
+
+ --- ENTRADAS TRANSFERENCIA DAS UNIDADES
+SELECT
+    EXTRACT(MONTH FROM mov_int.DT_MOV_INT) AS MES,
+    EXTRACT(YEAR FROM mov_int.DT_MOV_INT) AS ANO,
+    unid_int.cd_unid_int       AS cd_unid_int,
+    unid_int.ds_unid_int       AS ds_unidade,
+    COUNT(*)                   AS ent_transf
+FROM
+dbamv.mov_int
+JOIN dbamv.leito ON mov_int.cd_leito = leito.cd_leito
+JOIN dbamv.leito leito1 ON mov_int.cd_leito_anterior = leito1.cd_leito
+JOIN dbamv.unid_int unid_int ON leito.cd_unid_int = unid_int.cd_unid_int
+JOIN dbamv.unid_int unid_int1 ON leito1.cd_unid_int = unid_int1.cd_unid_int
+JOIN dbamv.atendime ON atendime.cd_atendimento = mov_int.cd_atendimento
+WHERE
+    mov_int.tp_mov = 'O'
+    AND unid_int.cd_unid_int <> unid_int1.cd_unid_int
+    AND atendime.tp_atendimento IN ('I')
+    AND EXTRACT(YEAR FROM mov_int.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE)
+GROUP BY
+    unid_int.cd_unid_int,
+    unid_int.ds_unid_int,
+    EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
+    EXTRACT(YEAR FROM mov_int.DT_MOV_INT)
+ORDER BY
+    EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
+    unid_int.cd_unid_int
+ ;
+
+
+ --- SAIDAS COM OBITOS DAS UNIDADES
 SELECT
     unid_int.cd_unid_int        AS cd_unid_int,
     unid_int.ds_unid_int        AS ds_unidade,
@@ -234,3 +240,70 @@ GROUP BY
  ;
 
 /* ******************************************************************************************** */
+
+
+
+PACIENTE_DIA
+    AS (
+        SELECT
+            CASE
+                WHEN ai.CD_LEITO = 1 THEN 'POSTO 1'
+                WHEN ai.CD_LEITO = 3 THEN 'UTI 1'
+                WHEN ai.CD_LEITO = 4 THEN 'UTI 2'
+                WHEN ai.CD_LEITO = 5 THEN 'UTI 3'
+                WHEN ai.CD_LEITO = 6 THEN 'UTI 4'
+            END AS LOCAL,
+
+            EXTRACT(MONTH FROM ai.DT_ALTA) AS MES ,
+            EXTRACT(YEAR FROM ai.DT_ALTA) AS ANO ,
+            SUM(CASE WHEN TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN 1 ELSE TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) END ) AS PACIENTE_DIA
+        FROM DBAMV.ATENDIME ai
+
+        WHERE EXTRACT(YEAR FROM ai.DT_ALTA) = EXTRACT(YEAR FROM SYSDATE) AND ai.TP_ATENDIMENTO IN( 'I', 'U')
+
+        GROUP BY
+            CASE
+                WHEN ai.CD_LEITO = 1 THEN 'POSTO 1'
+                WHEN ai.CD_LEITO = 3 THEN 'UTI 1'
+                WHEN ai.CD_LEITO = 4 THEN 'UTI 2'
+                WHEN ai.CD_LEITO = 5 THEN 'UTI 3'
+                WHEN ai.CD_LEITO = 6 THEN 'UTI 4'
+            END ,
+            EXTRACT(MONTH FROM ai.DT_ALTA) ,
+            EXTRACT(YEAR FROM ai.DT_ALTA)
+        ORDER BY
+            CASE
+                WHEN ai.CD_LEITO = 1 THEN 'POSTO 1'
+                WHEN ai.CD_LEITO = 3 THEN 'UTI 1'
+                WHEN ai.CD_LEITO = 4 THEN 'UTI 2'
+                WHEN ai.CD_LEITO = 5 THEN 'UTI 3'
+                WHEN ai.CD_LEITO = 6 THEN 'UTI 4'
+            END ,
+            EXTRACT(MONTH FROM ai.DT_ALTA) ,
+            EXTRACT(YEAR FROM ai.DT_ALTA)
+
+)
+;
+
+
+
+
+
+WITH CONTEXTO
+    AS (
+        SELECT DISTINCT
+            ai.CD_PACIENTE,
+            ai.CD_ATENDIMENTO,
+            ai.DT_ATENDIMENTO,
+            ai.DT_ALTA,
+            ( ai.DT_ALTA - ai.DT_ATENDIMENTO ),
+            CASE WHEN ( ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN 1 ELSE ( ai.DT_ALTA - ai.DT_ATENDIMENTO ) END AS PACIENTE_DIA,
+            EXTRACT(MONTH FROM ai.DT_ALTA) AS MES ,
+            EXTRACT(YEAR FROM ai.DT_ALTA) AS ANO ,
+            TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO,
+            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') ) AS QTD_INTERNADOS
+        FROM DBAMV.ATENDIME ai
+        WHERE ai.TP_ATENDIMENTO = 'I'
+)
+SELECT * FROM CONTEXTO WHERE MES_ANO_INTERNACAO = '012025'
+;
