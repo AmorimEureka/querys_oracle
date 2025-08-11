@@ -40,6 +40,7 @@ WHERE EXTRACT(YEAR FROM a.DT_ALTA) = 2025 AND a.SN_OBITO = 'S';
 
 
 -- QUERY PARA DASHBOARD KPI GESTAO A VISTA
+-- TAXA MORTALIDADE
 WITH OBITOS
     AS (
         SELECT
@@ -240,70 +241,143 @@ GROUP BY
  ;
 
 /* ******************************************************************************************** */
+/* ******************************************************************************************** */
 
 
-
-PACIENTE_DIA
+-- QUERY PARA DASHBOARD KPI GESTAO A VISTA
+-- TEMPO MEDIO PERMANENCIA UTI
+WITH PACIENTE_DIA
     AS (
         SELECT
-            CASE
-                WHEN ai.CD_LEITO = 1 THEN 'POSTO 1'
-                WHEN ai.CD_LEITO = 3 THEN 'UTI 1'
-                WHEN ai.CD_LEITO = 4 THEN 'UTI 2'
-                WHEN ai.CD_LEITO = 5 THEN 'UTI 3'
-                WHEN ai.CD_LEITO = 6 THEN 'UTI 4'
-            END AS LOCAL,
-
             EXTRACT(MONTH FROM ai.DT_ALTA) AS MES ,
             EXTRACT(YEAR FROM ai.DT_ALTA) AS ANO ,
-            SUM(CASE WHEN TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN 1 ELSE TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) END ) AS PACIENTE_DIA
+            CASE
+                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE ui.DS_UNID_INT
+            END AS LOCAL,
+            SUM( TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) ) AS QTD_PACIENTE_DIA
+            -- SUM(CASE WHEN TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN 1 ELSE TRUNC( ai.DT_ALTA - ai.DT_ATENDIMENTO ) END ) AS QTD_PACIENTE_DIA
+
         FROM DBAMV.ATENDIME ai
+        JOIN DBAMV.LEITO l ON ai.CD_LEITO = l.CD_LEITO
+        JOIN DBAMV.UNID_INT ui ON l.CD_UNID_INT = ui.CD_UNID_INT
+        LEFT JOIN DBAMV.PACIENTE p ON ai.CD_PACIENTE = p.CD_PACIENTE
 
-        WHERE EXTRACT(YEAR FROM ai.DT_ALTA) = EXTRACT(YEAR FROM SYSDATE) AND ai.TP_ATENDIMENTO IN( 'I', 'U')
-
+        WHERE EXTRACT(YEAR FROM ai.DT_ALTA) = EXTRACT(YEAR FROM SYSDATE) AND
+              ai.TP_ATENDIMENTO IN( 'I', 'U') AND
+              p.NM_PACIENTE NOT LIKE '%TEST%'
         GROUP BY
             CASE
-                WHEN ai.CD_LEITO = 1 THEN 'POSTO 1'
-                WHEN ai.CD_LEITO = 3 THEN 'UTI 1'
-                WHEN ai.CD_LEITO = 4 THEN 'UTI 2'
-                WHEN ai.CD_LEITO = 5 THEN 'UTI 3'
-                WHEN ai.CD_LEITO = 6 THEN 'UTI 4'
-            END ,
+                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE ui.DS_UNID_INT
+            END,
             EXTRACT(MONTH FROM ai.DT_ALTA) ,
             EXTRACT(YEAR FROM ai.DT_ALTA)
         ORDER BY
-            CASE
-                WHEN ai.CD_LEITO = 1 THEN 'POSTO 1'
-                WHEN ai.CD_LEITO = 3 THEN 'UTI 1'
-                WHEN ai.CD_LEITO = 4 THEN 'UTI 2'
-                WHEN ai.CD_LEITO = 5 THEN 'UTI 3'
-                WHEN ai.CD_LEITO = 6 THEN 'UTI 4'
-            END ,
             EXTRACT(MONTH FROM ai.DT_ALTA) ,
             EXTRACT(YEAR FROM ai.DT_ALTA)
 
-)
-;
-
-
-
-
-
-WITH CONTEXTO
+),
+PACIENTE_ALTAS
     AS (
-        SELECT DISTINCT
-            ai.CD_PACIENTE,
-            ai.CD_ATENDIMENTO,
-            ai.DT_ATENDIMENTO,
-            ai.DT_ALTA,
-            ( ai.DT_ALTA - ai.DT_ATENDIMENTO ),
-            CASE WHEN ( ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN 1 ELSE ( ai.DT_ALTA - ai.DT_ATENDIMENTO ) END AS PACIENTE_DIA,
-            EXTRACT(MONTH FROM ai.DT_ALTA) AS MES ,
-            EXTRACT(YEAR FROM ai.DT_ALTA) AS ANO ,
-            TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') AS MES_ANO_INTERNACAO,
-            COUNT(ai.CD_ATENDIMENTO) OVER(PARTITION BY TO_CHAR(ai.DT_ATENDIMENTO, 'MMYYYY') ) AS QTD_INTERNADOS
+        SELECT
+
+            EXTRACT(MONTH FROM ai.DT_ALTA) AS MES,
+            EXTRACT(YEAR FROM ai.DT_ALTA) AS ANO,
+            CASE
+                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE ui.DS_UNID_INT
+            END AS LOCAL,
+            COUNT(*) AS QTD_ALTAS
+
         FROM DBAMV.ATENDIME ai
-        WHERE ai.TP_ATENDIMENTO = 'I'
+        JOIN DBAMV.LEITO l ON ai.CD_LEITO = l.CD_LEITO
+        JOIN DBAMV.UNID_INT ui ON l.CD_UNID_INT = ui.CD_UNID_INT
+        LEFT JOIN DBAMV.PACIENTE p ON ai.CD_PACIENTE = p.CD_PACIENTE
+        WHERE ai.DT_ALTA IS NOT NULL AND
+              EXTRACT(YEAR FROM ai.dt_alta) = EXTRACT(YEAR FROM SYSDATE) AND
+              p.NM_PACIENTE NOT LIKE '%TEST%'
+        GROUP BY
+            EXTRACT(MONTH FROM ai.DT_ALTA),
+            EXTRACT(YEAR FROM ai.DT_ALTA),
+            CASE
+                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE ui.DS_UNID_INT
+            END
+        ORDER BY EXTRACT(MONTH FROM ai.DT_ALTA)
+),
+MOVIMENTACAO_INTERNAS
+    AS (
+        SELECT
+            EXTRACT(MONTH FROM mi.DT_MOV_INT) AS MES,
+            EXTRACT(YEAR FROM mi.DT_MOV_INT) AS ANO,
+            CASE
+                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE ui.DS_UNID_INT
+            END AS LOCAL,
+            COUNT(*)             AS SAI_TRANSFPARA
+
+        FROM
+        DBAMV.MOV_INT mi
+        JOIN DBAMV.LEITO l ON mi.CD_LEITO_ANTERIOR = l.CD_LEITO
+        JOIN DBAMV.LEITO l1 ON mi.CD_LEITO = l1.CD_LEITO
+        JOIN DBAMV.UNID_INT ui ON l.CD_UNID_INT = ui.CD_UNID_INT
+        JOIN DBAMV.UNID_INT ui1 ON l1.CD_UNID_INT = ui1.CD_UNID_INT
+        JOIN DBAMV.ATENDIME a ON a.CD_ATENDIMENTO = mi.CD_ATENDIMENTO
+        LEFT JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
+        WHERE
+            ui.CD_UNID_INT <> ui1.CD_UNID_INT AND
+            a.TP_ATENDIMENTO IN ('I') AND
+            EXTRACT(YEAR FROM mi.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE) AND
+            p.NM_PACIENTE NOT LIKE '%TEST%'
+        GROUP BY
+            CASE
+                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE ui.DS_UNID_INT
+            END,
+            EXTRACT(MONTH FROM mi.DT_MOV_INT),
+            EXTRACT(YEAR FROM mi.DT_MOV_INT)
+
+),
+TREATS
+    AS (
+        SELECT
+            pd.MES,
+            pd.ANO,
+            pd.LOCAL,
+            (pa.QTD_ALTAS + SAI_TRANSFPARA ) AS QTD_PACIENTE_DIA,
+            pa.QTD_ALTAS,
+            TRUNC( (pa.QTD_ALTAS + SAI_TRANSFPARA ) / pa.QTD_ALTAS) AS TX
+
+        FROM PACIENTE_DIA pd
+        JOIN PACIENTE_ALTAS pa ON pd.MES = pa.MES AND pd.ANO = pa.ANO AND pd.LOCAL = pa.LOCAL
+        JOIN MOVIMENTACAO_INTERNAS mi ON pd.MES = mi.MES AND pd.ANO = mi.ANO AND pd.LOCAL = mi.LOCAL
 )
-SELECT * FROM CONTEXTO WHERE MES_ANO_INTERNACAO = '012025'
+SELECT * FROM TREATS ORDER BY MES, LOCAL
 ;
+
+
+
+/* ******************************************************************************************** */
+/* ******************************************************************************************** */
+
+-- OBITO COM TP_ATENDIMENTO = 'A'
+SELECT
+    *
+    -- TP_ATENDIMENTO,
+    -- CD_SETOR_OBITO,
+    -- COUNT(*)
+FROM DBAMV.ATENDIME
+WHERE TP_ATENDIMENTO = 'A' AND CD_SETOR_OBITO = 56
+-- GROUP BY TP_ATENDIMENTO, CD_SETOR_OBITO
+;
+
+
+/* ******************************************************************************************** */
+/* ******************************************************************************************** */
