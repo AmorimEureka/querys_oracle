@@ -1,41 +1,47 @@
 -- PROCEDIMENTO ALTERAÇÃO DE ENTRADA
 
 DECLARE
-  vNR_DOCUMENTO_NOVO    VARCHAR2(20);
-  vNR_DOCUMENTO_ANTIGO  VARCHAR2(20);
-  vCD_FORNECEDOR        NUMBER;
-  vDT_VENCIMENTO        VARCHAR2(10);
+    v_total_novo   NUMBER;
+    v_total_antigo NUMBER;
+    v_cd_forn      NUMBER;
+    v_nr_doc       VARCHAR2(50);
+    v_dt_venc      DATE;
 BEGIN
-  vNR_DOCUMENTO_NOVO    := '148020';
-  vNR_DOCUMENTO_ANTIGO  := '18020'  ;
-  vCD_FORNECEDOR        := 830      ;
-  vDT_VENCIMENTO        := '02/06/2025';
+
+    v_total_novo   := :VL_TOTAL_NOVO;
+    v_total_antigo := :VL_TOTAL_ANTIGO;
+    v_cd_forn      := :CD_FORNECEDOR;
+    v_nr_doc       := :NR_DOCUMENTO_ANTIGO;
+    v_dt_venc      := TO_DATE( :DT_VENCIMENTO , 'DD/MM/YYYY');
 
   -- Desabilitar a trigger
   EXECUTE IMMEDIATE 'ALTER TRIGGER DBAMV.TRG_DUPLICATA_COTA DISABLE';
 
-  -- Alteração na Tabela de ENTRADA pro estoque
+  -- Entrada no estoque
   UPDATE dbamv.ent_pro
-  SET nr_documento = vNR_DOCUMENTO_NOVO
-  WHERE cd_fornecedor =  vCD_FORNECEDOR AND nr_documento = vNR_DOCUMENTO_ANTIGO;
+     SET VL_TOTAL = v_total_novo
+   WHERE cd_fornecedor = v_cd_forn
+     AND nr_documento  = v_nr_doc
+     AND VL_TOTAL      = v_total_antigo;
 
-  -- Alteração na Tabela de ENTRADAS pro Contas A Pagar
+  -- Entrada no contas a pagar
   UPDATE dbamv.documento_entrada
-  SET nr_documento = vNR_DOCUMENTO_NOVO
-  WHERE  cd_fornecedor = vCD_FORNECEDOR AND nr_documento = vNR_DOCUMENTO_ANTIGO;
+     SET VL_TOTAL = v_total_novo
+   WHERE cd_fornecedor = v_cd_forn
+     AND nr_documento  = v_nr_doc
+     AND VL_TOTAL      = v_total_antigo;
 
-  -- Alteração na Tabela de DUPLICATAS
+  -- Duplicata
   UPDATE dbamv.duplicata
-  SET nr_documento = vNR_DOCUMENTO_NOVO
-  WHERE cd_fornecedor = vCD_FORNECEDOR
-    AND nr_documento = vNR_DOCUMENTO_ANTIGO
-    AND TRUNC(dt_vencimento) = TO_DATE(vDT_VENCIMENTO, 'dd/mm/yyyy');
+     SET VL_PARCELA = v_total_novo
+   WHERE cd_fornecedor       = v_cd_forn
+     AND nr_documento        = v_nr_doc
+     AND TRUNC(dt_vencimento) = TRUNC(v_dt_venc);
 
-  COMMIT;  -- confirma a alteração
+  COMMIT;
 
   -- Reabilitar a trigger
   EXECUTE IMMEDIATE 'ALTER TRIGGER DBAMV.TRG_DUPLICATA_COTA ENABLE';
-
 EXCEPTION
   WHEN OTHERS THEN
     -- Se ocorrer erro, reabilitar a trigger para não ficar desabilitada
