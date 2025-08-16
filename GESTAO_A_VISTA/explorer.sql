@@ -152,6 +152,23 @@ ORDER BY
     o.LOCAL
 ;
 
+
+-- ---------------------------------------------------------------------------------------------
+
+-- OBITO COM TP_ATENDIMENTO = 'A'
+SELECT
+    *
+    -- TP_ATENDIMENTO,
+    -- CD_SETOR_OBITO,
+    -- COUNT(*)
+FROM DBAMV.ATENDIME
+WHERE TP_ATENDIMENTO = 'A' AND CD_SETOR_OBITO = 56
+-- GROUP BY TP_ATENDIMENTO, CD_SETOR_OBITO
+;
+
+-- ---------------------------------------------------------------------------------------------
+
+
 /* ******************************************************************************************** */
 /* ********************************** QUERY's DE MOVIMENTACAO ********************************* */
 
@@ -258,7 +275,8 @@ WITH PACIENTE_DIA
                 ELSE ui.DS_UNID_INT
             END AS LOCAL,
             -- SUM( TRUNC( COALESCE(ai.DT_ALTA, SYSDATE) - ai.DT_ATENDIMENTO ) ) AS QTD_PACIENTE_DIA
-            SUM( COALESCE(ai.DT_ALTA, SYSDATE) - ai.DT_ATENDIMENTO ) AS QTD_PACIENTE_DIA
+            TRUNC(SUM( COALESCE(ai.DT_ALTA, SYSDATE) - ai.DT_ATENDIMENTO )) AS QTD_PACIENTE_DIA,
+            MEDIAN(TO_NUMBER(DBAMV.fn_idade_paciente(p.CD_PACIENTE, NULL))) AS MEDIANA_IDADE
 
         FROM DBAMV.ATENDIME ai
         JOIN DBAMV.LEITO l ON ai.CD_LEITO = l.CD_LEITO
@@ -371,6 +389,7 @@ TREATS
             END AS NOME_MES,
             pd.ANO,
             pd.LOCAL,
+            pd.MEDIANA_IDADE,
             pd.QTD_PACIENTE_DIA,
             ( mi.SAI_TRANSFPARA + pa.QTD_ALTAS ) AS QTD_SAI_INTERNAS_HOSPITALAR,
             CASE
@@ -387,6 +406,8 @@ SELECT * FROM TREATS ORDER BY MES, LOCAL
 
 
 
+-- QUERY PARA DASHBOARD KPI GESTAO A VISTA
+-- QTD e TEMPO MEDIO DE ENTUBACAO
 
 -- EDITOR_REGISTRO_CAMPO
 SELECT
@@ -413,24 +434,22 @@ WHERE pdc.CD_ATENDIMENTO = 193623 AND
 -- CD_ATENDIMENTO = 192150 - YANDRA QUIXADA DIAS CARLOS - CREFITO-CE: 309644
 
 
+-- ANALISE:
+-- PW_DOCUMENTO_CLINICO: Armazena dados basicos sobre todos os documentos gerados atraves do MVPEP ou de sistemas que geram
+-- os mesmos documentos do MVPEP, esta tabela é populada e atualizada atraves de triggers nas tabelas
+-- que representam os documentos cli­nicos, ex.: PRE_MED, RECEITA, AFERICAO, etc.
+--      TABELA 'PW_DOCUMENTO_CLINICO':
+--          - CD_ATENDIMENTO
+--          - CD_PRESTADOR
+--          - CD_PRESTADOR
+--          - DH_CRIACAO | DH_FECHAMENTO | DH_REFERENCIA | DH_DOCUMENTO
 
--- QTD e TEMPO MEDIO DE ENTUBACAO
-    -- ANALISE:
-    -- PW_DOCUMENTO_CLINICO: Armazena dados basicos sobre todos os documentos gerados atraves do MVPEP ou de sistemas que geram
-    -- os mesmos documentos do MVPEP, esta tabela é populada e atualizada atraves de triggers nas tabelas
-    -- que representam os documentos cli­nicos, ex.: PRE_MED, RECEITA, AFERICAO, etc.
-    --      TABELA 'PW_DOCUMENTO_CLINICO':
-    --          - CD_ATENDIMENTO
-    --          - CD_PRESTADOR
-    --          - CD_PRESTADOR
-    --          - DH_CRIACAO | DH_FECHAMENTO | DH_REFERENCIA | DH_DOCUMENTO
+-- PW_EDITOR_CLINICO: Tabela que armazena a associação do documento clinico com o novo editor
 
-    -- PW_EDITOR_CLINICO: Tabela que armazena a associação do documento clinico com o novo editor
+-- EDITOR_DOCUMENTO:Tabela para armazenar os documento do editor
 
-    -- EDITOR_DOCUMENTO:Tabela para armazenar os documento do editor
-
-    -- EDITOR_REGISTRO_CAMPO: Tabela para armazenar as respostas de cada campo
-    --      O CAMPO 'LO_VALOR' ARMAZENA OS VALORES DOS CAMPOS PREENCHIDOS NO DOCUMENTO
+-- EDITOR_REGISTRO_CAMPO: Tabela para armazenar as respostas de cada campo
+--      O CAMPO 'LO_VALOR' ARMAZENA OS VALORES DOS CAMPOS PREENCHIDOS NO DOCUMENTO
 WITH protocolo_pav
     AS (
         SELECT
@@ -559,22 +578,6 @@ INNER JOIN atendimento a ON p.CD_ATENDIMENTO = a.CD_ATENDIMENTO
 LEFT JOIN protocolo_extubacao pe ON p.CD_ATENDIMENTO = pe.CD_ATENDIMENTO
 
 ORDER BY a.MES
-;
-
-
-
-/* ******************************************************************************************** */
-/* ******************************************************************************************** */
-
--- OBITO COM TP_ATENDIMENTO = 'A'
-SELECT
-    *
-    -- TP_ATENDIMENTO,
-    -- CD_SETOR_OBITO,
-    -- COUNT(*)
-FROM DBAMV.ATENDIME
-WHERE TP_ATENDIMENTO = 'A' AND CD_SETOR_OBITO = 56
--- GROUP BY TP_ATENDIMENTO, CD_SETOR_OBITO
 ;
 
 
