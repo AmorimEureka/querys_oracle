@@ -526,8 +526,8 @@ MOVIMENTACAO
         -- LEFT JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
         WHERE
             EXTRACT(YEAR FROM mi.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE) AND
-            a.TP_ATENDIMENTO IN ('I') --AND
-            -- p.NM_PACIENTE NOT LIKE '%TEST%'
+            a.TP_ATENDIMENTO IN ('I')
+            -- AND p.NM_PACIENTE NOT LIKE '%TEST%'
 ),
 MEDIANA
     AS (
@@ -831,9 +831,9 @@ SELECT
         ELSE
             CASE
                 WHEN a.DH_ALTA IS NOT NULL THEN
-                p.DT_END
-            ELSE
-                SYSDATE
+                    p.DT_END
+                ELSE
+                    SYSDATE
             END
     END AS DT_END
 
