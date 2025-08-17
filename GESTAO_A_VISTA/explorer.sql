@@ -275,13 +275,6 @@ WITH PACIENTE_DIA
                 ELSE ui.DS_UNID_INT
             END AS LOCAL,
 
-            -- CASE
-            --     WHEN ( COALESCE(ai.DT_ALTA, TRUNC(SYSDATE)) - ai.DT_ATENDIMENTO ) > 1 THEN
-            --         'NORMAL'
-            --     ELSE
-            --         'HOSPITAL-DIA'
-            -- END AS CLASSIFICACAO,
-
             CASE
                 WHEN ai.DT_ALTA IS NOT NULL AND TRUNC(ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN
                     'HOSPITAL-DIA'
@@ -329,18 +322,14 @@ WITH PACIENTE_DIA
                     'POSTO'
                 ELSE ui.DS_UNID_INT
             END,
-            -- CASE
-            --     WHEN ( COALESCE(ai.DT_ALTA, TRUNC(SYSDATE)) - ai.DT_ATENDIMENTO ) > 1 THEN
-            --         'NORMAL'
-            --     ELSE
-            --         'HOSPITAL-DIA'
-            -- END,
+
             CASE
                 WHEN ai.DT_ALTA IS NOT NULL AND TRUNC(ai.DT_ALTA - ai.DT_ATENDIMENTO ) = 0 THEN
                     'HOSPITAL-DIA'
                 ELSE
                     'NORMAL'
             END
+
         ORDER BY
             EXTRACT(MONTH FROM ai.DT_ATENDIMENTO) ,
             EXTRACT(YEAR FROM ai.DT_ATENDIMENTO)
