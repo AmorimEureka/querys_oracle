@@ -473,10 +473,7 @@ ATENDIMENTO
             a.CD_ATENDIMENTO,
             p.CD_PACIENTE,
             a.CD_LEITO,
-            -- a.DT_ALTA,
-            -- a.DT_ATENDIMENTO,
-            -- a.HR_ATENDIMENTO,
-            -- TRUNC(a.DT_ALTA - a.DT_ATENDIMENTO ) AS QD,
+
             CASE
                 WHEN a.DT_ALTA IS NOT NULL AND TRUNC(a.DT_ALTA - a.DT_ATENDIMENTO ) = 0 THEN
                     'HOSPITAL-DIA'
@@ -523,11 +520,9 @@ MOVIMENTACAO
             /*+ MATERIALIZE */
         FROM DBAMV.MOV_INT mi
         JOIN DBAMV.ATENDIME a ON a.CD_ATENDIMENTO = mi.CD_ATENDIMENTO
-        -- LEFT JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
         WHERE
             EXTRACT(YEAR FROM mi.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE) AND
             a.TP_ATENDIMENTO IN ('I')
-            -- AND p.NM_PACIENTE NOT LIKE '%TEST%'
 ),
 MEDIANA
     AS (
@@ -540,7 +535,6 @@ MEDIANA
 
         FROM ATENDIMENTO a
         JOIN UNIDADE_LEITOS ul ON a.CD_LEITO = ul.CD_LEITO
-        -- WHERE ul.LOCAL = 'UTI 1'
         GROUP BY
             a.MES,
             a.ANO,
@@ -569,7 +563,6 @@ PACIENTE_DIA
 
         FROM ATENDIMENTO a
         JOIN UNIDADE_LEITOS ul ON a.CD_LEITO = ul.CD_LEITO
-        -- WHERE ul.LOCAL = 'UTI 1'
         GROUP BY
             a.MES,
             a.ANO,
@@ -807,42 +800,105 @@ atendimento
             EXTRACT(YEAR FROM a.DT_ATENDIMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
             p.NM_PACIENTE NOT LIKE '%TEST%'
 
+),
+TREATS
+    AS (
+        SELECT
+            a.CD_ATENDIMENTO,
+            a.DH_ATENDIMENTO,
+            a.DH_ALTA,
+            a.MES,
+            a.NOME_MES,
+            a.ANO,
+            a.LOCAL,
+            p.TP_STATUS,
+            p.DT_START,
+
+            pe.REGX,
+
+            CASE
+                WHEN p.DT_START = p.DT_END THEN
+                    p.DT_START +
+                    NUMTODSINTERVAL(
+                        NVL(REGX, 0),
+                        'HOUR'
+                    )
+                ELSE
+                    CASE
+                        WHEN a.DH_ALTA IS NOT NULL THEN
+                            p.DT_END
+                        ELSE
+                            SYSDATE
+                    END
+            END AS DT_END
+
+        FROM protocolo_pav p
+        INNER JOIN atendimento a ON p.CD_ATENDIMENTO = a.CD_ATENDIMENTO
+        LEFT JOIN protocolo_extubacao pe ON p.CD_ATENDIMENTO = pe.CD_ATENDIMENTO
+        ORDER BY a.MES
+),
+HORAS
+    AS (
+        SELECT
+            CD_ATENDIMENTO,
+            DH_ATENDIMENTO,
+            DH_ALTA,
+            MES,
+            NOME_MES,
+            ANO,
+            LOCAL,
+            TP_STATUS,
+            DT_START,
+            DT_END,
+            (DT_END - DT_START) * 24 AS DIFF
+        FROM TREATS
 )
 SELECT
-    a.CD_ATENDIMENTO,
-    a.DH_ATENDIMENTO,
-    a.DH_ALTA,
-    a.MES,
-    a.NOME_MES,
-    a.ANO,
-    a.LOCAL,
-    p.TP_STATUS,
-    p.DT_START,
-
-    pe.REGX,
-
+    CD_ATENDIMENTO,
+    DH_ATENDIMENTO,
+    DH_ALTA,
+    MES,
+    NOME_MES,
+    ANO,
+    LOCAL,
+    TP_STATUS,
+    DT_START,
+    DT_END,
+    DIFF,
     CASE
-        WHEN p.DT_START = p.DT_END THEN
-            p.DT_START +
-            NUMTODSINTERVAL(
-                NVL(REGX, 0),
-                'HOUR'
-            )
-        ELSE
-            CASE
-                WHEN a.DH_ALTA IS NOT NULL THEN
-                    p.DT_END
-                ELSE
-                    SYSDATE
-            END
-    END AS DT_END
-
-FROM protocolo_pav p
-INNER JOIN atendimento a ON p.CD_ATENDIMENTO = a.CD_ATENDIMENTO
-LEFT JOIN protocolo_extubacao pe ON p.CD_ATENDIMENTO = pe.CD_ATENDIMENTO
-
-ORDER BY a.MES
+        WHEN DIFF >= 0  AND DIFF <= 4   THEN 1
+        WHEN DIFF > 4  AND DIFF <= 10  THEN 2
+        WHEN DIFF > 10 AND DIFF <= 15  THEN 3
+        WHEN DIFF > 15 AND DIFF <= 24  THEN 4
+        WHEN DIFF > 24 AND DIFF <= 48  THEN 5
+        WHEN DIFF > 48 AND DIFF <= 96  THEN 6
+        WHEN DIFF > 96 AND DIFF <= 240 THEN 7
+        ELSE 8
+    END AS ORDEM,
+    CASE
+        WHEN DIFF >= 0  AND DIFF <= 4   THEN '< 1 hora'
+        WHEN DIFF > 4  AND DIFF <= 10  THEN '4-10 horas'
+        WHEN DIFF > 10 AND DIFF <= 15  THEN '10-15 horas'
+        WHEN DIFF > 15 AND DIFF <= 24  THEN '15-24 horas'
+        WHEN DIFF > 24 AND DIFF <= 48  THEN '1-2 dias'
+        WHEN DIFF > 48 AND DIFF <= 96  THEN '2-5 dias'
+        WHEN DIFF > 96 AND DIFF <= 240 THEN '5-10 dias'
+        ELSE '> 10 dias'
+    END AS FAIXA_TEMPO
+FROM HORAS
 ;
+
+
+4  - 10
+12 - 15
+15 - 24
+
+24 - 48
+48 - 96
+96 - 240
+
+< 240
+
 
 
 /* ******************************************************************************************** */
