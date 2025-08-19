@@ -645,12 +645,20 @@ SELECT
         ELSE
             TO_CHAR(TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) ))
     END AS CLASS_TEMPO_MED,
+
     CASE
         WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) ) < 1 THEN
             1
         ELSE
             TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) )
-    END AS TEMPO_MEDIO
+    END AS TEMPO_MEDIO,
+
+    CASE
+        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) ) < 1 THEN
+            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1), 2 )
+        ELSE
+            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1), 2 )
+    END AS TEMPO_MEDIO_REAL
 
 FROM PACIENTE_DIA pd
 JOIN PACIENTE_ALTAS pa ON pd.MES = pa.MES AND pd.ANO = pa.ANO AND pd.LOCAL = pa.LOCAL
@@ -734,6 +742,7 @@ protocolo_extubacao
         SELECT
 
             pdc.CD_ATENDIMENTO,
+            er.CD_CAMPO,
             REGEXP_SUBSTR(DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1), '[0-9]+') AS REGX,
             DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1) AS SEM_REGX
 
@@ -745,7 +754,8 @@ protocolo_extubacao
             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
             doc.CD_DOCUMENTO IN ('935') AND
             pdc.TP_STATUS = 'FECHADO' AND
-            er.CD_CAMPO = 442178
+            er.CD_CAMPO IN(442178, 452571)
+            -- AND pdc.CD_ATENDIMENTO IN( 243884, 240427, 244348)
 ),
 atendimento
     AS (
@@ -889,15 +899,15 @@ FROM HORAS
 ;
 
 
-4  - 10
-12 - 15
-15 - 24
+-- 4  - 10
+-- 12 - 15
+-- 15 - 24
 
-24 - 48
-48 - 96
-96 - 240
+-- 24 - 48
+-- 48 - 96
+-- 96 - 240
 
-< 240
+-- < 240
 
 
 
