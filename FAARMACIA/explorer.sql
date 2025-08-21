@@ -63,7 +63,7 @@ WITH CONSUMO_FINAL_POR_MES
         -- LEFT JOIN
         --     DBAMV.AVISO_CIRURGIA ac ON sp.CD_AVISO_CIRURGIA = ac.CD_AVISO_CIRURGIA
         -- JOIN
-        --     DBAMV.CIRURGIA_AVISO ca ON sp.CD_AVISO_CIRURGIA = ca.CD_AVISO_CIRURGIA
+        --     DBAMV.CIRURGIA_AVISO ca ON ac.CD_AVISO_CIRURGIA = ca.CD_AVISO_CIRURGIA
         -- JOIN
         --     DBAMV.CIRURGIA c ON ca.CD_CIRURGIA = c.CD_CIRURGIA
         LEFT JOIN
@@ -86,6 +86,8 @@ SELECT
 
     CD_ESTOQUE,
     ESTOQUE,
+
+    CD_AVISO_CIRURGIA,
     -- DS_CIRURGIA,
 
     CD_ESTOQUE_SOLICITANTE,
@@ -119,10 +121,111 @@ GROUP BY
     DS_PRODUTO,
     CD_ESTOQUE,
     ESTOQUE,
+    CD_AVISO_CIRURGIA,
     -- DS_CIRURGIA,
     CD_ESTOQUE_SOLICITANTE,
     ESTOQUE_SOLICITANTE
 ORDER BY CD_SETOR, MES_ANO, CD_PRODUTO
+;
+
+
+
+WITH MOV_EST
+    AS (
+        SELECT
+            me.CD_MVTO_ESTOQUE,
+            me.CD_AVISO_CIRURGIA,
+            me.CD_ATENDIMENTO,
+            me.CD_SOLSAI_PRO,
+            me.CD_PRE_MED,
+            me.CD_ESTOQUE,
+            me.CD_UNID_INT,
+            me.CD_SETOR,
+            me.DT_MVTO_ESTOQUE,
+            me.HR_MVTO_ESTOQUE,
+            me.DT_VALIDADE,
+            me.TP_MVTO_ESTOQUE,
+            me.VL_TOTAL
+        FROM DBAMV.MVTO_ESTOQUE me
+        WHERE
+            CD_AVISO_CIRURGIA IS NOT NULL AND
+            EXTRACT(YEAR FROM HR_MVTO_ESTOQUE) = EXTRACT(YEAR FROM SYSDATE)
+),
+AVISO_CIRURGIA
+    AS (
+        SELECT
+            ac.CD_AVISO_CIRURGIA,
+            ac.CD_ATENDIMENTO,
+            ac.CD_PACIENTE,
+            ac.CD_SAL_CIR,
+            ac.CD_CEN_CIR,
+            ac.DT_AVISO_CIRURGIA,
+            ac.DT_REALIZACAO,
+            ac.DS_CIRURGIA,
+            ac.TP_SITUACAO
+        FROM DBAMV.AVISO_CIRURGIA ac
+        WHERE
+            EXTRACT(YEAR FROM DT_AVISO_CIRURGIA) = EXTRACT(YEAR FROM SYSDATE)
+),
+CIRURGIA_REG
+    AS (
+        SELECT
+            ca.CD_CIRURGIA_AVISO,
+            ca.CD_AVISO_CIRURGIA,
+            ca.CD_CIRURGIA,
+            ca.CD_CONVENIO,
+            ca.CD_PORTE_CIRURGIA,
+            ca.SN_PRINCIPAL,
+            ca.TP_CIRURGIA
+        FROM DBAMV.CIRURGIA_AVISO ca
+),
+CIRURGIA
+    AS (
+        SELECT
+            c.CD_CIRURGIA,
+            c.DS_CIRURGIA,
+            c.TP_CIRURGIA,
+            c.CD_PRO_FAT
+        FROM DBAMV.CIRURGIA c
+),
+TREATS
+    AS (
+        SELECT
+            c.CD_CIRURGIA,
+            -- me.CD_CIRURGIA,
+
+            c.DS_CIRURGIA,
+
+            cr.CD_AVISO_CIRURGIA,
+            -- me.CD_AVISO_CIRURGIA,
+
+            cr.CD_CONVENIO,
+            -- me.CD_CONVENIO,
+
+            cr.SN_PRINCIPAL,
+            -- me.SN_PRINCIPAL,
+
+            ac.CD_ATENDIMENTO,
+            ac.CD_PACIENTE,
+            ac.CD_SAL_CIR,
+            ac.CD_CEN_CIR,
+            ac.DT_AVISO_CIRURGIA,
+            ac.DT_REALIZACAO,
+            ac.DS_CIRURGIA,
+            ac.TP_SITUACAO,
+
+            me.CD_CIRURGIA_AVISO,
+            me.CD_PORTE_CIRURGIA,
+            me.TP_CIRURGIA
+
+        FROM CIRURGIA_REG cr
+        JOIN CIRURGIA c         ON cr.CD_CIRURGIA       = c.CD_CIRURGIA
+        JOIN AVISO_CIRURGIA ac  ON cr.CD_CIRURGIA_AVISO = ac.CD_CIRURGIA_AVISO
+        LEFT JOIN MOV_EST me    ON ac.CD_AVISO_CIRURGIA = me.CD_AVISO_CIRURGIA
+)
+SELECT
+    *
+FROM TREATS
 ;
 
 
