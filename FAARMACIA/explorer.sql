@@ -33,6 +33,7 @@ WITH CONSUMO_FINAL_POR_MES
                 WHEN 'D' THEN 'DEVOLUCAO SETOR'
                 WHEN 'E' THEN 'PEDIDO ESTOQUE'
                 WHEN 'P' THEN 'PEDIDO PACIENTE'
+                WHEN 'S' THEN 'PEDIDO SETOR'
                 WHEN 'T' THEN 'TRANSFERENCIA ENTRE EMPRESAS'
                 ELSE 'DESCONHECIDO'
             END AS DS_TP_SOLSAI_PRO,
@@ -72,7 +73,7 @@ WITH CONSUMO_FINAL_POR_MES
             DBAMV.SETOR st ON sp.CD_SETOR = st.CD_SETOR
         WHERE
             sp.DT_SOLSAI_PRO IS NOT NULL AND
-            sp.CD_ESTOQUE = 2 AND
+            sp.CD_ESTOQUE = 1 AND
             EXTRACT(YEAR FROM sp.DT_SOLSAI_PRO) = EXTRACT(YEAR FROM SYSDATE)
 
 )
