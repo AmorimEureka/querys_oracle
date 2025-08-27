@@ -236,6 +236,8 @@ TREATS
             ac.CD_CEN_CIR,
             ac.DT_AVISO_CIRURGIA,
             ac.DT_REALIZACAO,
+            EXTRACT(MONTH FROM ac.DT_REALIZACAO) AS MES,
+            EXTRACT(YEAR FROM ac.DT_REALIZACAO) AS ANO,
             ac.TP_SITUACAO,
 
             ca.CD_CIRURGIA_AVISO,
@@ -247,33 +249,82 @@ TREATS
         JOIN AV_CIRURGIAS ac   ON ca.CD_AVISO_CIRURGIA = ac.CD_AVISO_CIRURGIA
         JOIN MOV_EST me        ON ac.CD_AVISO_CIRURGIA = me.CD_AVISO_CIRURGIA
         JOIN ITEM_MOV_EST ime  ON me.CD_MVTO_ESTOQUE   = ime.CD_MVTO_ESTOQUE
+),
+AGRUPAMENTO AS (
+    SELECT
+        MES,
+        ANO,
+        DS_CIRURGIA_C,
+        DS_PRODUTO,
+        COUNT(*) AS FREQUENCIA
+    FROM TREATS
+    GROUP BY
+        MES,
+        ANO,
+        DS_CIRURGIA_C,
+        DS_PRODUTO
+),
+PIVO AS (
+    SELECT * FROM AGRUPAMENTO
+    PIVOT (
+        SUM(FREQUENCIA)
+        FOR MES IN (
+            1 AS JAN,
+            2 AS FEV,
+            3 AS MAR,
+            4 AS ABR,
+            5 AS MAI,
+            6 AS JUN,
+            7 AS JUL,
+            8 AS AGO,
+            9 AS SET_,
+            10 AS OUT_,
+            11 AS NOV,
+            12 AS DEZ
+        )
+    )
+    ORDER BY
+        ANO,
+        DS_CIRURGIA_C,
+        DS_PRODUTO
 )
 SELECT
-    CD_CIRURGIA,
+    ANO,
     DS_CIRURGIA_C,
-    CD_PRODUTO,
     DS_PRODUTO,
-    CD_ESTOQUE,
-    DS_ESTOQUE,
-    CD_MOT_CANC,
-    CD_AVISO_CIRURGIA,
-    CD_CONVENIO,
-    NM_CONVENIO,
-    SN_PRINCIPAL,
-    CD_ATENDIMENTO,
-    CD_PACIENTE,
-    CD_SAL_CIR,
-    CD_CEN_CIR,
-    DT_AVISO_CIRURGIA,
-    DT_REALIZACAO,
-    TP_SITUACAO,
-    CD_CIRURGIA_AVISO,
-    CD_PORTE_CIRURGIA,
-    TP_CIRURGIA
-FROM TREATS
+    JAN, FEV, MAR, ABR, MAI, JUN, JUL, AGO, SET_, OUT_, NOV, DEZ
+FROM PIVO;
+
+
+
+
+
+-- SELECT
+--     CD_CIRURGIA,
+--     DS_CIRURGIA_C,
+--     CD_PRODUTO,
+--     DS_PRODUTO,
+--     CD_ESTOQUE,
+--     DS_ESTOQUE,
+--     CD_MOT_CANC,
+--     CD_AVISO_CIRURGIA,
+--     CD_CONVENIO,
+--     NM_CONVENIO,
+--     SN_PRINCIPAL,
+--     CD_ATENDIMENTO,
+--     CD_PACIENTE,
+--     CD_SAL_CIR,
+--     CD_CEN_CIR,
+--     DT_AVISO_CIRURGIA,
+--     DT_REALIZACAO,
+--     TP_SITUACAO,
+--     CD_CIRURGIA_AVISO,
+--     CD_PORTE_CIRURGIA,
+--     TP_CIRURGIA
+-- FROM TREATS
 -- WHERE CD_ATENDIMENTO = 238671
-ORDER BY CD_ATENDIMENTO, CD_CIRURGIA
-;
+-- ORDER BY CD_ATENDIMENTO, CD_CIRURGIA
+
 
 
 
