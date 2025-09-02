@@ -28,6 +28,7 @@ WITH CONSUMO_FINAL_POR_MES
                 ELSE 'DESCONHECIDO'
             END AS TP_SITUACAO,
 
+            sp.TP_SOLSAI_PRO,
             CASE sp.TP_SOLSAI_PRO
                 WHEN 'C' THEN 'DEVOLUCAO PACIENTE'
                 WHEN 'D' THEN 'DEVOLUCAO SETOR'
@@ -61,12 +62,6 @@ WITH CONSUMO_FINAL_POR_MES
             DBAMV.ESTOQUE e ON sp.CD_ESTOQUE = e.CD_ESTOQUE
         JOIN
             DBAMV.ESTOQUE e1 ON sp.CD_ESTOQUE_SOLICITANTE = e1.CD_ESTOQUE
-        -- LEFT JOIN
-        --     DBAMV.AVISO_CIRURGIA ac ON sp.CD_AVISO_CIRURGIA = ac.CD_AVISO_CIRURGIA
-        -- JOIN
-        --     DBAMV.CIRURGIA_AVISO ca ON ac.CD_AVISO_CIRURGIA = ca.CD_AVISO_CIRURGIA
-        -- JOIN
-        --     DBAMV.CIRURGIA c ON ca.CD_CIRURGIA = c.CD_CIRURGIA
         LEFT JOIN
             DBAMV.PRODUTO pr ON ip.CD_PRODUTO = pr.CD_PRODUTO
         LEFT JOIN
@@ -93,6 +88,8 @@ SELECT
 
     CD_ESTOQUE_SOLICITANTE,
     ESTOQUE_SOLICITANTE,
+
+    DS_TP_SOLSAI_PRO,
 
     SUM(QT_ATENDIDA * FATOR_CONVERSAO) AS QT_QUANTIDADE,
 
@@ -124,6 +121,7 @@ GROUP BY
     ESTOQUE,
     CD_AVISO_CIRURGIA,
     -- DS_CIRURGIA,
+    DS_TP_SOLSAI_PRO,
     CD_ESTOQUE_SOLICITANTE,
     ESTOQUE_SOLICITANTE
 ORDER BY CD_SETOR, MES_ANO, CD_PRODUTO
@@ -131,6 +129,62 @@ ORDER BY CD_SETOR, MES_ANO, CD_PRODUTO
 
 
 
+
+
+-- QUERY LUCAS
+WITH MOV_EST
+    AS (
+        SELECT
+            me.CD_MVTO_ESTOQUE,
+            me.CD_AVISO_CIRURGIA,
+            me.CD_ATENDIMENTO,
+            me.CD_SOLSAI_PRO,
+            me.CD_PRE_MED,
+            me.CD_ESTOQUE,
+            e.DS_ESTOQUE,
+            me.CD_UNID_INT,
+            me.CD_SETOR,
+            me.DT_MVTO_ESTOQUE,
+            me.HR_MVTO_ESTOQUE,
+            me.DT_VALIDADE,
+            me.TP_MVTO_ESTOQUE,
+            me.VL_TOTAL
+        FROM DBAMV.MVTO_ESTOQUE me
+        JOIN DBAMV.ESTOQUE e        ON me.CD_ESTOQUE = e.CD_ESTOQUE
+        WHERE
+            me.CD_AVISO_CIRURGIA IS NOT NULL AND
+            EXTRACT(YEAR FROM me.HR_MVTO_ESTOQUE) = EXTRACT(YEAR FROM SYSDATE)
+),
+ITEM_MOV_EST
+    AS (
+        SELECT
+            ie.CD_MVTO_ESTOQUE,
+            ie.CD_PRODUTO,
+            p.DS_PRODUTO,
+            ie.CD_UNI_PRO,
+            ie.CD_LOTE,
+            ie.DT_VALIDADE
+        FROM DBAMV.ITMVTO_ESTOQUE ie
+        JOIN DBAMV.PRODUTO p ON ie.CD_PRODUTO = p.CD_PRODUTO
+)
+SELECT * FROM
+MOV_EST me
+JOIN ITEM_MOV_EST ime  ON me.CD_MVTO_ESTOQUE   = ime.CD_MVTO_ESTOQUE
+;
+
+
+
+
+
+
+
+
+
+
+
+
+
+--
 WITH MOV_EST
     AS (
         SELECT
