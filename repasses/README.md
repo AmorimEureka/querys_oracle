@@ -1,4 +1,29 @@
-<details open>
+DASHBOARD REPASSES
+===
+
+<br>
+<br>
+
+### STACKS:
+
+[![Oracle Thick Mode](https://img.shields.io/badge/Oracle-Thick%20Mode-red?logo=oracle&logoColor=white)](https://cx.oracletutorial.com/oracle-net/thick-vs-thin-driver/)
+[![DBeaver](https://img.shields.io/badge/DBeaver-Tool-372923?logo=dbeaver&logoColor=white)](https://dbeaver.io/)
+![Power Bi](https://img.shields.io/badge/power_bi-F2C811?&logo=powerbi&logoColor=black)
+![ProntoCardio](https://img.shields.io/badge/ProntoCardio-004578?logo=heart&logoColor=white)
+
+---
+
+
+<br>
+<br>
+
+### QUERY's PARA EXPLORAÇÃO DO MODELO DE REPASSES; ESSES REQUISITOS DEVEM SERVIR PARA CONSTRUÇÃO DE MART NO DATA WAREHOUSE
+
+
+<br>
+<br>
+
+<details>
     <summary><strong>Query Original da Consulta "FATURAMENTO" no painel HPC-FATURAMENTO-Repasse Médico:</strong></summary>
     <p></p>
 
@@ -83,7 +108,7 @@
 <p></p>
 <p></p>
 
-<details open>
+<details>
     <summary><strong>Avaliação da Relação entre as tabelas IT_REPASSE e IT_REPASSE_SIH com  REPASSE</strong></summary>
     <p></p>
 
@@ -146,7 +171,7 @@
 
 
 
-<details open>
+<details>
     <summary><strong>Avaliação da tabela ITREG_AMB</strong></summary>
     <p></p>
 
@@ -188,7 +213,7 @@
 
 
 
-<details open>
+<details>
     <summary><strong>Itens Hospitalares para Exclusão do Repasse</strong></summary>
     <p></p>
 
@@ -208,7 +233,7 @@
 <p></p>
 
 
-<details open>
+<details>
     <summary><strong>Avaliação da Relação entre as tabela "PRO_FAT" com  "ITREG_FAT" e "ITREG_AMB" </strong></summary>
     <p></p>
 
@@ -276,7 +301,7 @@
 <p></p>
 
 
-<details open>
+<details>
     <summary><strong>Avaliando "CD_PRO_FAT" Comuns entre ITREG_AMB e ITREG_FAT</strong></summary>
     <p></p>
 
