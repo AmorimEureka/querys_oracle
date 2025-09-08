@@ -6,6 +6,22 @@ METRICA, INDICADORES e KPI - GESTÃO À VISTA
 <br>
 <br>
 
+### STACKS:
+
+[![Oracle Thick Mode](https://img.shields.io/badge/Oracle-Thick%20Mode-red?logo=oracle&logoColor=white)](https://cx.oracletutorial.com/oracle-net/thick-vs-thin-driver/)
+[![DBeaver](https://img.shields.io/badge/DBeaver-Tool-372923?logo=dbeaver&logoColor=white)](https://dbeaver.io/)
+![HTML](https://img.shields.io/badge/HTML-E34F26?logo=html5&logoColor=white)
+![CSS](https://img.shields.io/badge/CSS-1572B6?logo=css3&logoColor=white)
+![DAX](https://img.shields.io/badge/DAX-F2C811?logo=powerbi&logoColor=black)
+![Power Bi](https://img.shields.io/badge/power_bi-F2C811?&logo=powerbi&logoColor=black)
+![ProntoCardio](https://img.shields.io/badge/ProntoCardio-004578?logo=heart&logoColor=white)
+
+---
+
+
+<br>
+<br>
+
 # OS indicadores abaixo serão exibidos em painel interativo apresentado em carrossel em cada uma das UTI's.
 
 <br>
