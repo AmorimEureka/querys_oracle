@@ -729,4 +729,8 @@ FROM HORAS
 
 <br>
 
-<iframe title="GESTAO A VISTA" width="600" height="373.5" src="https://app.powerbi.com/view?r=eyJrIjoiZDliMDc3MGItZDE0OC00Y2FiLTkyODAtZjk0ODcxYjhhODc1IiwidCI6ImIyZTIzZTI3LWVmYzItNDEwOC1iN2E5LWQ5ODczYmE2MzEyMSJ9" frameborder="0" allowFullScreen="true"></iframe>
+[![Dashboard_1](KPI_1.png)](https://app.powerbi.com/view?r=eyJrIjoiZDliMDc3MGItZDE0OC00Y2FiLTkyODAtZjk0ODcxYjhhODc1IiwidCI6ImIyZTIzZTI3LWVmYzItNDEwOC1iN2E5LWQ5ODczYmE2MzEyMSJ9)
+
+<br>
+
+[![Dashboard_2](KPI_2.png)](https://app.powerbi.com/view?r=eyJrIjoiZDliMDc3MGItZDE0OC00Y2FiLTkyODAtZjk0ODcxYjhhODc1IiwidCI6ImIyZTIzZTI3LWVmYzItNDEwOC1iN2E5LWQ5ODczYmE2MzEyMSJ9)
