@@ -7,6 +7,7 @@ WITH CONSULTA_FINAL
         SELECT -- ATENDIDOS AGENDADOS
         a.cd_atendimento,
         'ATENDIDO AGENDADO' AS STATUS_ATENDIMENTO,
+        a.DT_ATENDIMENTO,
         EXTRACT(MONTH FROM agen.hr_agenda) AS MES,
         EXTRACT(YEAR FROM agen.hr_agenda) AS ANO,
         a.cd_paciente,
@@ -31,7 +32,8 @@ WITH CONSULTA_FINAL
                 ELSE
                     'CLINICA 1'
             END AS CLINICAS,
-        a.tp_atendimento
+        a.tp_atendimento,
+        a.SN_OBITO
         FROM DBAMV.ATENDIME a
         LEFT JOIN DBAMV.PACIENTE pa                ON a.cd_paciente         = pa.cd_paciente
         LEFT JOIN DBAMV.PRESTADOR p                ON a.cd_prestador        = p.CD_PRESTADOR
@@ -74,6 +76,7 @@ WITH CONSULTA_FINAL
         SELECT -- ATENDIDOS NÃO AGENDADOS
         a.cd_atendimento,
         'ATENDIDO NÃO AGENDADO' AS STATUS_ATENDIMENTO,
+        a.DT_ATENDIMENTO,
         EXTRACT(MONTH FROM a.dt_atendimento) AS MES,
         EXTRACT(YEAR FROM a.dt_atendimento) AS ANO,
         a.cd_paciente,
@@ -98,7 +101,8 @@ WITH CONSULTA_FINAL
                 ELSE
                     'CLINICA 1'
             END AS CLINICAS,
-        a.tp_atendimento
+        a.tp_atendimento,
+        a.SN_OBITO
         FROM DBAMV.ATENDIME a
         LEFT JOIN DBAMV.PACIENTE pa                ON a.cd_paciente         = pa.cd_paciente
         LEFT JOIN DBAMV.PRESTADOR p                ON a.cd_prestador        = p.CD_PRESTADOR
@@ -168,8 +172,8 @@ REGRA_FATURAMENTO
         -- WHERE itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL
 )
 SELECT
-    cf.CD_ATENDIMENTO,
 
+    cf.CD_ATENDIMENTO,
     cf.STATUS_ATENDIMENTO,
 
     CASE
@@ -182,10 +186,11 @@ SELECT
         ELSE 'OUTROS'
     END AS TP_FATURAMENTO,
 
+    cf.DT_ATENDIMENTO,
     cf.MES,
     cf.ANO,
 
-    COALESCE(ra.HR_LANCAMENTO, rf.DT_LANCAMENTO) AS HR_LANCAMENTO,
+    -- COALESCE(ra.HR_LANCAMENTO, rf.DT_LANCAMENTO) AS HR_LANCAMENTO,
 
     CASE cf.TP_ATENDIMENTO
         WHEN 'A' THEN 'AMBULATORIAL'
@@ -195,10 +200,11 @@ SELECT
         ELSE 'Sem Correspondência'
     END AS TIPO_ATENDIMENTO,
 
+    CASE WHEN cf.SN_OBITO = 'S' THEN 'OBITO' END AS OBITO,
+
+    cf.NM_CONVENIO,
     cf.NM_PACIENTE,
-
     COALESCE(ra.NM_PRESTADOR, rf.NM_PRESTADOR) AS PRESTADOR,
-
     cf.CLINICAS,
 
     CASE
@@ -227,19 +233,67 @@ SELECT
     COALESCE(ra.VL_TOTAL_CONTA, rf.VL_TOTAL_CONTA) AS VL_TOTAL_CONTA
 
 FROM CONSULTA_FINAL cf
- LEFT JOIN REGRA_AMBULATORIO ra ON cf.CD_ATENDIMENTO = ra.CD_ATENDIMENTO
- LEFT JOIN REGRA_FATURAMENTO rf ON cf.CD_ATENDIMENTO = rf.CD_ATENDIMENTO
+LEFT JOIN REGRA_AMBULATORIO ra ON cf.CD_ATENDIMENTO = ra.CD_ATENDIMENTO
+LEFT JOIN REGRA_FATURAMENTO rf ON cf.CD_ATENDIMENTO = rf.CD_ATENDIMENTO
 
 WHERE
-	cf.ANO = 2025 AND cf.MES = 8
-    -- AND COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 8
-	-- AND cf.CD_ATENDIMENTO =  255178  --248508 --248517 --248530 --255178
-    AND COALESCE(rf.SN_PERTENCE_PACOTE, ra.SN_PERTENCE_PACOTE) = 'N'
-    -- AND COALESCE(ra.TP_PAGAMENTO, rf.TP_PAGAMENTO) = 'C'
+	-- cf.ANO = 2025 AND cf.MES = 9 AND
+    COALESCE(rf.SN_PERTENCE_PACOTE, ra.SN_PERTENCE_PACOTE) = 'N'
+
+
 ORDER BY cf.CD_ATENDIMENTO DESC
 
 ;
 
+-- ******* R_LISTA_ATENDE_PERIODO *******
+
+--           MV/QUERY
+
+-- 09/2025 - 8004/8002 - 2+ [MV]
+-- U       -  899/899  - ok
+-- I       -  472/472  - ok
+-- A       - 3335/3333 - 2
+-- E       - 3298/3298 - ok
+
+-- 08/2025 - 8445/8445 - ok
+
+-- 07/2025 - 8887/8886 - 1+ [MV]
+-- U       -  869/869  - ok
+-- I       -  490/490  - ok
+-- A       - 3777/3777 - ok
+-- E       - 3693/3694 - 1
+
+-- 06/2025 - 7926/7924 - 2+ [MV]
+-- U       -  926/926  - ok
+-- I       -  458/458  - ok
+-- A       - 3275/3273 - 2
+-- E       - 3324/3324 - ok
+
+-- 05/2025 - 8173/8169 - 4+ [MV]
+-- U       -  786/786  - ok
+-- I       -  582/582  - ok
+-- A       - 3390/3386 - 4
+-- E       - 3415/3415 - ok
+
+-- 04/2025 - 8182/8181 - 1+ [MV]
+-- U       -  866/866  - ok
+-- I       -  492/492  - ok
+-- A       - 3612/3613 - 1
+-- E       - 3212/3210 - 2
+
+-- 03/2025 - 7790/7787 - 3+ [MV]
+-- U       -  822/822  - ok
+-- I       -  394/394  - ok
+-- A       - 3384/3380 - 4
+-- E       - 3190/3191 - 1
+
+-- 02/2025 - 8129/8127 - 2+ [MV]
+-- U       -  797/797  - ok
+-- I       -  385/385  - ok
+-- A       - 3445/3444 - 1
+-- E       - 3502/3501 - 1
+
+-- 01/2025 - 8885/8885 - ok
 
 
 
