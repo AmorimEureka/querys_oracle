@@ -369,10 +369,12 @@ MEDIANA
             a.MES,
             a.ANO,
             ul.LOCAL
-),
+)
+,
 PACIENTE_DIA
     AS (
         SELECT
+            -- a.CD_ATENDIMENTO,
             a.MES,
             a.ANO,
             ul.LOCAL,
@@ -389,7 +391,9 @@ PACIENTE_DIA
 
         FROM ATENDIMENTO a
         JOIN UNIDADE_LEITOS ul ON a.CD_LEITO = ul.CD_LEITO
+        -- WHERE ul.LOCAL = 'UTI 1'
         GROUP BY
+            -- a.CD_ATENDIMENTO,
             a.MES,
             a.ANO,
             ul.LOCAL,
@@ -424,15 +428,17 @@ PACIENTE_ALTAS
 MOVI_INTERNA
     AS (
         SELECT
+
             m.MES,
             m.ANO,
             ul1.LOCAL,
-            count(*) QTD_TRANSFPARA
+            count(*) AS QTD_TRANSFPARA
 
         FROM MOVIMENTACAO m
         JOIN UNIDADE_LEITOS ul ON m.CD_LEITO = ul.CD_LEITO
         JOIN UNIDADE_LEITOS ul1 ON m.CD_LEITO_ANTERIOR = ul1.CD_LEITO
-        WHERE ul.CD_UNID_INT <> ul1.CD_UNID_INT
+        WHERE
+            ul.CD_UNID_INT <> ul1.CD_UNID_INT
         GROUP BY
             m.MES,
             m.ANO,
@@ -545,10 +551,6 @@ WHERE pdc.CD_ATENDIMENTO = 248529 AND
 --      CD_ATENDIMENTO = 215780 - MARIA LINDONETE ALVES - CREFITO-CE: 277960
 --      CD_ATENDIMENTO = 192150 - YANDRA QUIXADA DIAS CARLOS - CREFITO-CE: 309644
 
-        -- REMOCAO DO CAMPO "LOCAL" COM ORIGEM NA TABELA DE "ATENDIMENTO"
-        -- CAMPO "LOCAL" VIRA DA CTE "UNIDADE_LEITOS"
-        -- AJUSTE DA LOGICA DO CAMPO "DT_END"
-        -- AJUSTE DA ORIGEM DOS CAMPOS MES, NOME_MES e ANO - CALCULADO A PARTIR DE "DT_START"
 
 WITH PRESCRICAO_VM
     AS     (
@@ -797,58 +799,8 @@ SELECT
 FROM HORAS
 ORDER BY MES
 
-
--- SELECT
---     *
---     -- ANO,
---     -- MES,
---     -- COUNT(*) AS QTD
--- FROM HORAS
--- -- WHERE
---     -- LOCAL = 'UTI 1'
---     -- AND ANO = 2025
---     -- AND MES = 2
--- -- GROUP BY
--- --     ANO,
--- --     MES
--- ORDER BY MES, CD_ATENDIMENTO
-
-
-
-
-
-
-
 ;
 
-
-
-
-SELECT
-    mov_int.CD_ATENDIMENTO,
-    leito.cd_unid_int,
-    mov_int.HR_MOV_INT
-FROM
-dbamv.mov_int
-JOIN dbamv.leito ON mov_int.cd_leito = leito.cd_leito
-JOIN dbamv.leito leito1 ON mov_int.cd_leito_anterior = leito1.cd_leito
-JOIN dbamv.unid_int unid_int ON leito.cd_unid_int = unid_int.cd_unid_int
-JOIN dbamv.unid_int unid_int1 ON leito1.cd_unid_int = unid_int1.cd_unid_int
-JOIN dbamv.atendime ON atendime.cd_atendimento = mov_int.cd_atendimento
-WHERE
-    unid_int.cd_unid_int <> unid_int1.cd_unid_int
-    AND mov_int.CD_ATENDIMENTO = 187202
--- GROUP BY
---     mov_int.CD_ATENDIMENTO,
---     mov_int.HR_MOV_INT,
---     unid_int.cd_unid_int,
---     unid_int.ds_unid_int,
---     EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
---     EXTRACT(YEAR FROM mov_int.DT_MOV_INT)
--- ORDER BY
---     EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
---     unid_int.cd_unid_int
-;
 
 
 
@@ -1225,36 +1177,3 @@ ORDER BY MES
 --      Fonte
 
 -- ============================================================================================================
-
-
-
-
-
-SELECT
-    CD_ATENDIMENTO,
-    CD_MOV_INT,
-    CD_CONVENIO,
-    CD_PRESTADOR,
-    CD_LEITO,
-    DT_MOV_INT,
-    HR_MOV_INT,
-    DS_MOTIVO,
-    SN_RESERVA,
-    CD_LEITO_ANTERIOR,
-    CD_TIP_ACOM,
-    TP_MOV,
-    NM_USUARIO,
-    DT_LIB_MOV,
-    HR_LIB_MOV,
-    CD_MOTIVO_TRANSF_LEITO,
-    CD_MOV_INT_INTEGRA,
-    CD_SEQ_INTEGRA,
-    DT_INTEGRA,
-    DS_LOCAL,
-    NR_NUMERACAO_ACESSO
-FROM DBAMV.MOV_INT
-WHERE CD_ATENDIMENTO = 187202;
-
-
-
-
