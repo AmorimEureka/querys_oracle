@@ -273,9 +273,12 @@ GROUP BY
 -- #########################################################################################################
 
 
-
--- QUERY PARA DASHBOARD KPI GESTAO A VISTA
--- TEMPO MEDIO DE PERMANENCIA NAS UTI's
+/* *******************************************************************************************
+ *
+ * QUERY PARA DASHBOARD KPI GESTAO A VISTA
+ * TEMPO MEDIO DE PERMANENCIA NAS UTI's
+ *
+* **************************************************************************************** */
 WITH UNIDADE_LEITOS
     AS (
         SELECT
@@ -542,46 +545,17 @@ WHERE pdc.CD_ATENDIMENTO = 248529 AND
 --      CD_ATENDIMENTO = 215780 - MARIA LINDONETE ALVES - CREFITO-CE: 277960
 --      CD_ATENDIMENTO = 192150 - YANDRA QUIXADA DIAS CARLOS - CREFITO-CE: 309644
 
+        -- REMOCAO DO CAMPO "LOCAL" COM ORIGEM NA TABELA DE "ATENDIMENTO"
+        -- CAMPO "LOCAL" VIRA DA CTE "UNIDADE_LEITOS"
+        -- AJUSTE DA LOGICA DO CAMPO "DT_END"
+        -- AJUSTE DA ORIGEM DOS CAMPOS MES, NOME_MES e ANO - CALCULADO A PARTIR DE "DT_START"
 
 WITH PRESCRICAO_VM
     AS     (
-            SELECT
+            SELECT DISTINCT
 
                 pm.CD_ATENDIMENTO,
                 pm.CD_UNID_INT,
-
-                pm.HR_PRE_MED,
-                pm.DT_VALIDADE,
-
-                ipm.CD_PRE_MED,
-                ipm.CD_ITPRE_MED,
-
-                EXTRACT(MONTH FROM ipm.DH_REGISTRO) AS MES,
-                CASE
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 1 THEN 'Jan'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 2 THEN 'Fev'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 3 THEN 'Mar'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 4 THEN 'Abr'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 5 THEN 'Mai'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 6 THEN 'Jun'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 7 THEN 'Jul'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 8 THEN 'Ago'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 9 THEN 'Set'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 10 THEN 'Out'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 11 THEN 'Nov'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 11 THEN 'Dez'
-                END AS NOME_MES,
-
-                EXTRACT(YEAR FROM ipm.DH_REGISTRO) AS ANO,
-
-                MAX(ipm.DH_REGISTRO)
-                OVER (
-                      PARTITION BY
-                        pm.CD_ATENDIMENTO,
-                        pm.CD_UNID_INT,
-                        pm.HR_PRE_MED
-                    ) AS DH_REGISTRO,
-
 
                 MIN(ipm.DH_REGISTRO)
                 OVER (
@@ -595,25 +569,11 @@ WITH PRESCRICAO_VM
                         pm.CD_ATENDIMENTO
                     ) AS DT_END,
 
-                ipm.DH_INICIAL,
-                ipm.DH_FINAL,
-
                 tp.CD_TIP_PRESC,
                 tp.DS_TIP_PRESC,
 
                 te.CD_TIP_ESQ,
-                te.DS_TIP_ESQ,
-
-                ipm.SN_CANCELADO,
-
-                ROW_NUMBER()
-                OVER (
-                      PARTITION BY
-                        pm.CD_ATENDIMENTO,
-                        pm.CD_UNID_INT,
-                        pm.HR_PRE_MED
-                      ORDER BY ipm.DH_REGISTRO
-                    ) AS RN
+                te.DS_TIP_ESQ
 
             FROM DBAMV.ITPRE_MED ipm
             JOIN DBAMV.PRE_MED pm       ON ipm.CD_PRE_MED = pm.CD_PRE_MED
@@ -623,64 +583,9 @@ WITH PRESCRICAO_VM
                 te.CD_TIP_ESQ IN( 'PME' ) AND
                 tp.CD_TIP_PRESC IN(488) AND
                 EXTRACT(YEAR FROM ipm.DH_REGISTRO) = EXTRACT(YEAR FROM SYSDATE)
-            ORDER BY ipm.DH_REGISTRO DESC
+                -- AND pm.CD_ATENDIMENTO = 187202 -- 183178 --198862 -- 183314--187202 --184846
+            -- ORDER BY ipm.DH_REGISTRO DESC
 ),
--- PROTOCOLO_PAV
---     AS (
---         SELECT
---             pdc.CD_ATENDIMENTO,
---             pdc.CD_PACIENTE,
-
---             pdc.TP_STATUS,
---             MIN(pdc.DH_DOCUMENTO) AS DT_START,
---             MAX(pdc.DH_DOCUMENTO) AS DT_END,
-
---             EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) AS MES,
---             CASE
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 1 THEN 'Jan'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 2 THEN 'Fev'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 3 THEN 'Mar'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 4 THEN 'Abr'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 5 THEN 'Mai'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 6 THEN 'Jun'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 7 THEN 'Jul'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 8 THEN 'Ago'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 9 THEN 'Set'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 10 THEN 'Out'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Nov'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Dez'
---             END AS NOME_MES,
-
---             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) AS ANO
-
---         FROM DBAMV.PW_DOCUMENTO_CLINICO pdc
---         INNER JOIN DBAMV.PW_EDITOR_CLINICO pec      ON pec.CD_DOCUMENTO_CLINICO = pdc.CD_DOCUMENTO_CLINICO
---         LEFT JOIN  DBAMV.EDITOR_DOCUMENTO doc       ON pec.CD_DOCUMENTO = doc.CD_DOCUMENTO
---         WHERE
---             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
--- 	        doc.CD_DOCUMENTO IN ('939') AND
---             pdc.TP_STATUS = 'FECHADO'
---         GROUP BY
---             pdc.CD_ATENDIMENTO,
---             pdc.CD_PACIENTE,
---             pdc.TP_STATUS,
---             EXTRACT(MONTH FROM pdc.DH_DOCUMENTO),
---             CASE
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 1 THEN 'Jan'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 2 THEN 'Fev'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 3 THEN 'Mar'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 4 THEN 'Abr'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 5 THEN 'Mai'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 6 THEN 'Jun'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 7 THEN 'Jul'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 8 THEN 'Ago'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 9 THEN 'Set'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 10 THEN 'Out'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Nov'
---                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Dez'
---             END,
---             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO)
--- ),
 PROTOCOLO_EXTUBACAO
     AS (
         SELECT
@@ -724,22 +629,25 @@ ATENDIMENTO
                         'DD/MM/YYYY HH24:MI:SS'
                     )
                 ELSE NULL
-            END AS DH_ALTA,
-
-            CASE
-                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
-                    'POSTO'
-                ELSE ui.DS_UNID_INT
-            END AS LOCAL
+            END AS DH_ALTA
 
         FROM DBAMV.ATENDIME a
         JOIN DBAMV.LEITO l                          ON a.CD_LEITO = l.CD_LEITO
-        JOIN DBAMV.UNID_INT ui                      ON l.CD_UNID_INT = ui.CD_UNID_INT
         LEFT JOIN DBAMV.PACIENTE p                  ON a.CD_PACIENTE = p.CD_PACIENTE
         WHERE
             EXTRACT(YEAR FROM a.DT_ATENDIMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
             p.NM_PACIENTE NOT LIKE '%TEST%'
-
+),
+ UNIDADE_LEITOS
+    AS (
+        SELECT
+            CD_UNID_INT,
+            CASE
+                WHEN DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE DS_UNID_INT
+            END AS LOCAL
+        FROM DBAMV.UNID_INT
 ),
 OBITOS
     AS (
@@ -777,10 +685,27 @@ TREATS
             a.CD_ATENDIMENTO,
             a.DH_ATENDIMENTO,
             a.DH_ALTA,
-            pvm.MES,
-            pvm.NOME_MES,
-            pvm.ANO,
-            a.LOCAL,
+
+            EXTRACT(MONTH FROM pvm.DT_START) AS MES,
+            CASE
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 1 THEN 'Jan'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 2 THEN 'Fev'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 3 THEN 'Mar'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 4 THEN 'Abr'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 5 THEN 'Mai'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 6 THEN 'Jun'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 7 THEN 'Jul'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 8 THEN 'Ago'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 9 THEN 'Set'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 10 THEN 'Out'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 11 THEN 'Nov'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 11 THEN 'Dez'
+            END AS NOME_MES,
+
+            EXTRACT(YEAR FROM pvm.DT_START) AS ANO,
+
+            uil.CD_UNID_INT,
+            uil.LOCAL,
             pvm.DT_START,
 
             pe.REGX,
@@ -788,14 +713,18 @@ TREATS
             pe.HR_DOC_EXTUBACAO,
 
             CASE
-                WHEN pvm.DT_START = pvm.DT_END AND (pe.REGX IS NULL OR TRIM(pe.REGX) = '') THEN
-                    pe.HR_DOC_EXTUBACAO
-                WHEN pvm.DT_START = pvm.DT_END AND pe.REGX IS NOT NULL THEN
-                    pvm.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
-                WHEN a.DH_ALTA IS NOT NULL AND pvm.DT_START <> pvm.DT_END THEN
-                    pvm.DT_END
-                WHEN a.DH_ALTA IS NOT NULL AND o.TP_MOT_ALTA = 'O' THEN
+                WHEN o.TP_MOT_ALTA = 'O' AND o.HR_OBITO IS NOT NULL THEN
                     o.HR_OBITO
+                WHEN pe.REGX IS NOT NULL THEN
+                    pvm.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
+                WHEN pvm.DT_END IS NOT NULL  THEN
+                        CASE
+                            WHEN pvm.DT_END = pvm.DT_START AND pe.HR_DOC_EXTUBACAO IS NOT NULL AND pe.REGX IS NULL THEN
+                                pe.HR_DOC_EXTUBACAO
+                            WHEN pvm.DT_END = pvm.DT_START THEN
+                                pvm.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
+                            ELSE pvm.DT_END
+                        END
                 ELSE
                     SYSDATE
             END AS DT_END,
@@ -807,7 +736,8 @@ TREATS
         LEFT JOIN ATENDIMENTO a ON pvm.CD_ATENDIMENTO = a.CD_ATENDIMENTO
         LEFT JOIN PROTOCOLO_EXTUBACAO pe ON pvm.CD_ATENDIMENTO = pe.CD_ATENDIMENTO
         LEFT JOIN OBITOS o ON pvm.CD_ATENDIMENTO = o.CD_ATENDIMENTO
-        ORDER BY pvm.MES
+        LEFT JOIN UNIDADE_LEITOS uil ON pvm.CD_UNID_INT = uil.CD_UNID_INT
+        ORDER BY EXTRACT(MONTH FROM pvm.DT_START)
 ),
 HORAS
     AS (
@@ -818,6 +748,7 @@ HORAS
             MES,
             NOME_MES,
             ANO,
+            CD_UNID_INT,
             LOCAL,
             DT_START,
             REGX,
@@ -828,7 +759,7 @@ HORAS
             HR_OBITO
         FROM TREATS
 )
-SELECT DISTINCT
+SELECT
     CD_ATENDIMENTO,
     DH_ATENDIMENTO,
     DH_ALTA,
@@ -864,7 +795,62 @@ SELECT DISTINCT
         ELSE '> 10 dias'
     END AS FAIXA_TEMPO
 FROM HORAS
+ORDER BY MES
+
+
+-- SELECT
+--     *
+--     -- ANO,
+--     -- MES,
+--     -- COUNT(*) AS QTD
+-- FROM HORAS
+-- -- WHERE
+--     -- LOCAL = 'UTI 1'
+--     -- AND ANO = 2025
+--     -- AND MES = 2
+-- -- GROUP BY
+-- --     ANO,
+-- --     MES
+-- ORDER BY MES, CD_ATENDIMENTO
+
+
+
+
+
+
+
 ;
+
+
+
+
+SELECT
+    mov_int.CD_ATENDIMENTO,
+    leito.cd_unid_int,
+    mov_int.HR_MOV_INT
+FROM
+dbamv.mov_int
+JOIN dbamv.leito ON mov_int.cd_leito = leito.cd_leito
+JOIN dbamv.leito leito1 ON mov_int.cd_leito_anterior = leito1.cd_leito
+JOIN dbamv.unid_int unid_int ON leito.cd_unid_int = unid_int.cd_unid_int
+JOIN dbamv.unid_int unid_int1 ON leito1.cd_unid_int = unid_int1.cd_unid_int
+JOIN dbamv.atendime ON atendime.cd_atendimento = mov_int.cd_atendimento
+WHERE
+    unid_int.cd_unid_int <> unid_int1.cd_unid_int
+    AND mov_int.CD_ATENDIMENTO = 187202
+-- GROUP BY
+--     mov_int.CD_ATENDIMENTO,
+--     mov_int.HR_MOV_INT,
+--     unid_int.cd_unid_int,
+--     unid_int.ds_unid_int,
+--     EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
+--     EXTRACT(YEAR FROM mov_int.DT_MOV_INT)
+-- ORDER BY
+--     EXTRACT(MONTH FROM mov_int.DT_MOV_INT),
+--     unid_int.cd_unid_int
+;
+
+
 
 /* ******************************************************************************************** */
 /* ******************************************************************************************** */
@@ -878,6 +864,8 @@ WITH PRESCRICAO_VM
                 pm.CD_UNID_INT,
 
                 pm.HR_PRE_MED,
+                EXTRACT(MONTH FROM pm.HR_PRE_MED) AS MES,
+                EXTRACT(YEAR FROM pm.HR_PRE_MED) AS ANO,
                 pm.DT_VALIDADE,
 
                 ipm.CD_PRE_MED,
@@ -941,6 +929,8 @@ TREATS
             pvm.CD_UNID_INT,
             uil.LOCAL,
             pvm.HR_PRE_MED,
+            pvm.MES,
+            pvm.ANO,
             pvm.DH_REGISTRO,
             pvm.DT_VALIDADE,
             pvm.DH_INICIAL,
@@ -955,9 +945,316 @@ TREATS
         JOIN UNIDADE_LEITOS uil ON pvm.CD_UNID_INT = uil.CD_UNID_INT
         WHERE pvm.RN = 1
 )
-SELECT DISTINCT
-    CD_ATENDIMENTO
+SELECT
+    ANO,
+    MES,
+    COUNT(*) AS QTD
 FROM TREATS
-WHERE CD_TIP_ESQ = 'PME' AND LOCAL = 'UTI 1'
--- ORDER BY HR_PRE_MED
+WHERE
+    CD_TIP_ESQ = 'PME' AND
+    LOCAL = 'UTI 1'
+    -- AND ANO = 2025
+    -- AND MES = 2
+GROUP BY
+    ANO,
+    MES
+ORDER BY MES
 ;
+
+
+
+-- ============================================================================================================
+
+-- let
+
+--      Query =
+--          "WITH protocolo_pav
+--     AS (
+--         SELECT
+--             pdc.CD_ATENDIMENTO,
+--             pdc.CD_PACIENTE,
+
+--             pdc.TP_STATUS,
+--             MIN(pdc.DH_DOCUMENTO) AS DT_START,
+--             MAX(pdc.DH_DOCUMENTO) AS DT_END,
+
+--             EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) AS MES,
+--             CASE
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 1 THEN 'Jan'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 2 THEN 'Fev'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 3 THEN 'Mar'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 4 THEN 'Abr'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 5 THEN 'Mai'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 6 THEN 'Jun'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 7 THEN 'Jul'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 8 THEN 'Ago'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 9 THEN 'Set'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 10 THEN 'Out'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Nov'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Dez'
+--             END AS NOME_MES,
+
+--             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) AS ANO
+
+--         FROM DBAMV.PW_DOCUMENTO_CLINICO pdc
+--         INNER JOIN DBAMV.PW_EDITOR_CLINICO pec      ON pec.CD_DOCUMENTO_CLINICO = pdc.CD_DOCUMENTO_CLINICO
+--         LEFT JOIN  DBAMV.EDITOR_DOCUMENTO doc       ON pec.CD_DOCUMENTO = doc.CD_DOCUMENTO
+--         WHERE
+--             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
+-- 	        doc.CD_DOCUMENTO IN ('939') AND
+--             pdc.TP_STATUS = 'FECHADO'
+--         GROUP BY
+--             pdc.CD_ATENDIMENTO,
+--             pdc.CD_PACIENTE,
+--             pdc.TP_STATUS,
+--             EXTRACT(MONTH FROM pdc.DH_DOCUMENTO),
+--             CASE
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 1 THEN 'Jan'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 2 THEN 'Fev'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 3 THEN 'Mar'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 4 THEN 'Abr'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 5 THEN 'Mai'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 6 THEN 'Jun'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 7 THEN 'Jul'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 8 THEN 'Ago'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 9 THEN 'Set'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 10 THEN 'Out'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Nov'
+--                 WHEN EXTRACT(MONTH FROM pdc.DH_DOCUMENTO) = 11 THEN 'Dez'
+--             END,
+--             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO)
+-- ),
+-- protocolo_extubacao
+--     AS (
+--         SELECT
+
+--             pdc.CD_ATENDIMENTO,
+--             er.CD_CAMPO,
+--             REGEXP_SUBSTR(DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1), '[0-9]+') AS REGX,
+--             DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1) AS SEM_REGX,
+--             MAX(pdc.DH_DOCUMENTO) AS HR_DOC_EXTUBACAO
+
+--         FROM DBAMV.PW_DOCUMENTO_CLINICO pdc
+--         INNER JOIN DBAMV.PW_EDITOR_CLINICO pec    ON pec.CD_DOCUMENTO_CLINICO = pdc.CD_DOCUMENTO_CLINICO
+--         LEFT JOIN DBAMV.EDITOR_REGISTRO_CAMPO er  ON er.CD_REGISTRO = pec.CD_EDITOR_REGISTRO
+--         LEFT JOIN DBAMV.EDITOR_DOCUMENTO doc      ON pec.CD_DOCUMENTO = doc.CD_DOCUMENTO
+--         WHERE
+--             EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
+--             doc.CD_DOCUMENTO IN ('935') AND
+--             -- pdc.TP_STATUS = 'FECHADO' AND
+--             er.CD_CAMPO IN(442178, 452571)
+--         GROUP BY
+--             pdc.CD_ATENDIMENTO,
+--             er.CD_CAMPO,
+--             REGEXP_SUBSTR(DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1), '[0-9]+'),
+--             DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1)
+-- ),
+-- atendimento
+--     AS (
+--         SELECT
+--             a.CD_ATENDIMENTO,
+--             CASE
+--                 WHEN a.DT_ATENDIMENTO IS NOT NULL AND a.HR_ATENDIMENTO IS NOT NULL THEN
+--                     TO_DATE(
+--                         TO_CHAR(a.DT_ATENDIMENTO, 'DD/MM/YYYY') || ' ' || TO_CHAR(a.HR_ATENDIMENTO, 'HH24:MI:SS'),
+--                         'DD/MM/YYYY HH24:MI:SS'
+--                     )
+--                 ELSE NULL
+--             END AS DH_ATENDIMENTO,
+--             CASE
+--                 WHEN a.DT_ALTA IS NOT NULL AND a.HR_ALTA IS NOT NULL THEN
+--                     TO_DATE(
+--                         TO_CHAR(a.DT_ALTA, 'DD/MM/YYYY') || ' ' || TO_CHAR(a.HR_ALTA, 'HH24:MI:SS'),
+--                         'DD/MM/YYYY HH24:MI:SS'
+--                     )
+--                 ELSE NULL
+--             END AS DH_ALTA,
+
+--             CASE
+--                 WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+--                     'POSTO'
+--                 ELSE ui.DS_UNID_INT
+--             END AS LOCAL
+
+--         FROM DBAMV.ATENDIME a
+--         JOIN DBAMV.LEITO l                          ON a.CD_LEITO = l.CD_LEITO
+--         JOIN DBAMV.UNID_INT ui                      ON l.CD_UNID_INT = ui.CD_UNID_INT
+--         LEFT JOIN DBAMV.PACIENTE p                  ON a.CD_PACIENTE = p.CD_PACIENTE
+--         WHERE
+--             EXTRACT(YEAR FROM a.DT_ATENDIMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
+--             p.NM_PACIENTE NOT LIKE '%TEST%'
+
+-- ),
+-- obitos
+--     AS (
+--         SELECT
+--             a.CD_ATENDIMENTO ,
+--             a.TP_ATENDIMENTO ,
+--             a.SN_OBITO ,
+--             CASE
+--                 WHEN s.NM_SETOR LIKE '%POSTO%' THEN
+--                     'POSTO'
+--                 ELSE s.NM_SETOR
+--             END AS LOCAL,
+--             a.HR_ALTA AS HR_OBITO ,
+--             MAX(a.DT_ALTA) OVER( PARTITION BY CASE WHEN s.NM_SETOR LIKE '%POSTO%' THEN 'POSTO' ELSE s.NM_SETOR END, EXTRACT(YEAR FROM a.DT_ALTA) ) AS ULTIMO_OBITO,
+--             EXTRACT(MONTH FROM a.DT_ALTA) AS MES ,
+--             EXTRACT(YEAR FROM a.DT_ALTA) AS ANO ,
+--             ma.TP_MOT_ALTA
+--         FROM DBAMV.ATENDIME a
+--         LEFT JOIN SETOR s ON s.CD_SETOR = a.CD_SETOR_OBITO
+--         LEFT JOIN DBAMV.MOT_ALT ma ON ma.CD_MOT_ALT = a.CD_MOT_ALT
+--         WHERE EXTRACT(YEAR FROM a.DT_ALTA) = EXTRACT(YEAR FROM SYSDATE) AND a.SN_OBITO = 'S'
+--         ORDER BY
+--             CASE
+--                 WHEN s.NM_SETOR LIKE '%POSTO%' THEN
+--                     'POSTO'
+--                 ELSE s.NM_SETOR
+--             END,
+--             EXTRACT(MONTH FROM a.DT_ALTA),
+--             EXTRACT(YEAR FROM a.DT_ALTA),
+--             a.DT_ALTA
+-- ),
+-- TREATS
+--     AS (
+--         SELECT
+--             a.CD_ATENDIMENTO,
+--             a.DH_ATENDIMENTO,
+--             a.DH_ALTA,
+--             p.MES,
+--             p.NOME_MES,
+--             p.ANO,
+--             a.LOCAL,
+--             p.TP_STATUS,
+--             p.DT_START,
+
+--             pe.REGX,
+
+--             pe.HR_DOC_EXTUBACAO,
+
+--             CASE
+--                 WHEN p.DT_START = p.DT_END AND (pe.REGX IS NULL OR TRIM(pe.REGX) = '') THEN
+--                     pe.HR_DOC_EXTUBACAO
+--                 WHEN p.DT_START = p.DT_END AND pe.REGX IS NOT NULL THEN
+--                     p.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
+--                 WHEN a.DH_ALTA IS NOT NULL AND p.DT_START <> p.DT_END THEN
+--                     p.DT_END
+--                 WHEN a.DH_ALTA IS NOT NULL AND o.TP_MOT_ALTA = 'O' THEN
+--                     o.HR_OBITO
+--                 ELSE
+--                     SYSDATE
+--             END AS DT_END,
+
+--             o.TP_MOT_ALTA,
+--             o.HR_OBITO
+
+--         FROM protocolo_pav p
+--         INNER JOIN atendimento a ON p.CD_ATENDIMENTO = a.CD_ATENDIMENTO
+--         LEFT JOIN protocolo_extubacao pe ON p.CD_ATENDIMENTO = pe.CD_ATENDIMENTO
+--         LEFT JOIN obitos o ON p.CD_ATENDIMENTO = o.CD_ATENDIMENTO
+--         ORDER BY p.MES
+-- ),
+-- HORAS
+--     AS (
+--         SELECT
+--             CD_ATENDIMENTO,
+--             DH_ATENDIMENTO,
+--             DH_ALTA,
+--             MES,
+--             NOME_MES,
+--             ANO,
+--             LOCAL,
+--             TP_STATUS,
+--             DT_START,
+
+--             REGX,
+--             HR_DOC_EXTUBACAO,
+
+--             DT_END,
+--             (DT_END - DT_START) * 24 AS DIFF,
+--             TP_MOT_ALTA,
+--             HR_OBITO
+--         FROM TREATS
+-- )
+-- SELECT
+--     CD_ATENDIMENTO,
+--     DH_ATENDIMENTO,
+--     DH_ALTA,
+--     MES,
+--     NOME_MES,
+--     ANO,
+--     LOCAL,
+--     TP_STATUS,
+--     DT_START,
+
+--     REGX,
+--     HR_DOC_EXTUBACAO,
+
+--     DT_END,
+--     TP_MOT_ALTA,
+--     HR_OBITO,
+--     DIFF,
+--     CASE
+--         WHEN DIFF >= 0  AND DIFF <= 4   THEN 1
+--         WHEN DIFF > 4  AND DIFF <= 10  THEN 2
+--         WHEN DIFF > 10 AND DIFF <= 15  THEN 3
+--         WHEN DIFF > 15 AND DIFF <= 24  THEN 4
+--         WHEN DIFF > 24 AND DIFF <= 48  THEN 5
+--         WHEN DIFF > 48 AND DIFF <= 96  THEN 6
+--         WHEN DIFF > 96 AND DIFF <= 240 THEN 7
+--         ELSE 8
+--     END AS ORDEM,
+--     CASE
+--         WHEN DIFF >= 0  AND DIFF <= 4   THEN '< 4 hora'
+--         WHEN DIFF > 4  AND DIFF <= 10  THEN '4-10 horas'
+--         WHEN DIFF > 10 AND DIFF <= 15  THEN '10-15 horas'
+--         WHEN DIFF > 15 AND DIFF <= 24  THEN '15-24 horas'
+--         WHEN DIFF > 24 AND DIFF <= 48  THEN '1-2 dias'
+--         WHEN DIFF > 48 AND DIFF <= 96  THEN '2-5 dias'
+--         WHEN DIFF > 96 AND DIFF <= 240 THEN '5-10 dias'
+--         ELSE '> 10 dias'
+--     END AS FAIXA_TEMPO
+-- FROM HORAS",
+
+-- // Chamada Oracle com a query final montada
+--  Fonte = Oracle.Database(
+--      "//10.97.170.174:1521/PRD2361.db2361.mv2361vcn.oraclevcn.com",
+--      [Query = Query]
+--  )
+--  in
+--      Fonte
+
+-- ============================================================================================================
+
+
+
+
+
+SELECT
+    CD_ATENDIMENTO,
+    CD_MOV_INT,
+    CD_CONVENIO,
+    CD_PRESTADOR,
+    CD_LEITO,
+    DT_MOV_INT,
+    HR_MOV_INT,
+    DS_MOTIVO,
+    SN_RESERVA,
+    CD_LEITO_ANTERIOR,
+    CD_TIP_ACOM,
+    TP_MOV,
+    NM_USUARIO,
+    DT_LIB_MOV,
+    HR_LIB_MOV,
+    CD_MOTIVO_TRANSF_LEITO,
+    CD_MOV_INT_INTEGRA,
+    CD_SEQ_INTEGRA,
+    DT_INTEGRA,
+    DS_LOCAL,
+    NR_NUMERACAO_ACESSO
+FROM DBAMV.MOV_INT
+WHERE CD_ATENDIMENTO = 187202;
+
+
+
+
