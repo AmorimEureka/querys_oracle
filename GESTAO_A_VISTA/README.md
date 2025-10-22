@@ -41,7 +41,7 @@ METRICA, INDICADORES e KPI - GESTÃO À VISTA
     <tbody>
         <tr style="background-color: #f2f2f2;">
             <td style="padding: 8px; border: 1px solid #ddd;">TEMPO MEDIO PERMANENCIA</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">Avalia o tempo medio que um paciente permanece internado na UTI do adulta do hospital. Esse tempo representa o giro de leitos nas UTI's.</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">Avalia o tempo medio que um paciente permanece internado na UTI adulta do hospital. Esse tempo representa o giro de leitos nas UTI's.</td>
             <td style="padding: 8px; border: 1px solid #ddd;">Σ Nº Paciente-Dia / (Nº Saídas Internas + Nº Saídas Externas) </td>
             <td style="padding: 8px; border: 1px solid #ddd;"> < 4</td>
             <td style="padding: 8px; border: 1px solid #ddd;">DIAS</td>
@@ -49,7 +49,7 @@ METRICA, INDICADORES e KPI - GESTÃO À VISTA
         </tr>
         <tr>
             <td style="padding: 8px; border: 1px solid #ddd;">INCIDENCIA DE LESAO POR PRESSAO</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">Monitora a ocorencia de lesao por pressao adquiridas durante a internacao hospitalar, com foco na prevencao, seguranca do paciente e qualidade da assistencia de enfermagem.</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">Monitora a ocorrencia de lesao por pressao adquirida durante a internacao hospitalar, com foco na prevencao, seguranca do paciente e qualidade da assistencia de enfermagem.</td>
             <td style="padding: 8px; border: 1px solid #ddd;"> (Σ Nº Paciente com LPP na Unidade / Nº Total de Pacientes internados) * 100 </td>
             <td style="padding: 8px; border: 1px solid #ddd;"> 2% </td>
             <td style="padding: 8px; border: 1px solid #ddd;">PERCENTUAL</td>
@@ -470,43 +470,10 @@ ORDER BY
 ```sql
 WITH PRESCRICAO_VM
     AS     (
-            SELECT
+            SELECT DISTINCT
 
                 pm.CD_ATENDIMENTO,
                 pm.CD_UNID_INT,
-
-                pm.HR_PRE_MED,
-                pm.DT_VALIDADE,
-
-                ipm.CD_PRE_MED,
-                ipm.CD_ITPRE_MED,
-
-                EXTRACT(MONTH FROM ipm.DH_REGISTRO) AS MES,
-                CASE
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 1 THEN 'Jan'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 2 THEN 'Fev'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 3 THEN 'Mar'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 4 THEN 'Abr'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 5 THEN 'Mai'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 6 THEN 'Jun'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 7 THEN 'Jul'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 8 THEN 'Ago'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 9 THEN 'Set'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 10 THEN 'Out'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 11 THEN 'Nov'
-                    WHEN EXTRACT(MONTH FROM ipm.DH_REGISTRO) = 11 THEN 'Dez'
-                END AS NOME_MES,
-
-                EXTRACT(YEAR FROM ipm.DH_REGISTRO) AS ANO,
-
-                MAX(ipm.DH_REGISTRO)
-                OVER (
-                      PARTITION BY
-                        pm.CD_ATENDIMENTO,
-                        pm.CD_UNID_INT,
-                        pm.HR_PRE_MED
-                    ) AS DH_REGISTRO,
-
 
                 MIN(ipm.DH_REGISTRO)
                 OVER (
@@ -520,25 +487,11 @@ WITH PRESCRICAO_VM
                         pm.CD_ATENDIMENTO
                     ) AS DT_END,
 
-                ipm.DH_INICIAL,
-                ipm.DH_FINAL,
-
                 tp.CD_TIP_PRESC,
                 tp.DS_TIP_PRESC,
 
                 te.CD_TIP_ESQ,
-                te.DS_TIP_ESQ,
-
-                ipm.SN_CANCELADO,
-
-                ROW_NUMBER()
-                OVER (
-                      PARTITION BY
-                        pm.CD_ATENDIMENTO,
-                        pm.CD_UNID_INT,
-                        pm.HR_PRE_MED
-                      ORDER BY ipm.DH_REGISTRO
-                    ) AS RN
+                te.DS_TIP_ESQ
 
             FROM DBAMV.ITPRE_MED ipm
             JOIN DBAMV.PRE_MED pm       ON ipm.CD_PRE_MED = pm.CD_PRE_MED
@@ -548,7 +501,6 @@ WITH PRESCRICAO_VM
                 te.CD_TIP_ESQ IN( 'PME' ) AND
                 tp.CD_TIP_PRESC IN(488) AND
                 EXTRACT(YEAR FROM ipm.DH_REGISTRO) = EXTRACT(YEAR FROM SYSDATE)
-            ORDER BY ipm.DH_REGISTRO DESC
 ),
 PROTOCOLO_EXTUBACAO
     AS (
@@ -593,22 +545,25 @@ ATENDIMENTO
                         'DD/MM/YYYY HH24:MI:SS'
                     )
                 ELSE NULL
-            END AS DH_ALTA,
-
-            CASE
-                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
-                    'POSTO'
-                ELSE ui.DS_UNID_INT
-            END AS LOCAL
+            END AS DH_ALTA
 
         FROM DBAMV.ATENDIME a
         JOIN DBAMV.LEITO l                          ON a.CD_LEITO = l.CD_LEITO
-        JOIN DBAMV.UNID_INT ui                      ON l.CD_UNID_INT = ui.CD_UNID_INT
         LEFT JOIN DBAMV.PACIENTE p                  ON a.CD_PACIENTE = p.CD_PACIENTE
         WHERE
             EXTRACT(YEAR FROM a.DT_ATENDIMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
             p.NM_PACIENTE NOT LIKE '%TEST%'
-
+),
+ UNIDADE_LEITOS
+    AS (
+        SELECT
+            CD_UNID_INT,
+            CASE
+                WHEN DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE DS_UNID_INT
+            END AS LOCAL
+        FROM DBAMV.UNID_INT
 ),
 OBITOS
     AS (
@@ -646,10 +601,27 @@ TREATS
             a.CD_ATENDIMENTO,
             a.DH_ATENDIMENTO,
             a.DH_ALTA,
-            pvm.MES,
-            pvm.NOME_MES,
-            pvm.ANO,
-            a.LOCAL,
+
+            EXTRACT(MONTH FROM pvm.DT_START) AS MES,
+            CASE
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 1 THEN 'Jan'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 2 THEN 'Fev'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 3 THEN 'Mar'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 4 THEN 'Abr'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 5 THEN 'Mai'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 6 THEN 'Jun'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 7 THEN 'Jul'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 8 THEN 'Ago'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 9 THEN 'Set'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 10 THEN 'Out'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 11 THEN 'Nov'
+                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 11 THEN 'Dez'
+            END AS NOME_MES,
+
+            EXTRACT(YEAR FROM pvm.DT_START) AS ANO,
+
+            uil.CD_UNID_INT,
+            uil.LOCAL,
             pvm.DT_START,
 
             pe.REGX,
@@ -657,14 +629,18 @@ TREATS
             pe.HR_DOC_EXTUBACAO,
 
             CASE
-                WHEN pvm.DT_START = pvm.DT_END AND (pe.REGX IS NULL OR TRIM(pe.REGX) = '') THEN
-                    pe.HR_DOC_EXTUBACAO
-                WHEN pvm.DT_START = pvm.DT_END AND pe.REGX IS NOT NULL THEN
-                    pvm.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
-                WHEN a.DH_ALTA IS NOT NULL AND pvm.DT_START <> pvm.DT_END THEN
-                    pvm.DT_END
-                WHEN a.DH_ALTA IS NOT NULL AND o.TP_MOT_ALTA = 'O' THEN
+                WHEN o.TP_MOT_ALTA = 'O' AND o.HR_OBITO IS NOT NULL THEN
                     o.HR_OBITO
+                WHEN pe.REGX IS NOT NULL THEN
+                    pvm.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
+                WHEN pvm.DT_END IS NOT NULL  THEN
+                        CASE
+                            WHEN pvm.DT_END = pvm.DT_START AND pe.HR_DOC_EXTUBACAO IS NOT NULL AND pe.REGX IS NULL THEN
+                                pe.HR_DOC_EXTUBACAO
+                            WHEN pvm.DT_END = pvm.DT_START THEN
+                                pvm.DT_START + NUMTODSINTERVAL(COALESCE(TO_NUMBER(pe.REGX), 0), 'HOUR')
+                            ELSE pvm.DT_END
+                        END
                 ELSE
                     SYSDATE
             END AS DT_END,
@@ -676,7 +652,8 @@ TREATS
         LEFT JOIN ATENDIMENTO a ON pvm.CD_ATENDIMENTO = a.CD_ATENDIMENTO
         LEFT JOIN PROTOCOLO_EXTUBACAO pe ON pvm.CD_ATENDIMENTO = pe.CD_ATENDIMENTO
         LEFT JOIN OBITOS o ON pvm.CD_ATENDIMENTO = o.CD_ATENDIMENTO
-        ORDER BY pvm.MES
+        LEFT JOIN UNIDADE_LEITOS uil ON pvm.CD_UNID_INT = uil.CD_UNID_INT
+        ORDER BY EXTRACT(MONTH FROM pvm.DT_START)
 ),
 HORAS
     AS (
@@ -687,6 +664,7 @@ HORAS
             MES,
             NOME_MES,
             ANO,
+            CD_UNID_INT,
             LOCAL,
             DT_START,
             REGX,
@@ -697,7 +675,7 @@ HORAS
             HR_OBITO
         FROM TREATS
 )
-SELECT DISTINCT
+SELECT
     CD_ATENDIMENTO,
     DH_ATENDIMENTO,
     DH_ALTA,
@@ -733,6 +711,7 @@ SELECT DISTINCT
         ELSE '> 10 dias'
     END AS FAIXA_TEMPO
 FROM HORAS
+ORDER BY MES
 ;
 ```
 </details>
@@ -745,8 +724,43 @@ FROM HORAS
 
 <br>
 
-[![Dashboard_1](KPI_1.png)](https://app.powerbi.com/view?r=eyJrIjoiZDliMDc3MGItZDE0OC00Y2FiLTkyODAtZjk0ODcxYjhhODc1IiwidCI6ImIyZTIzZTI3LWVmYzItNDEwOC1iN2E5LWQ5ODczYmE2MzEyMSJ9)
+[![Dashboard_gif](windows.gif)](https://app.powerbi.com/view?r=eyJrIjoiMWUxODc4NjYtZWM1ZS00YjA1LWE5ODUtNWIxZDgxZTkwZWQ5IiwidCI6ImViNTgxZmZkLTY1YTktNDg3OS1iM2JlLTUzMTc2MzJmOGQzYSJ9)
+
+### * Click na imagem.
+
 
 <br>
+<br>
 
-[![Dashboard_2](KPI_2.png)](https://app.powerbi.com/view?r=eyJrIjoiZDliMDc3MGItZDE0OC00Y2FiLTkyODAtZjk0ODcxYjhhODc1IiwidCI6ImIyZTIzZTI3LWVmYzItNDEwOC1iN2E5LWQ5ODczYmE2MzEyMSJ9)
+## PowerBI Carousel (Windows)
+
+Este repositório contém um pequeno sistema para exibir vários painéis públicos do Power BI em tela cheia em um PC ou TV com Windows. O script gera uma página HTML com um carrossel que pré-carrega o próximo painel alguns segundos antes da transição para evitar o flash do ícone de carregamento do PowerBI.
+
+### Arquivos principais
+- `powerbi-carousel.ps1` — PowerShell que cria index.html e abre o navegador em modo tela-cheia.
+- start-carousel.bat — Atalho para executar o PowerShell sem abrir uma janela.
+- `links.txt` — Lista de links públicos do Power BI (um por linha). O script cria este arquivo na primeira execução.
+- `index.html` — Gerado automaticamente pelo PowerShell (não precisa editar, a menos que deseje ajustes pontuais).
+
+### Como usar
+1. Coloque powerbi-carousel.ps1 e start-carousel.bat no mesmo diretório.
+2. Dê um duplo-clique em start-carousel.bat para rodar (ou execute manualmente):
+   powershell -ExecutionPolicy Bypass -File .\powerbi-carousel.ps1
+   - Na primeira execução será criado links.txt.
+3. Abra links.txt e cole seus 5 (ou mais) links públicos do Power BI, um por linha. Use links de "Publish to web" / embed público.
+4. Execute start-carousel.bat novamente. O navegador suportado (Edge/Chrome/Brave/Firefox) abrirá em tela cheia e iniciará o carrossel.
+
+### Configurações úteis
+- Tempo por slide (DURATION) e tempo de pré-carregamento (PRELOAD_MS) são definidos no JavaScript dentro do index.html gerado. Para ajustar, edite o arquivo index.html ou ajuste os valores no powerbi-carousel.ps1 antes de gerar.
+- Se desejar iniciar automaticamente no login do Windows, coloque um atalho para start-carousel.bat em:
+  %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
+  ou crie uma Tarefa Agendada.
+
+### Observações
+- Os links devem ser públicos (Publish to web). Se o iframe pedir login ou não carregar, o link não é público.
+- Se ainda aparecer o ícone de loading do Power BI, aumente PRELOAD_MS (ex.: 8000–10000 ms) para pré-carregar mais tempo antes da troca.
+- Se o navegador não abrir em kiosk, verifique se Edge/Chrome/Brave/Firefox estão instalados; caso contrário, edite powerbi-carousel.ps1 e aponte para o caminho do executável do seu navegador.
+- Para evitar que a tela desligue, desative suspensão e protetor de tela nas Configurações do Windows.
+
+<br>
+<br>
