@@ -757,9 +757,9 @@ Este repositório contém um pequeno sistema para exibir vários painéis públi
   ou crie uma Tarefa Agendada.
 
 ### Observações
-- Os links devem ser públicos (Publish to web). Se o iframe pedir login ou não carregar, o link não é público.
+- Os links devem ser públicos. Se o iframe pedir login ou não carregar, o link não é público.
 - Se ainda aparecer o ícone de loading do Power BI, aumente PRELOAD_MS (ex.: 8000–10000 ms) para pré-carregar mais tempo antes da troca.
-- Se o navegador não abrir em kiosk, verifique se Edge/Chrome/Brave/Firefox estão instalados; caso contrário, edite powerbi-carousel.ps1 e aponte para o caminho do executável do seu navegador.
+- Se o navegador não abrir em tela cheia, verifique se Edge/Chrome/Brave/Firefox estão instalados; caso contrário, edite powerbi-carousel.ps1 e aponte para o caminho do executável do seu navegador.
 - Para evitar que a tela desligue, desative suspensão e protetor de tela nas Configurações do Windows.
 
 <br>
