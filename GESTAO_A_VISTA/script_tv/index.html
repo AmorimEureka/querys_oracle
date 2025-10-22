@@ -1,0 +1,171 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PowerBI Carousel</title>
+<style>
+  html,body{height:100%;margin:0;background:#000}
+  .carousel{position:relative;width:100%;height:100%;overflow:hidden}
+  .slide{position:absolute;inset:0;transition:transform 1s ease,opacity 1s ease;opacity:0;transform:translateX(100%);will-change:transform,opacity}
+  .slide.active{opacity:1;transform:translateX(0)}
+  .slide.prev{transform:translateX(-100%);opacity:0}
+  iframe{width:100%;height:100%;border:0;background:#fff}
+  .overlay{position:absolute;right:10px;bottom:10px;color:#fff;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:4px;font-family: sans-serif}
+  body.hide-cursor, body.hide-cursor *{cursor:none !important}
+</style>
+</head>
+<body>
+<div class="carousel" id="carousel"></div>
+<div class="overlay" id="overlay">1 / N</div>
+<script>
+/*
+  Comportamento:
+  - DURATION: tempo total de exibiÃ§Ã£o por slide (ms)
+  - PRELOAD_MS: quantos ms antes da troca devemos iniciar o carregamento do prÃ³ximo iframe
+  - fluxo: startCycle() agenda preload e show em sequÃªncia usando timeouts para evitar flashes
+*/
+const LINKS = ["https://app.powerbi.com/view?r=eyJrIjoiMWUxODc4NjYtZWM1ZS00YjA1LWE5ODUtNWIxZDgxZTkwZWQ5IiwidCI6ImViNTgxZmZkLTY1YTktNDg3OS1iM2JlLTUzMTc2MzJmOGQzYSJ9\u0026pageName=72ee6c299ceccc3667d1","https://app.powerbi.com/view?r=eyJrIjoiMWUxODc4NjYtZWM1ZS00YjA1LWE5ODUtNWIxZDgxZTkwZWQ5IiwidCI6ImViNTgxZmZkLTY1YTktNDg3OS1iM2JlLTUzMTc2MzJmOGQzYSJ9\u0026pageName=4c5f9f602349b35e84cb","https://app.powerbi.com/view?r=eyJrIjoiMWUxODc4NjYtZWM1ZS00YjA1LWE5ODUtNWIxZDgxZTkwZWQ5IiwidCI6ImViNTgxZmZkLTY1YTktNDg3OS1iM2JlLTUzMTc2MzJmOGQzYSJ9\u0026pageName=190e93f0a4db4c54088d","https://app.powerbi.com/view?r=eyJrIjoiMWUxODc4NjYtZWM1ZS00YjA1LWE5ODUtNWIxZDgxZTkwZWQ5IiwidCI6ImViNTgxZmZkLTY1YTktNDg3OS1iM2JlLTUzMTc2MzJmOGQzYSJ9\u0026pageName=097bd6d52314891abb67"];
+const DURATION = 20000; // 40 s por slide
+const PRELOAD_MS = 5000; // prÃ©-carrega 5s antes da transiÃ§Ã£o (ajuste aqui conforme necessÃ¡rio)
+const TRANSITION = 1000; // ms de transiÃ§Ã£o (deve refletir CSS)
+const carousel = document.getElementById('carousel');
+const overlay = document.getElementById('overlay');
+let slides = [];
+let idx = 0;
+let preloadTimeout = null;
+let showTimeout = null;
+
+function addCacheBuster(url){
+  return url + (url.indexOf('?') === -1 ? '?' : '&') + '_cb=' + Date.now();
+}
+
+function createSlides(){
+  LINKS.forEach((url, i) => {
+    const s = document.createElement('div');
+    s.className = 'slide';
+    if(i===0) s.classList.add('active');
+    const ifr = document.createElement('iframe');
+    // apenas o primeiro carrega na inicializaÃ§Ã£o; os demais aguardam preload
+    if(i===0){
+      ifr.src = addCacheBuster(url);
+      ifr.dataset.loaded = '1';
+    } else {
+      ifr.src = '';
+      ifr.dataset.src = url;
+      ifr.dataset.loaded = '';
+    }
+    ifr.allow = "fullscreen; autoplay";
+    s.appendChild(ifr);
+    carousel.appendChild(s);
+    slides.push(s);
+  });
+  overlay.textContent = (idx+1) + ' / ' + slides.length;
+}
+
+// Precarrega o iframe do prÃ³ximo slide (se ainda nÃ£o carregado)
+function preloadNext(){
+  const next = (idx + 1) % slides.length;
+  const inn = slides[next];
+  const innIframe = inn.querySelector('iframe');
+  if (!innIframe) return;
+  if (innIframe.dataset.loaded === '1') return; // jÃ¡ carregado
+  const original = innIframe.dataset.src || LINKS[next] || innIframe.src;
+  innIframe.src = addCacheBuster(original);
+  innIframe.dataset.loaded = '1';
+}
+
+// Exibe o prÃ³ximo slide (faz transiÃ§Ã£o)
+function show(next){
+  if(next === idx) return;
+  const prev = idx;
+  const out = slides[prev];
+  const inn = slides[next];
+
+  // garante que o iframe que entra tenha src (se preload falhou por algum motivo)
+  const innIframe = inn.querySelector('iframe');
+  if (innIframe && innIframe.dataset.loaded !== '1') {
+    const original = innIframe.dataset.src || LINKS[next] || innIframe.src;
+    innIframe.src = addCacheBuster(original);
+    innIframe.dataset.loaded = '1';
+  }
+
+  // faz a transiÃ§Ã£o visual
+  out.classList.remove('active');
+  out.classList.add('prev');
+  inn.classList.add('active');
+
+  // apÃ³s transiÃ§Ã£o, limpa o iframe que saiu para liberar memÃ³ria e marcar como nÃ£o carregado
+  setTimeout(()=>{
+    out.classList.remove('prev');
+    try {
+      const outIf = out.querySelector('iframe');
+      // limpa src para forÃ§ar reload na prÃ³xima vez (se desejar manter em cache, comente estas 2 linhas)
+      outIf.src = '';
+      outIf.dataset.loaded = '';
+    } catch(e){ /* nÃ£o acessamos contentWindow (cross-origin), apenas src/dataset */ }
+  }, TRANSITION + 50);
+
+  idx = next;
+  overlay.textContent = (idx+1) + ' / ' + slides.length;
+}
+
+function nextSlide(){
+  show((idx+1) % slides.length);
+}
+
+function clearTimers(){
+  if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
+  if (showTimeout) { clearTimeout(showTimeout); showTimeout = null; }
+}
+
+// Agenda ciclo: prÃ©-carrega PRELOAD_MS antes e mostra no fim do perÃ­odo DURATION
+function startCycle(){
+  clearTimers();
+  // se PRELOAD_MS >= DURATION, prÃ©-carrega imediatamente
+  const preloadDelay = Math.max(0, DURATION - PRELOAD_MS);
+  preloadTimeout = setTimeout(()=> {
+    preloadNext();
+  }, preloadDelay);
+
+  showTimeout = setTimeout(()=> {
+    nextSlide();
+    // reinicia o ciclo (preload para o novo prÃ³ximo)
+    startCycle();
+  }, DURATION);
+}
+
+// InicializaÃ§Ã£o
+createSlides();
+startCycle();
+
+// Controles de teclado (manual)
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight'){
+    clearTimers();
+    nextSlide();
+    startCycle();
+  }
+  if(e.key === 'ArrowLeft'){
+    clearTimers();
+    show((idx-1+slides.length)%slides.length);
+    startCycle();
+  }
+  if(e.key === 'Escape'){
+    window.close();
+  }
+});
+
+// Hide cursor quando inativo
+let idleTimer;
+function resetCursorTimer(){
+  document.body.classList.remove('hide-cursor');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(()=>document.body.classList.add('hide-cursor'), 3000);
+}
+window.addEventListener('mousemove', resetCursorTimer);
+window.addEventListener('touchstart', resetCursorTimer);
+resetCursorTimer();
+</script>
+</body>
+</html>
