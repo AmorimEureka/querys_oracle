@@ -66,7 +66,7 @@ METRICA, INDICADORES e KPI - GESTÃO À VISTA
         <tr>
             <td style="padding: 8px; border: 1px solid #ddd;">TAXA DE QUEDAS</td>
             <td style="padding: 8px; border: 1px solid #ddd;">Avalia seguranca e monitoramento da ocorrencia de quedas de pacientes durante a internacao, a fim de identificar riscos, promover açoes preventivas e garantir a segurança do paciente .</td>
-            <td style="padding: 8px; border: 1px solid #ddd;"> (Σ Nº Quedas + Nº Total Paciente-dia) * 1.000 </td>
+            <td style="padding: 8px; border: 1px solid #ddd;"> (Σ Nº Quedas / Nº Total Paciente-dia) * 1.000 </td>
             <td style="padding: 8px; border: 1px solid #ddd;"> 0.8% </td>
             <td style="padding: 8px; border: 1px solid #ddd;">PERCENTUAL</td>
             <td style="padding: 8px; border: 1px solid #ddd;">GoogleSheets SCIH</td>
