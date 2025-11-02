@@ -130,7 +130,7 @@ SELECT
         WHEN o.MES = 9 THEN 'Set'
         WHEN o.MES = 10 THEN 'Out'
         WHEN o.MES = 11 THEN 'Nov'
-        WHEN o.MES = 11 THEN 'Dez'
+        WHEN o.MES = 12 THEN 'Dez'
     END AS NOME_MES,
     o.ULTIMO_OBITO,
     o.ANO,
@@ -153,7 +153,7 @@ GROUP BY
         WHEN o.MES = 9 THEN 'Set'
         WHEN o.MES = 10 THEN 'Out'
         WHEN o.MES = 11 THEN 'Nov'
-        WHEN o.MES = 11 THEN 'Dez'
+        WHEN o.MES = 12 THEN 'Dez'
     END,
     o.ULTIMO_OBITO,
     o.ANO,
@@ -402,7 +402,8 @@ PACIENTE_DIA
             a.MES,
             a.ANO,
             ul.LOCAL
-),
+)
+,
 PACIENTE_ALTAS
     AS (
         SELECT
@@ -460,7 +461,7 @@ SELECT
         WHEN pd.MES = 9 THEN 'Set'
         WHEN pd.MES = 10 THEN 'Out'
         WHEN pd.MES = 11 THEN 'Nov'
-        WHEN pd.MES = 11 THEN 'Dez'
+        WHEN pd.MES = 12 THEN 'Dez'
     END AS NOME_MES,
     pd.ANO,
     pd.LOCAL,
@@ -472,24 +473,24 @@ SELECT
     pa.QTD_ALTAS,
 
     CASE
-        WHEN pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1)  < 1 THEN
+        WHEN pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1)  < 1 THEN
             '< 1'
         ELSE
-            TO_CHAR(TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) ))
+            TO_CHAR(TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) ))
     END AS CLASS_TEMPO_MED,
 
     CASE
-        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) ) < 1 THEN
+        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) ) < 1 THEN
             1
         ELSE
-            TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) )
+            TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) )
     END AS TEMPO_MEDIO,
 
     CASE
-        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1) ) < 1 THEN
-            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1), 2 )
+        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) ) < 1 THEN
+            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1), 2 )
         ELSE
-            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( mi.QTD_TRANSFPARA + pa.QTD_ALTAS ), 1), 2 )
+            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1), 2 )
     END AS TEMPO_MEDIO_REAL
 
 FROM PACIENTE_DIA pd
