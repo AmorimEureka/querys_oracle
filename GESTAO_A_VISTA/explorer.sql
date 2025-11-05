@@ -270,6 +270,67 @@ GROUP BY
  ;
 
 
+
+
+ SELECT
+        CD_UNID_INT
+      , DS_UNIDADE
+      , sum(PAC_INT_00H)    AS INTERNADOS
+      , sum(ENT_INTERNADOS) AS INTERNACOES
+      , sum(ENT_TRANSF)     AS TRANSF_ENTRADAS
+      , sum(SAI_ALTAS)      AS ALTAS
+      , sum(SAI_TRANSFPARA) AS TRANSF_SAIDAS
+      , sum(SAI_OBITOS)     AS OBITOS
+      , sum(SAI_OBITOS48)   AS OBITOS_48H
+      , sum(SAI_OBITOS24)   AS OBITOS_24H
+      , sum(HOSP_DIA)       AS HOSP_DIA
+      , sum(OBITO_DIA)      AS OBITO_DIA
+      , sum(PAC_INT_00H)+sum(ENT_INTERNADOS)+sum(ENT_TRANSF)-sum(SAI_ALTAS)-sum(SAI_TRANSFPARA)-sum(SAI_OBITOS) AS PAC_DIA
+   FROM (
+            SELECT
+            CONTADOR.DATA  AS DATA_UNID,
+            UNID_INT.CD_UNID_INT  AS CD_UNID_INT,
+            UNID_INT.DS_UNID_INT  AS DS_UNIDADE,
+            COUNT(*)              AS PAC_INT_00H,
+            0                     AS ENT_INTERNADOS,
+            0                     AS ENT_TRANSF,
+            0                     AS SAI_ALTAS,
+            0                     AS SAI_TRANSFPARA,
+            0                     AS SAI_OBITOS,
+            0                     AS SAI_OBITOS48,
+            0                     AS SAI_OBITOS24,
+            0                     AS HOSP_DIA,
+            0                     AS OBITO_DIA
+            From
+            DBAMV.MOV_INT
+            ,DBAMV.UNID_INT
+            ,DBAMV.LEITO
+            ,DBAMV.ATENDIME
+            ,DBAMV.CONVENIO
+            ,( SELECT trunc ((TO_DATE ( Nvl(NULL,To_Char(SYSDATE,'dd/mm/yyyy')), 'dd/mm/yyyy' ) - 1 ) + rownum ) DATA
+                FROM dbamv.cid
+                WHERE trunc ((TO_DATE ( Nvl(NULL,To_Char(SYSDATE,'dd/mm/yyyy')), 'dd/mm/yyyy' ) - 1 ) + rownum ) <= trunc ( TO_DATE ( Nvl(NULL,To_Char(SYSDATE,'dd/mm/yyyy')), 'dd/mm/yyyy' )) ) CONTADOR
+
+            WHERE Trunc(DT_MOV_INT) <= CONTADOR.DATA - 1
+            And  TRUNC(NVL(DT_LIB_MOV, SYSDATE)) > CONTADOR.DATA -  1
+            And  TP_MOV IN('O', 'I')
+            And  LEITO.CD_UNID_INT = UNID_INT.CD_UNID_INT
+            And  MOV_INT.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+            And  ATENDIME.TP_ATENDIMENTO IN ('I')
+            And  MOV_INT.CD_LEITO = LEITO.CD_LEITO
+            And  ATENDIME.CD_CONVENIO = CONVENIO.CD_CONVENIO
+            AND  Unid_Int.Cd_Unid_Int = Nvl( 3, Unid_Int.Cd_Unid_Int)
+            Group BY
+            CONTADOR.DATA,
+ UNID_INT.CD_UNID_INT,
+ UNID_INT.DS_UNID_INT
+   )
+ GROUP BY
+        CD_UNID_INT,
+        DS_UNIDADE
+ ;
+
+
 -- #########################################################################################################
 
 
@@ -319,36 +380,69 @@ ATENDIMENTO
                 ELSE NULL
             END AS DH_ATENDIMENTO,
 
+            a.TP_ATENDIMENTO,
+
             CASE
                 WHEN a.DT_ALTA IS NOT NULL AND a.HR_ALTA IS NOT NULL THEN
                     TO_DATE(
                         TO_CHAR(a.DT_ALTA, 'DD/MM/YYYY') || ' ' || TO_CHAR(a.HR_ALTA, 'HH24:MI:SS'),
                         'DD/MM/YYYY HH24:MI:SS'
                     )
-                ELSE NULL
+                WHEN a.DT_ALTA IS NULL AND EXTRACT(MONTH FROM a.DT_ATENDIMENTO) <> EXTRACT(MONTH FROM SYSDATE) THEN
+                    TO_DATE(LAST_DAY(a.DT_ATENDIMENTO), 'DD/MM/YYYY HH24:MI:SS')
+                ELSE
+                    SYSDATE
             END AS DH_ALTA
             /*+ MATERIALIZE */
         FROM DBAMV.ATENDIME a
         LEFT JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
         WHERE
-            EXTRACT(YEAR FROM a.DT_ATENDIMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
-            a.TP_ATENDIMENTO IN( 'I', 'U') AND
             p.NM_PACIENTE NOT LIKE '%TEST%'
 ),
 MOVIMENTACAO
     AS (
-        SELECT
+        SELECT -- MOVIMENTACAO DE INTERNACOES
             mi.CD_ATENDIMENTO,
             mi.CD_LEITO,
-            mi.CD_LEITO_ANTERIOR,
-            EXTRACT(MONTH FROM mi.DT_MOV_INT) AS MES,
-            EXTRACT(YEAR FROM mi.DT_MOV_INT) AS ANO
+            EXTRACT(YEAR FROM mi.Dt_Mov_Int) AS ANO,
+            EXTRACT(MONTH FROM mi.Dt_Mov_Int) AS MES,
+            uL.LOCAL,
+            COUNT(*) AS QTD_MOV
             /*+ MATERIALIZE */
         FROM DBAMV.MOV_INT mi
-        JOIN DBAMV.ATENDIME a ON a.CD_ATENDIMENTO = mi.CD_ATENDIMENTO
+        JOIN UNIDADE_LEITOS ul ON mi.CD_LEITO = ul.CD_LEITO
         WHERE
-            EXTRACT(YEAR FROM mi.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE) AND
-            a.TP_ATENDIMENTO IN ('I')
+            mi.TP_MOV IN ('I')
+            -- AND ul.CD_UNID_INT = 3
+        GROUP BY
+            mi.CD_ATENDIMENTO,
+            mi.CD_LEITO,
+            EXTRACT(YEAR FROM mi.Dt_Mov_Int),
+            EXTRACT(MONTH FROM mi.Dt_Mov_Int),
+            ul.LOCAL
+
+        UNION ALL
+
+        SELECT -- MOVIMENTACAO - TRANSFERENCIA PARA [CONTEM TRANSF EXTERNAS | INTERNAS ]
+            mi.CD_ATENDIMENTO,
+            mi.CD_LEITO,
+            EXTRACT(YEAR FROM mi.Dt_Mov_Int) AS ANO,
+            EXTRACT(MONTH FROM mi.Dt_Mov_Int) AS MES,
+            uL.LOCAL,
+            COUNT(*) AS QTD_MOV
+            /*+ MATERIALIZE */
+        FROM DBAMV.MOV_INT mi
+        JOIN UNIDADE_LEITOS ul ON mi.CD_LEITO_ANTERIOR = ul.CD_LEITO
+        JOIN UNIDADE_LEITOS ul1 ON mi.CD_LEITO = ul1.CD_LEITO AND ul.CD_UNID_INT != ul1.CD_UNID_INT
+        WHERE
+            mi.TP_MOV IN ('O')
+            -- AND ul.CD_UNID_INT = 3
+        GROUP BY
+            mi.CD_ATENDIMENTO,
+            mi.CD_LEITO,
+            EXTRACT(YEAR FROM mi.Dt_Mov_Int),
+            EXTRACT(MONTH FROM mi.Dt_Mov_Int),
+            ul.LOCAL
 ),
 MEDIANA
     AS (
@@ -374,11 +468,9 @@ MEDIANA
 PACIENTE_DIA
     AS (
         SELECT
-            -- a.CD_ATENDIMENTO,
             a.MES,
             a.ANO,
             ul.LOCAL,
-            a.CLASSIFICACAO,
 
             SUM(
                 CASE
@@ -391,19 +483,15 @@ PACIENTE_DIA
 
         FROM ATENDIMENTO a
         JOIN UNIDADE_LEITOS ul ON a.CD_LEITO = ul.CD_LEITO
-        -- WHERE ul.LOCAL = 'UTI 1'
         GROUP BY
-            -- a.CD_ATENDIMENTO,
             a.MES,
             a.ANO,
-            ul.LOCAL,
-            a.CLASSIFICACAO
+            ul.LOCAL
         ORDER BY
             a.MES,
             a.ANO,
             ul.LOCAL
-)
-,
+),
 PACIENTE_ALTAS
     AS (
         SELECT
@@ -425,29 +513,24 @@ PACIENTE_ALTAS
             EXTRACT(MONTH FROM a.DH_ALTA),
             EXTRACT(YEAR FROM a.DH_ALTA),
             ul.LOCAL
-),
+)
+,
 MOVI_INTERNA
     AS (
         SELECT
-
             m.MES,
             m.ANO,
-            ul1.LOCAL,
-            count(*) AS QTD_TRANSFPARA
-
+            m.LOCAL,
+            SUM(m.QTD_MOV) AS QTD_MOV --
         FROM MOVIMENTACAO m
-        JOIN UNIDADE_LEITOS ul ON m.CD_LEITO = ul.CD_LEITO
-        JOIN UNIDADE_LEITOS ul1 ON m.CD_LEITO_ANTERIOR = ul1.CD_LEITO
-        WHERE
-            ul.CD_UNID_INT <> ul1.CD_UNID_INT
         GROUP BY
             m.MES,
             m.ANO,
-            ul1.LOCAL
+            m.LOCAL
         ORDER BY
             m.MES
 )
-SELECT
+SELECT DISTINCT
     pd.MES,
     CASE
         WHEN pd.MES = 1 THEN 'Jan'
@@ -465,32 +548,31 @@ SELECT
     END AS NOME_MES,
     pd.ANO,
     pd.LOCAL,
-    pd.CLASSIFICACAO,
     m.MEDIANA_IDADE,
 
     pd.QTD_PACIENTE_DIA,
-    mi.QTD_TRANSFPARA,
+    mi.QTD_MOV,
     pa.QTD_ALTAS,
 
     CASE
-        WHEN pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1)  < 1 THEN
+        WHEN TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 ) < 1 THEN
             '< 1'
         ELSE
-            TO_CHAR(TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) ))
+            TO_CHAR(TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 ))
     END AS CLASS_TEMPO_MED,
 
     CASE
-        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) ) < 1 THEN
+        WHEN ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24, 2 ) < 1 THEN
             1
         ELSE
-            TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) )
+            TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 )
     END AS TEMPO_MEDIO,
 
     CASE
-        WHEN TRUNC( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1) ) < 1 THEN
-            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1), 2 )
+        WHEN TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 ) < 1 THEN
+            ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24, 2 )
         ELSE
-            ROUND( pd.QTD_PACIENTE_DIA  / COALESCE( ( pa.QTD_ALTAS ), 1), 2 )
+            ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24, 2 )
     END AS TEMPO_MEDIO_REAL
 
 FROM PACIENTE_DIA pd
@@ -501,6 +583,9 @@ ORDER BY
     pd.MES,
     pd.LOCAL
 ;
+
+
+
 
 
 /* ******************************************************************************************** */
