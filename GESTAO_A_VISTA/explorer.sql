@@ -406,6 +406,7 @@ MOVIMENTACAO
             mi.CD_LEITO,
             EXTRACT(YEAR FROM mi.Dt_Mov_Int) AS ANO,
             EXTRACT(MONTH FROM mi.Dt_Mov_Int) AS MES,
+            SUBSTR(TO_CHAR(mi.Dt_Mov_Int, 'FMMONTH', 'NLS_DATE_LANGUAGE=PORTUGUESE'), 1, 1)  AS NOME_MES,
             uL.LOCAL,
             COUNT(*) AS QTD_MOV
             /*+ MATERIALIZE */
@@ -419,6 +420,7 @@ MOVIMENTACAO
             mi.CD_LEITO,
             EXTRACT(YEAR FROM mi.Dt_Mov_Int),
             EXTRACT(MONTH FROM mi.Dt_Mov_Int),
+            SUBSTR(TO_CHAR(mi.Dt_Mov_Int, 'FMMONTH', 'NLS_DATE_LANGUAGE=PORTUGUESE'), 1, 1) ,
             ul.LOCAL
 
         UNION ALL
@@ -428,6 +430,7 @@ MOVIMENTACAO
             mi.CD_LEITO,
             EXTRACT(YEAR FROM mi.Dt_Mov_Int) AS ANO,
             EXTRACT(MONTH FROM mi.Dt_Mov_Int) AS MES,
+            SUBSTR(TO_CHAR(mi.Dt_Mov_Int, 'FMMONTH', 'NLS_DATE_LANGUAGE=PORTUGUESE'), 1, 1)  AS NOME_MES,
             uL.LOCAL,
             COUNT(*) AS QTD_MOV
             /*+ MATERIALIZE */
@@ -442,6 +445,7 @@ MOVIMENTACAO
             mi.CD_LEITO,
             EXTRACT(YEAR FROM mi.Dt_Mov_Int),
             EXTRACT(MONTH FROM mi.Dt_Mov_Int),
+            SUBSTR(TO_CHAR(mi.Dt_Mov_Int, 'FMMONTH', 'NLS_DATE_LANGUAGE=PORTUGUESE'), 1, 1),
             ul.LOCAL
 ),
 MEDIANA
@@ -519,12 +523,14 @@ MOVI_INTERNA
     AS (
         SELECT
             m.MES,
+            m.NOME_MES,
             m.ANO,
             m.LOCAL,
             SUM(m.QTD_MOV) AS QTD_MOV --
         FROM MOVIMENTACAO m
         GROUP BY
             m.MES,
+            m.NOME_MES,
             m.ANO,
             m.LOCAL
         ORDER BY
@@ -532,20 +538,21 @@ MOVI_INTERNA
 )
 SELECT DISTINCT
     pd.MES,
-    CASE
-        WHEN pd.MES = 1 THEN 'Jan'
-        WHEN pd.MES = 2 THEN 'Fev'
-        WHEN pd.MES = 3 THEN 'Mar'
-        WHEN pd.MES = 4 THEN 'Abr'
-        WHEN pd.MES = 5 THEN 'Mai'
-        WHEN pd.MES = 6 THEN 'Jun'
-        WHEN pd.MES = 7 THEN 'Jul'
-        WHEN pd.MES = 8 THEN 'Ago'
-        WHEN pd.MES = 9 THEN 'Set'
-        WHEN pd.MES = 10 THEN 'Out'
-        WHEN pd.MES = 11 THEN 'Nov'
-        WHEN pd.MES = 12 THEN 'Dez'
-    END AS NOME_MES,
+    -- CASE
+    --     WHEN pd.MES = 1 THEN 'Jan'
+    --     WHEN pd.MES = 2 THEN 'Fev'
+    --     WHEN pd.MES = 3 THEN 'Mar'
+    --     WHEN pd.MES = 4 THEN 'Abr'
+    --     WHEN pd.MES = 5 THEN 'Mai'
+    --     WHEN pd.MES = 6 THEN 'Jun'
+    --     WHEN pd.MES = 7 THEN 'Jul'
+    --     WHEN pd.MES = 8 THEN 'Ago'
+    --     WHEN pd.MES = 9 THEN 'Set'
+    --     WHEN pd.MES = 10 THEN 'Out'
+    --     WHEN pd.MES = 11 THEN 'Nov'
+    --     WHEN pd.MES = 12 THEN 'Dez'
+    -- END AS NOME_MES,
+    mi.NOME_MES,
     pd.ANO,
     pd.LOCAL,
     m.MEDIANA_IDADE,
