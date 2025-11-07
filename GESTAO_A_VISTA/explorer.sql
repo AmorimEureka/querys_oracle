@@ -354,7 +354,8 @@ WITH UNIDADE_LEITOS
             /*+ MATERIALIZE */
         FROM DBAMV.LEITO l
         JOIN DBAMV.UNID_INT ui ON l.CD_UNID_INT = ui.CD_UNID_INT
-),
+)
+,
 ATENDIMENTO
     AS (
         SELECT
@@ -371,6 +372,9 @@ ATENDIMENTO
 
             EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES ,
             EXTRACT(YEAR FROM a.DT_ATENDIMENTO) AS ANO ,
+
+            TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') AS ANO_MES,
+
             CASE
                 WHEN a.DT_ATENDIMENTO IS NOT NULL AND a.HR_ATENDIMENTO IS NOT NULL THEN
                     TO_DATE(
@@ -382,14 +386,18 @@ ATENDIMENTO
 
             a.TP_ATENDIMENTO,
 
+            a.DT_ALTA AS DT_ALTA_SYS,
+
             CASE
                 WHEN a.DT_ALTA IS NOT NULL AND a.HR_ALTA IS NOT NULL THEN
                     TO_DATE(
                         TO_CHAR(a.DT_ALTA, 'DD/MM/YYYY') || ' ' || TO_CHAR(a.HR_ALTA, 'HH24:MI:SS'),
                         'DD/MM/YYYY HH24:MI:SS'
                     )
+                WHEN a.DT_ALTA IS NOT NULL AND a.HR_ALTA IS NULL THEN
+                    TO_DATE(TO_CHAR(a.DT_ALTA, 'DD/MM/YYYY') || ' 23:59:59', 'DD/MM/YYYY HH24:MI:SS')
                 WHEN a.DT_ALTA IS NULL AND EXTRACT(MONTH FROM a.DT_ATENDIMENTO) <> EXTRACT(MONTH FROM SYSDATE) THEN
-                    TO_DATE(LAST_DAY(a.DT_ATENDIMENTO), 'DD/MM/YYYY HH24:MI:SS')
+                    TO_DATE(TO_CHAR(LAST_DAY(a.DT_ATENDIMENTO), 'DD/MM/YYYY') || ' 23:59:59', 'DD/MM/YYYY HH24:MI:SS')
                 ELSE
                     SYSDATE
             END AS DH_ALTA
@@ -398,6 +406,7 @@ ATENDIMENTO
         LEFT JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
         WHERE
             p.NM_PACIENTE NOT LIKE '%TEST%'
+
 ),
 MOVIMENTACAO
     AS (
@@ -467,8 +476,7 @@ MEDIANA
             a.MES,
             a.ANO,
             ul.LOCAL
-)
-,
+),
 PACIENTE_DIA
     AS (
         SELECT
@@ -478,8 +486,15 @@ PACIENTE_DIA
 
             SUM(
                 CASE
-                    WHEN COALESCE(TRUNC(a.DH_ALTA), TRUNC(SYSDATE)) - TRUNC(a.DH_ATENDIMENTO) > 0 THEN
-                        COALESCE(TRUNC(a.DH_ALTA), TRUNC(SYSDATE)) - TRUNC(a.DH_ATENDIMENTO)
+                    WHEN a.DH_ALTA IS NOT NULL AND a.DH_ATENDIMENTO IS NOT NULL THEN
+                        CASE
+                            WHEN TRUNC(a.DH_ALTA) - TRUNC(a.DH_ATENDIMENTO) > 0 THEN
+                                TRUNC(a.DH_ALTA) - TRUNC(a.DH_ATENDIMENTO)
+                            ELSE
+                                1
+                        END
+                    WHEN a.DH_ALTA IS NULL AND a.DH_ATENDIMENTO IS NOT NULL THEN
+                        TRUNC(SYSDATE) - TRUNC(a.DH_ATENDIMENTO)
                     ELSE
                         1
                 END
@@ -499,23 +514,23 @@ PACIENTE_DIA
 PACIENTE_ALTAS
     AS (
         SELECT
-            EXTRACT(MONTH FROM a.DH_ALTA) AS MES,
-            EXTRACT(YEAR FROM a.DH_ALTA) AS ANO,
+            EXTRACT(MONTH FROM a.DT_ALTA_SYS) AS MES,
+            EXTRACT(YEAR FROM a.DT_ALTA_SYS) AS ANO,
             ul.LOCAL,
             COUNT(*) AS QTD_ALTAS
 
         FROM ATENDIMENTO a
         JOIN UNIDADE_LEITOS ul ON a.CD_LEITO = ul.CD_LEITO
         WHERE
-            a.DH_ALTA IS NOT NULL AND
-            EXTRACT(YEAR FROM a.DH_ALTA) = EXTRACT(YEAR FROM SYSDATE)
+            a.DT_ALTA_SYS IS NOT NULL AND
+            EXTRACT(YEAR FROM a.DT_ALTA_SYS) = EXTRACT(YEAR FROM SYSDATE)
         GROUP BY
-            EXTRACT(MONTH FROM a.DH_ALTA),
-            EXTRACT(YEAR FROM a.DH_ALTA),
+            EXTRACT(MONTH FROM a.DT_ALTA_SYS),
+            EXTRACT(YEAR FROM a.DT_ALTA_SYS),
             ul.LOCAL
         ORDER BY
-            EXTRACT(MONTH FROM a.DH_ALTA),
-            EXTRACT(YEAR FROM a.DH_ALTA),
+            EXTRACT(MONTH FROM a.DT_ALTA_SYS),
+            EXTRACT(YEAR FROM a.DT_ALTA_SYS),
             ul.LOCAL
 )
 ,
@@ -526,7 +541,7 @@ MOVI_INTERNA
             m.NOME_MES,
             m.ANO,
             m.LOCAL,
-            SUM(m.QTD_MOV) AS QTD_MOV --
+            SUM(m.QTD_MOV) AS QTD_MOV
         FROM MOVIMENTACAO m
         GROUP BY
             m.MES,
@@ -559,33 +574,34 @@ SELECT DISTINCT
 
     pd.QTD_PACIENTE_DIA,
     mi.QTD_MOV,
-    pa.QTD_ALTAS,
+    COALESCE(pa.QTD_ALTAS, 0) AS QTD_ALTAS,
 
     CASE
-        WHEN TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 ) < 1 THEN
+        WHEN TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24 ) < 1 THEN
             '< 1'
         ELSE
-            TO_CHAR(TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 ))
+            TO_CHAR(TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24 ))
     END AS CLASS_TEMPO_MED,
 
-    CASE
-        WHEN ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24, 2 ) < 1 THEN
-            1
-        ELSE
-            TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 )
-    END AS TEMPO_MEDIO,
+        CASE
+            WHEN ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24, 2 ) < 1 THEN
+                1
+            ELSE
+                TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24 )
+        END AS TEMPO_MEDIO,
 
-    CASE
-        WHEN TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24 ) < 1 THEN
-            ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24, 2 )
-        ELSE
-            ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + pa.QTD_ALTAS), 1)) * 24, 2 )
-    END AS TEMPO_MEDIO_REAL
+        CASE
+            WHEN TRUNC( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24 ) < 1 THEN
+                ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24, 2 )
+            ELSE
+                ROUND( (pd.QTD_PACIENTE_DIA / COALESCE( (mi.QTD_MOV + COALESCE(pa.QTD_ALTAS, 0)), 1)) * 24, 2 )
+        END AS TEMPO_MEDIO_REAL
 
 FROM PACIENTE_DIA pd
-JOIN PACIENTE_ALTAS pa ON pd.MES = pa.MES AND pd.ANO = pa.ANO AND pd.LOCAL = pa.LOCAL
+LEFT JOIN PACIENTE_ALTAS pa ON pd.MES = pa.MES AND pd.ANO = pa.ANO AND pd.LOCAL = pa.LOCAL
 JOIN MOVI_INTERNA mi ON pd.MES = mi.MES AND pd.ANO = mi.ANO AND pd.LOCAL = mi.LOCAL
 JOIN MEDIANA m ON pd.MES = m.MES AND pd.ANO = m.ANO AND pd.LOCAL = m.LOCAL
+WHERE pd.LOCAL = '" & Unidade & "' AND pd.ANO =  = EXTRACT(YEAR FROM SYSDATE)
 ORDER BY
     pd.MES,
     pd.LOCAL
