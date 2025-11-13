@@ -238,6 +238,7 @@ LEFT JOIN REGRA_FATURAMENTO rf ON cf.CD_ATENDIMENTO = rf.CD_ATENDIMENTO
 
 WHERE
 	-- cf.ANO = 2025 AND cf.MES = 9 AND
+    cf.CD_ATENDIMENTO = 253399 AND
     COALESCE(rf.SN_PERTENCE_PACOTE, ra.SN_PERTENCE_PACOTE) = 'N'
 
 
@@ -469,3 +470,468 @@ LEFT JOIN
 LEFT JOIN
     dbamv.sub_plano s ON a.cd_convenio = s.cd_convenio AND s.cd_sub_plano = a.cd_sub_plano
     WHERE ib.cd_atendimento IS NOT NULL
+;
+
+
+
+-- ################################################################################################
+
+
+
+-- ####################################### VALIDAR COM RENATO #####################################
+
+-- WITH FILTRO AS (
+--     SELECT
+--         {V_CODIGO_DA_REMESSA} AS CD_REMESSA
+--     FROM DUAL
+-- ),
+
+WITH
+-- Primeira parte: REG_FAT
+Q_REG AS (
+    SELECT DISTINCT
+        ATENDIME.CD_ATENDIMENTO,
+        GUIA.nr_guia,
+        PACIENTE.nm_paciente,
+        ATENDIME.nr_carteira,
+        PRO_FAT.ds_pro_fat,
+        PRO_FAT.cd_pro_fat,
+        PRO_FAT.CD_GRU_PRO,
+        REMESSA_FATURA.cd_remessa,
+        REG_FAT.vl_total_conta,
+        NULL AS cd_gru_fat, CONVENIO.CD_CONVENIO
+    FROM
+        DBAMV.ATENDIME,
+        DBAMV.PACIENTE,
+        DBAMV.CONVENIO,
+        DBAMV.REG_FAT,
+        DBAMV.ORI_ATE,
+        DBAMV.REMESSA_FATURA,
+        DBAMV.FATURA,
+        DBAMV.GUIA,
+        DBAMV.PRO_FAT,
+        ITREG_FAT
+        -- FILTRO
+    WHERE
+        ATENDIME.CD_PACIENTE  = PACIENTE.CD_PACIENTE
+        AND ATENDIME.CD_ATENDIMENTO = REG_FAT.CD_ATENDIMENTO
+        AND REG_FAT.CD_CONVENIO = CONVENIO.CD_CONVENIO
+        AND REG_FAT.CD_REMESSA  = REMESSA_FATURA.CD_REMESSA
+        AND REMESSA_FATURA.CD_FATURA = FATURA.CD_FATURA
+        AND ((REG_FAT.VL_TOTAL_CONTA > 0 AND REG_FAT.CD_CONTA_PAI IS NOT NULL)
+             OR REG_FAT.CD_CONTA_PAI IS NULL)
+        AND ATENDIME.CD_CONVENIO = GUIA.CD_CONVENIO(+)
+        AND CONVENIO.CD_CONVENIO = REG_FAT.CD_CONVENIO
+        AND ATENDIME.CD_ORI_ATE = ORI_ATE.CD_ORI_ATE
+        AND ATENDIME.CD_ATENDIMENTO = GUIA.CD_ATENDIMENTO(+)
+        AND REMESSA_FATURA.CD_AGRUPAMENTO IS NULL
+        AND REG_FAT.CD_PRO_FAT_REALIZADO = PRO_FAT.CD_PRO_FAT(+)
+        AND (GUIA.CD_GUIA IS NULL OR GUIA.CD_GUIA = (
+                SELECT MIN(GUIA2.CD_GUIA)
+                FROM DBAMV.GUIA GUIA2
+                WHERE GUIA2.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+                AND GUIA2.CD_CONVENIO = ATENDIME.CD_CONVENIO
+        ))
+        AND ITREG_FAT.CD_REG_FAT = REG_FAT.CD_REG_FAT
+    --    AND ATENDIME.CD_ATENDIMENTO = :param
+        AND REMESSA_FATURA.CD_REMESSA = :param -- FILTRO.CD_REMESSA
+        AND ATENDIME.TP_ATENDIMENTO = 'E'
+        AND ITREG_FAT.SN_PERTENCE_PACOTE = 'S'
+),
+
+-- Segunda parte: ITREG_AMB
+Q_AMB AS (
+    SELECT DISTINCT
+        ATENDIME.CD_ATENDIMENTO,
+        GUIA.nr_guia,
+        PACIENTE.nm_paciente,
+        ATENDIME.nr_carteira,
+        PRO_FAT.ds_pro_fat,
+        PRO_FAT.cd_pro_fat,
+        PRO_FAT.CD_GRU_PRO,
+        REMESSA_FATURA.cd_remessa,
+        ITREG_AMB.vl_total_conta,
+        ITREG_AMB.cd_gru_fat, ATENDIME.CD_CONVENIO
+    FROM
+        DBAMV.ATENDIME ATENDIME,
+        DBAMV.PACIENTE PACIENTE,
+        DBAMV.REG_AMB REG_AMB,
+        DBAMV.ITREG_AMB ITREG_AMB,
+        DBAMV.ORI_ATE ORI_ATE,
+        DBAMV.REMESSA_FATURA REMESSA_FATURA,
+        DBAMV.FATURA FATURA,
+        DBAMV.GUIA GUIA,
+        DBAMV.PRO_FAT
+        -- FILTRO
+    WHERE
+        ATENDIME.CD_PACIENTE = PACIENTE.CD_PACIENTE
+        AND ATENDIME.CD_ATENDIMENTO = ITREG_AMB.CD_ATENDIMENTO
+        AND REG_AMB.CD_REG_AMB = ITREG_AMB.CD_REG_AMB
+        AND ATENDIME.CD_ORI_ATE = ORI_ATE.CD_ORI_ATE
+        AND REG_AMB.CD_REMESSA = REMESSA_FATURA.CD_REMESSA
+        AND REMESSA_FATURA.CD_FATURA = FATURA.CD_FATURA
+        AND ATENDIME.CD_ATENDIMENTO = GUIA.CD_ATENDIMENTO(+)
+        AND ITREG_AMB.CD_PRO_FAT = PRO_FAT.CD_PRO_FAT(+)
+        AND (GUIA.CD_GUIA IS NULL OR GUIA.CD_GUIA = (
+                SELECT MIN(GUIA2.CD_GUIA)
+                FROM DBAMV.GUIA GUIA2
+                WHERE GUIA2.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+                AND GUIA2.CD_CONVENIO = ATENDIME.CD_CONVENIO
+        ))
+    --    AND ATENDIME.CD_ATENDIMENTO = :param
+        AND REMESSA_FATURA.CD_REMESSA = :param --FILTRO.CD_REMESSA
+        AND ATENDIME.TP_ATENDIMENTO = 'E'
+        AND ITREG_AMB.SN_PERTENCE_PACOTE = 'S'
+),
+
+-- União final
+UNIAO AS (
+    SELECT * FROM Q_REG
+    UNION ALL
+    SELECT * FROM Q_AMB
+)
+
+-- Aqui entra o filtro condicional baseado em cd_gru_fat
+SELECT
+    U.*
+FROM
+    UNIAO U
+WHERE
+    -- (
+    --     -- Se existir algum registro com cd_gru_fat = 8, mostra só os que têm 8
+    --     EXISTS (SELECT 1 FROM UNIAO X WHERE X.cd_gru_fat = 8)
+    --     AND U.cd_gru_fat = 8
+    --     -- EXISTS (SELECT 1 FROM UNIAO X WHERE X.CD_GRU_PRO IN(10,30,34))
+    --     -- AND U.CD_GRU_PRO IN(10,30,34)
+    -- )
+    -- OR
+    -- (
+        -- Se não existir nenhum cd_gru_fat = 8, mostra todos
+        NOT EXISTS (SELECT 1 FROM UNIAO X WHERE X.cd_gru_fat = 8)
+        -- NOT EXISTS (SELECT 1 FROM UNIAO X WHERE X.CD_GRU_PRO IN(10,30,34))
+    -- )
+
+;
+
+
+-- ################################################################################################
+
+
+
+
+-- EMERGENCIA
+--  - 14875 - REMESSA
+
+-- 253399 - ATENDIMENTO - MOACIR
+--  - 40314618 - PROCEDIMENTO CORONA VIRUS
+
+
+-- WITH FILTRO AS (
+--     SELECT
+--         {V_CODIGO_DA_REMESSA} AS CD_REMESSA
+--     FROM DUAL
+-- ),
+
+WITH
+-- Primeira parte: REG_FAT
+Q_REG AS (
+    SELECT DISTINCT
+        ATENDIME.CD_ATENDIMENTO,
+        GUIA.nr_guia,
+        PACIENTE.nm_paciente,
+        ATENDIME.nr_carteira,
+        PRO_FAT.ds_pro_fat,
+        PRO_FAT.cd_pro_fat,
+        PRO_FAT.CD_GRU_PRO,
+        REMESSA_FATURA.cd_remessa,
+        REG_FAT.vl_total_conta
+    FROM
+        DBAMV.ATENDIME,
+        DBAMV.PACIENTE,
+        DBAMV.CONVENIO,
+        DBAMV.REG_FAT,
+        DBAMV.ORI_ATE,
+        DBAMV.REMESSA_FATURA,
+        DBAMV.FATURA,
+        DBAMV.GUIA,
+        DBAMV.PRO_FAT
+        -- FILTRO
+    WHERE
+        ATENDIME.CD_PACIENTE  = PACIENTE.CD_PACIENTE
+        AND ATENDIME.CD_ATENDIMENTO = REG_FAT.CD_ATENDIMENTO
+        AND REG_FAT.CD_CONVENIO = CONVENIO.CD_CONVENIO
+        AND REG_FAT.CD_REMESSA  = REMESSA_FATURA.CD_REMESSA
+        AND REMESSA_FATURA.CD_FATURA = FATURA.CD_FATURA
+        AND ((REG_FAT.VL_TOTAL_CONTA > 0 AND REG_FAT.CD_CONTA_PAI IS NOT NULL)
+             OR REG_FAT.CD_CONTA_PAI IS NULL)
+        AND ATENDIME.CD_CONVENIO = GUIA.CD_CONVENIO(+)
+        AND CONVENIO.CD_CONVENIO = REG_FAT.CD_CONVENIO
+        AND ATENDIME.CD_ORI_ATE = ORI_ATE.CD_ORI_ATE
+        AND ATENDIME.CD_ATENDIMENTO = GUIA.CD_ATENDIMENTO(+)
+        AND REMESSA_FATURA.CD_AGRUPAMENTO IS NULL
+        AND REG_FAT.CD_PRO_FAT_REALIZADO = PRO_FAT.CD_PRO_FAT(+)
+        AND (GUIA.CD_GUIA IS NULL OR GUIA.CD_GUIA = (
+                SELECT MIN(GUIA2.CD_GUIA)
+                FROM DBAMV.GUIA GUIA2
+                WHERE GUIA2.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+                AND GUIA2.CD_CONVENIO = ATENDIME.CD_CONVENIO
+        ))
+    --    AND ATENDIME.CD_ATENDIMENTO = :param
+        AND REMESSA_FATURA.CD_REMESSA = :param -- FILTRO.CD_REMESSA
+        -- AND PRO_FAT.cd_pro_fat = 4031418
+),
+
+-- Segunda parte: ITREG_AMB
+Q_AMB AS (
+    SELECT DISTINCT
+        ATENDIME.CD_ATENDIMENTO,
+        GUIA.nr_guia,
+        PACIENTE.nm_paciente,
+        ATENDIME.nr_carteira,
+        PRO_FAT.ds_pro_fat,
+        PRO_FAT.cd_pro_fat,
+        PRO_FAT.CD_GRU_PRO,
+        REMESSA_FATURA.cd_remessa,
+        ITREG_AMB.vl_total_conta
+    FROM
+        DBAMV.ATENDIME ATENDIME,
+        DBAMV.PACIENTE PACIENTE,
+        DBAMV.REG_AMB REG_AMB,
+        DBAMV.ITREG_AMB ITREG_AMB,
+        DBAMV.ORI_ATE ORI_ATE,
+        DBAMV.REMESSA_FATURA REMESSA_FATURA,
+        DBAMV.FATURA FATURA,
+        DBAMV.GUIA GUIA,
+        PRO_FAT
+        -- FILTRO
+    WHERE
+        ATENDIME.CD_PACIENTE = PACIENTE.CD_PACIENTE
+        AND ATENDIME.CD_ATENDIMENTO = ITREG_AMB.CD_ATENDIMENTO
+        AND REG_AMB.CD_REG_AMB = ITREG_AMB.CD_REG_AMB
+        AND ATENDIME.CD_ORI_ATE = ORI_ATE.CD_ORI_ATE
+        AND REG_AMB.CD_REMESSA = REMESSA_FATURA.CD_REMESSA
+        AND REMESSA_FATURA.CD_FATURA = FATURA.CD_FATURA
+        AND ATENDIME.CD_ATENDIMENTO = GUIA.CD_ATENDIMENTO(+)
+        AND ITREG_AMB.CD_PRO_FAT = PRO_FAT.CD_PRO_FAT(+)
+        AND (GUIA.CD_GUIA IS NULL OR GUIA.CD_GUIA = (
+                SELECT MIN(GUIA2.CD_GUIA)
+                FROM DBAMV.GUIA GUIA2
+                WHERE GUIA2.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+                AND GUIA2.CD_CONVENIO = ATENDIME.CD_CONVENIO
+        ))
+    --    AND ATENDIME.CD_ATENDIMENTO = :param
+        AND REMESSA_FATURA.CD_REMESSA = :param --FILTRO.CD_REMESSA
+        -- AND PRO_FAT.cd_pro_fat = 4031418
+),
+
+-- União final
+UNIAO AS (
+    SELECT * FROM Q_REG
+    UNION ALL
+    SELECT * FROM Q_AMB
+)
+
+-- Aqui entra o filtro condicional baseado em cd_gru_fat
+SELECT
+    U.*
+FROM
+    UNIAO U
+WHERE
+    (
+        -- Se existir algum registro com cd_gru_fat = 8, mostra só os que têm 8
+        -- EXISTS (SELECT 1 FROM UNIAO X WHERE X.cd_gru_fat = 8)
+        -- AND U.cd_gru_fat = 8
+        EXISTS (SELECT 1 FROM UNIAO X WHERE X.CD_GRU_PRO IN(10,30,34))
+        AND U.CD_GRU_PRO IN(10,30,34)
+    )
+    OR
+    (
+        -- Se não existir nenhum cd_gru_fat = 8, mostra todos
+        -- NOT EXISTS (SELECT 1 FROM UNIAO X WHERE X.cd_gru_fat = 8)
+        NOT EXISTS (SELECT 1 FROM UNIAO X WHERE X.CD_GRU_PRO IN(10,30,34))
+    )
+
+;
+
+
+
+
+/* ############################# OCORRENCIAS #############################
+ *
+ * - CD_ATENDIMENTO: 238738
+ *      - 2 CD_REMESSAS:
+ *          - 14375 - 41001230  TC - ANGIOTOMOGRAFIA CORONARIANA
+ *          - 13657 - 10805048  PS - ESPECIALIDADE CARDIOLOGIA
+ *      - ATENDIMENTO C/ CONSULTAS e EXAMES NA MESMA COMPETENCIA:
+ *          - AGRUPA O VL_TOTAL_CONTA PELO PROCEDIMENTO
+ *              - CODIGO PROCEDIMENTO DA CONSULTA
+ *              - DESCRICAO CONSULTA
+ *              - GUIA DA CONSULTA
+ *              - CARTEIRA DA CONSULTA
+ *      - ATENDIMENTO C/ CONSULTAS e EXAMES EM COMPETENCIAS DIFERENTES:
+ *              - CODIGO PROCEDIMENTO DA CONSULTA ou EXAME
+ *              - DESCRICAO CONSULTA ou EXAME
+ *              - GUIA DA CONSULTA ou EXAME
+ *              - CARTEIRA DA CONSULTA ou EXAME
+ *
+ *      - 2 PROCEDIMENTOS DE EXAMES NA SEGUNDA REMESSA:
+ *              - RETORNA OS 2 PROCEDIMENTOS COM MESMA GUIA DE AUTORIZACAO ?
+ *              - OU AGRUPA E RETORNA SÓ UM ?
+ *
+ *
+*/
+
+WITH CONSULTA_FINAL
+    AS(
+        SELECT
+            a.CD_ATENDIMENTO,
+            a.DT_ATENDIMENTO,
+            EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
+            EXTRACT(YEAR FROM  a.DT_ATENDIMENTO) AS ANO,
+            a.CD_PACIENTE,
+            p.NM_PACIENTE,
+            a.TP_ATENDIMENTO,
+            c.NM_CONVENIO,
+            a.SN_OBITO,
+            g.CD_GUIA,
+            g.NR_GUIA,
+            g.TP_GUIA,
+            a.NR_CARTEIRA
+        FROM DBAMV.ATENDIME a
+        JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
+        JOIN DBAMV.CONVENIO c ON a.CD_CONVENIO = c.CD_CONVENIO
+        JOIN DBAMV.GUIA     g ON a.CD_ATENDIMENTO = g.CD_ATENDIMENTO AND a.CD_CONVENIO = g.CD_CONVENIO
+        -- WHERE a.NR_CARTEIRA = '87294729' AND g.NR_GUIA = '836012025603585'
+        WHERE (g.CD_GUIA IS NULL OR g.CD_GUIA = (
+                SELECT MIN(GUIA.CD_GUIA)
+                FROM DBAMV.GUIA GUIA
+                WHERE GUIA.CD_ATENDIMENTO = a.CD_ATENDIMENTO
+                AND GUIA.CD_CONVENIO = a.CD_CONVENIO
+        ))
+),
+REGRA_AMBULATORIO
+    AS (
+			SELECT
+				pf.CD_PRO_FAT,
+                ia.CD_GUIA,
+                ra.CD_REMESSA,
+                pf.CD_GRU_PRO,
+				ia.CD_REG_AMB,
+				ia.CD_PRESTADOR,
+                p.NM_PRESTADOR,
+				ia.CD_LANCAMENTO,
+                ia.CD_GRU_FAT,
+				ia.CD_CONVENIO,
+				ia.CD_ATENDIMENTO,
+				pf.DS_PRO_FAT,
+				ia.HR_LANCAMENTO,
+				ia.SN_PERTENCE_PACOTE,
+				ia.VL_TOTAL_CONTA,
+                ia.VL_PERCENTUAL_MULTIPLA,
+				ia.VL_BASE_REPASSADO,
+                ia.TP_PAGAMENTO,
+                'AMBULATORIO' AS RG_FATURAMENTO
+			FROM DBAMV.ITREG_AMB ia
+			LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
+			LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
+            LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
+			-- WHERE ia.SN_REPASSADO IN ('S', 'N') OR ia.SN_REPASSADO IS NULL
+            WHERE ia.SN_PERTENCE_PACOTE = 'N' AND ra.CD_REMESSA = :param --AND ia.CD_ATENDIMENTO = 250733
+),
+REGRA_FATURAMENTO
+    AS (
+        SELECT
+            pf.CD_PRO_FAT,
+            itf.CD_GUIA,
+            rf.CD_REMESSA,
+            pf.CD_GRU_PRO,
+            itf.CD_REG_FAT,
+            itf.CD_PRESTADOR,
+            p.NM_PRESTADOR,
+            itf.CD_LANCAMENTO,
+            itf.CD_GRU_FAT,
+            rf.CD_CONVENIO,
+            rf.CD_ATENDIMENTO,
+            pf.DS_PRO_FAT,
+            itf.DT_LANCAMENTO,
+            itf.SN_PERTENCE_PACOTE,
+            itf.VL_TOTAL_CONTA,
+            itf.VL_PERCENTUAL_MULTIPLA,
+            itf.VL_BASE_REPASSADO,
+            itf.TP_PAGAMENTO,
+            'FATURAMENTO' AS RG_FATURAMENTO
+        FROM DBAMV.ITREG_FAT itf
+        LEFT JOIN DBAMV.PRO_FAT pf 	   ON itf.CD_PRO_FAT = pf.CD_PRO_FAT
+        LEFT JOIN DBAMV.REG_FAT rf 	   ON itf.CD_REG_FAT = rf.CD_REG_FAT
+        LEFT JOIN DBAMV.PRESTADOR p    ON itf.CD_PRESTADOR = p.CD_PRESTADOR
+        -- WHERE itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL
+        WHERE itf.SN_PERTENCE_PACOTE = 'N' AND rf.CD_REMESSA = :param
+),
+FILTRO
+    AS (
+        SELECT
+            ra.CD_ATENDIMENTO,
+            ra.CD_GUIA,
+
+            ra.DS_PRO_FAT AS PROCEDIMENTO,
+            ra.CD_PRO_FAT AS CODIGO,
+            ra.RG_FATURAMENTO AS RG_FATURAMENTO,
+            ra.VL_TOTAL_CONTA  AS VL_TOTAL_CONTA,
+
+            CASE WHEN ra.CD_PRO_FAT = '10805048' THEN 1 END UNI,
+
+            ROW_NUMBER() OVER ( PARTITION BY
+                    ra.CD_ATENDIMENTO
+                ORDER BY ra.CD_GUIA
+            ) AS RW
+
+        FROM REGRA_AMBULATORIO ra
+        -- LEFT JOIN CONSULTA_FINAL cf ON cf.CD_ATENDIMENTO = ra.CD_ATENDIMENTO AND ra.CD_GUIA IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+            rf.CD_ATENDIMENTO,
+            rf.CD_GUIA,
+
+            rf.DS_PRO_FAT AS PROCEDIMENTO,
+            rf.CD_PRO_FAT AS CODIGO,
+            rf.RG_FATURAMENTO AS RG_FATURAMENTO,
+            rf.VL_TOTAL_CONTA  AS VL_TOTAL_CONTA,
+
+            CASE WHEN rf.CD_PRO_FAT = '10805048' THEN 1 END UNI,
+
+            ROW_NUMBER() OVER ( PARTITION BY
+                    rf.CD_ATENDIMENTO
+                ORDER BY rf.CD_GUIA
+            ) AS RW
+
+        FROM REGRA_FATURAMENTO rf
+        -- LEFT JOIN CONSULTA_FINAL cf ON cf.CD_ATENDIMENTO = rf.CD_ATENDIMENTO AND rf.CD_GUIA IS NOT NULL
+),
+TREATS
+    AS (
+        SELECT
+            f.CD_ATENDIMENTO,
+            cf.NR_GUIA AS N_GAU,
+            cf.NM_PACIENTE,
+
+            cf.NR_CARTEIRA  AS NIP,
+
+            f.PROCEDIMENTO,
+            f.CODIGO,
+            f.UNI,
+
+            SUM(f.VL_TOTAL_CONTA) OVER ( PARTITION BY f.CD_ATENDIMENTO ) AS VL_TOTAL_CONTA
+
+        FROM FILTRO    f
+        LEFT JOIN CONSULTA_FINAL cf  ON cf.CD_ATENDIMENTO = f.CD_ATENDIMENTO
+)
+SELECT
+    *
+FROM TREATS
+WHERE UNI = 1
+
+
+
+;
