@@ -756,14 +756,22 @@ WHERE
 
 
 
+/* ###################### RELATORIO DE GUIAS FUSMA ####################### */
+
+-- M_REMESSA_FFCV
+-- M_LAN_AMB_PARTICULAR
+-- M_TUSS_FFCV
+
+
+
 /* ############################# OCORRENCIAS #############################
  *
  * - CD_ATENDIMENTO: 238738
  *      - 2 CD_REMESSAS:
- *          - 14375 - 41001230  TC - ANGIOTOMOGRAFIA CORONARIANA
- *          - 13657 - 10805048  PS - ESPECIALIDADE CARDIOLOGIA
+ *          - 14375 - 41001230  TC - ANGIOTOMOGRAFIA CORONARIANA [EXAME]
+ *          - 13657 - 10805048  PS - ESPECIALIDADE CARDIOLOGIA   [CONSULTA]
  *      - ATENDIMENTO C/ CONSULTAS e EXAMES NA MESMA COMPETENCIA:
- *          - AGRUPA O VL_TOTAL_CONTA PELO PROCEDIMENTO
+ *          - AGRUPA O VL_TOTAL_CONTA PELO PROCEDIMENTO DA CONSULTA
  *              - CODIGO PROCEDIMENTO DA CONSULTA
  *              - DESCRICAO CONSULTA
  *              - GUIA DA CONSULTA
@@ -778,6 +786,12 @@ WHERE
  *              - RETORNA OS 2 PROCEDIMENTOS COM MESMA GUIA DE AUTORIZACAO ?
  *              - OU AGRUPA E RETORNA SÓ UM ?
  *
+ *
+ *  - CD_PRO_FAT:
+ *      - CD_REMESSA: 14764 -> CONSULTAS
+ *          - 00040105 | 00040108 | 00040109
+ *      - CD_REMESSA:  -> EXAMES
+ *          - 40901361
  *
 */
 
@@ -796,68 +810,89 @@ WITH CONSULTA_FINAL
             g.CD_GUIA,
             g.NR_GUIA,
             g.TP_GUIA,
+            g.DT_AUTORIZACAO,
             a.NR_CARTEIRA
         FROM DBAMV.ATENDIME a
         JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
         JOIN DBAMV.CONVENIO c ON a.CD_CONVENIO = c.CD_CONVENIO
         JOIN DBAMV.GUIA     g ON a.CD_ATENDIMENTO = g.CD_ATENDIMENTO AND a.CD_CONVENIO = g.CD_CONVENIO
-        -- WHERE a.NR_CARTEIRA = '87294729' AND g.NR_GUIA = '836012025603585'
-        WHERE (g.CD_GUIA IS NULL OR g.CD_GUIA = (
-                SELECT MIN(GUIA.CD_GUIA)
-                FROM DBAMV.GUIA GUIA
-                WHERE GUIA.CD_ATENDIMENTO = a.CD_ATENDIMENTO
-                AND GUIA.CD_CONVENIO = a.CD_CONVENIO
-        ))
+        WHERE
+        -- (g.CD_GUIA IS NULL OR g.CD_GUIA = (
+        --         SELECT MIN(GUIA.CD_GUIA)
+        --         FROM DBAMV.GUIA GUIA
+        --         WHERE GUIA.CD_ATENDIMENTO = a.CD_ATENDIMENTO
+        --         AND GUIA.CD_CONVENIO = a.CD_CONVENIO
+        -- ))
+        g.NR_GUIA IS NOT NULL
 ),
 REGRA_AMBULATORIO
     AS (
-			SELECT
-				pf.CD_PRO_FAT,
-                ia.CD_GUIA,
-                ra.CD_REMESSA,
-                pf.CD_GRU_PRO,
-				ia.CD_REG_AMB,
-				ia.CD_PRESTADOR,
-                p.NM_PRESTADOR,
-				ia.CD_LANCAMENTO,
-                ia.CD_GRU_FAT,
-				ia.CD_CONVENIO,
-				ia.CD_ATENDIMENTO,
-				pf.DS_PRO_FAT,
-				ia.HR_LANCAMENTO,
-				ia.SN_PERTENCE_PACOTE,
-				ia.VL_TOTAL_CONTA,
-                ia.VL_PERCENTUAL_MULTIPLA,
-				ia.VL_BASE_REPASSADO,
-                ia.TP_PAGAMENTO,
-                'AMBULATORIO' AS RG_FATURAMENTO
-			FROM DBAMV.ITREG_AMB ia
-			LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
-			LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
-            LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
-			-- WHERE ia.SN_REPASSADO IN ('S', 'N') OR ia.SN_REPASSADO IS NULL
-            WHERE ia.SN_PERTENCE_PACOTE = 'N' AND ra.CD_REMESSA = :param --AND ia.CD_ATENDIMENTO = 250733
+        SELECT
+            ia.CD_ATENDIMENTO,
+            CASE
+                WHEN ia.CD_GRU_FAT = 8 THEN
+                    COALESCE(FIRST_VALUE(CASE WHEN pf.CD_GRU_PRO = 0 THEN ia.CD_GUIA END) OVER (
+                        PARTITION BY ia.CD_ATENDIMENTO
+                        ORDER BY CASE WHEN pf.CD_GRU_PRO = 0 THEN 1 ELSE 2 END
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                    ), ia.CD_GUIA)
+                WHEN ia.SN_PERTENCE_PACOTE = 'N' THEN
+                    COALESCE(FIRST_VALUE(CASE WHEN ia.CD_GRU_FAT = 8 THEN ia.CD_GUIA END) OVER (
+                        PARTITION BY ia.CD_ATENDIMENTO
+                        ORDER BY CASE WHEN ia.CD_GRU_FAT = 8 THEN 1 ELSE 2 END
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                    ), ia.CD_GUIA)
+
+                ELSE ia.CD_GUIA
+            END AS CD_GUIA,
+            ia.CD_REG_AMB,
+            ra.CD_REMESSA,
+            pf.CD_GRU_PRO,
+            ia.CD_GRU_FAT,
+            pf.CD_PRO_FAT,
+            pf.DS_PRO_FAT,
+            ia.SN_PERTENCE_PACOTE,
+            ia.VL_TOTAL_CONTA,
+            ia.TP_PAGAMENTO,
+            'AMBULATORIO' AS RG_FATURAMENTO
+        FROM DBAMV.ITREG_AMB ia
+        LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
+        LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
+        LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
+        -- WHERE ia.SN_REPASSADO IN ('S', 'N') OR ia.SN_REPASSADO IS NULL
+        WHERE
+            ra.CD_REMESSA = :param
+            -- AND
+            -- ia.CD_ATENDIMENTO = 239996
 ),
 REGRA_FATURAMENTO
     AS (
         SELECT
-            pf.CD_PRO_FAT,
-            itf.CD_GUIA,
+            rf.CD_ATENDIMENTO,
+                CASE
+                    WHEN itf.CD_GRU_FAT = 8 THEN
+                        COALESCE(FIRST_VALUE(CASE WHEN pf.CD_GRU_PRO = 0 THEN itf.CD_GUIA END) OVER (
+                            PARTITION BY rf.CD_ATENDIMENTO
+                            ORDER BY CASE WHEN pf.CD_GRU_PRO = 0 THEN 1 ELSE 2 END
+                            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                        ), itf.CD_GUIA)
+                    WHEN itf.SN_PERTENCE_PACOTE = 'N' THEN
+                        COALESCE(FIRST_VALUE(CASE WHEN itf.CD_GRU_FAT = 8 THEN itf.CD_GUIA END) OVER (
+                            PARTITION BY rf.CD_ATENDIMENTO
+                            ORDER BY CASE WHEN itf.CD_GRU_FAT = 8 THEN 1 ELSE 2 END
+                            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                        ), itf.CD_GUIA)
+
+                    ELSE itf.CD_GUIA
+                END AS CD_GUIA,
+            itf.CD_REG_FAT,
             rf.CD_REMESSA,
             pf.CD_GRU_PRO,
-            itf.CD_REG_FAT,
-            itf.CD_PRESTADOR,
-            p.NM_PRESTADOR,
-            itf.CD_LANCAMENTO,
             itf.CD_GRU_FAT,
-            rf.CD_CONVENIO,
-            rf.CD_ATENDIMENTO,
+            pf.CD_PRO_FAT,
             pf.DS_PRO_FAT,
-            itf.DT_LANCAMENTO,
             itf.SN_PERTENCE_PACOTE,
             itf.VL_TOTAL_CONTA,
-            itf.VL_PERCENTUAL_MULTIPLA,
-            itf.VL_BASE_REPASSADO,
             itf.TP_PAGAMENTO,
             'FATURAMENTO' AS RG_FATURAMENTO
         FROM DBAMV.ITREG_FAT itf
@@ -865,13 +900,16 @@ REGRA_FATURAMENTO
         LEFT JOIN DBAMV.REG_FAT rf 	   ON itf.CD_REG_FAT = rf.CD_REG_FAT
         LEFT JOIN DBAMV.PRESTADOR p    ON itf.CD_PRESTADOR = p.CD_PRESTADOR
         -- WHERE itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL
-        WHERE itf.SN_PERTENCE_PACOTE = 'N' AND rf.CD_REMESSA = :param
+        WHERE
+            rf.CD_REMESSA = :param
 ),
 FILTRO
     AS (
         SELECT
             ra.CD_ATENDIMENTO,
             ra.CD_GUIA,
+
+            ra.SN_PERTENCE_PACOTE,
 
             ra.DS_PRO_FAT AS PROCEDIMENTO,
             ra.CD_PRO_FAT AS CODIGO,
@@ -887,12 +925,15 @@ FILTRO
 
         FROM REGRA_AMBULATORIO ra
         -- LEFT JOIN CONSULTA_FINAL cf ON cf.CD_ATENDIMENTO = ra.CD_ATENDIMENTO AND ra.CD_GUIA IS NOT NULL
+        WHERE ra.SN_PERTENCE_PACOTE = 'N'
 
         UNION ALL
 
         SELECT
             rf.CD_ATENDIMENTO,
             rf.CD_GUIA,
+
+            rf.SN_PERTENCE_PACOTE,
 
             rf.DS_PRO_FAT AS PROCEDIMENTO,
             rf.CD_PRO_FAT AS CODIGO,
@@ -908,6 +949,14 @@ FILTRO
 
         FROM REGRA_FATURAMENTO rf
         -- LEFT JOIN CONSULTA_FINAL cf ON cf.CD_ATENDIMENTO = rf.CD_ATENDIMENTO AND rf.CD_GUIA IS NOT NULL
+        WHERE rf.SN_PERTENCE_PACOTE = 'N'
+),
+TUSS_TAO
+    AS (
+        SELECT
+            CD_PRO_FAT,
+            CD_TUSS
+        FROM DBAMV.TUSS
 ),
 TREATS
     AS (
@@ -919,18 +968,24 @@ TREATS
             cf.NR_CARTEIRA  AS NIP,
 
             f.PROCEDIMENTO,
-            f.CODIGO,
+            COALESCE(t.CD_TUSS, f.CODIGO) AS CODIGO,
             f.UNI,
+            f.RW,
 
-            SUM(f.VL_TOTAL_CONTA) OVER ( PARTITION BY f.CD_ATENDIMENTO ) AS VL_TOTAL_CONTA
+            CASE WHEN f.SN_PERTENCE_PACOTE = 'N' THEN
+                SUM(f.VL_TOTAL_CONTA) OVER ( PARTITION BY f.CD_ATENDIMENTO )
+            ELSE
+                SUM(f.VL_TOTAL_CONTA) OVER ( PARTITION BY f.CD_ATENDIMENTO, cf.NR_GUIA )
+            END AS VL_TOTAL_CONTA
 
         FROM FILTRO    f
-        LEFT JOIN CONSULTA_FINAL cf  ON cf.CD_ATENDIMENTO = f.CD_ATENDIMENTO
+        LEFT JOIN CONSULTA_FINAL cf  ON cf.CD_ATENDIMENTO = f.CD_ATENDIMENTO AND cf.CD_GUIA = f.CD_GUIA
+        LEFT JOIN TUSS_TAO t ON f.CODIGO = t.CD_PRO_FAT
 )
 SELECT
     *
 FROM TREATS
-WHERE UNI = 1
+WHERE RW = 1
 
 
 
