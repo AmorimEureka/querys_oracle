@@ -790,7 +790,7 @@ WHERE
  *  - CD_PRO_FAT:
  *      - CD_REMESSA: 14764 -> CONSULTAS
  *          - 00040105 | 00040108 | 00040109
- *      - CD_REMESSA:  -> EXAMES
+ *      - CD_REMESSA: 14776 -> EXAMES
  *          - 40901361
  *
 */
