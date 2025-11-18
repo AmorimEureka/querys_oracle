@@ -782,16 +782,25 @@ WHERE
  *              - GUIA DA CONSULTA ou EXAME
  *              - CARTEIRA DA CONSULTA ou EXAME
  *
+ * ########################################################################
+ *
  *      - 2 PROCEDIMENTOS DE EXAMES NA SEGUNDA REMESSA:
  *              - RETORNA OS 2 PROCEDIMENTOS COM MESMA GUIA DE AUTORIZACAO ?
  *              - OU AGRUPA E RETORNA SÓ UM ?
  *
+ * ########################################################################
  *
  *  - CD_PRO_FAT:
  *      - CD_REMESSA: 14764 -> CONSULTAS
  *          - 00040105 | 00040108 | 00040109
- *      - CD_REMESSA: 14776 -> EXAMES
+ *      - CD_REMESSA: 14050 -> EXAMES
  *          - 40901361
+ *
+ * ########################################################################
+ *
+ *  - CASOS COM N_GAU | NM_PACIENTE | NIP = NULL
+ *      - PROCEDIMENTOS SEM GUIA EM ITREG_AMB/ITREG_FAT
+ *      - POR NAO TER  CD_GUI O JOIN NAO RECUPERA OS DADOS DE ATENDIME
  *
 */
 
@@ -851,6 +860,7 @@ REGRA_AMBULATORIO
             ia.CD_GRU_FAT,
             pf.CD_PRO_FAT,
             pf.DS_PRO_FAT,
+            ia.CD_CONVENIO,
             ia.SN_PERTENCE_PACOTE,
             ia.VL_TOTAL_CONTA,
             ia.TP_PAGAMENTO,
@@ -863,7 +873,7 @@ REGRA_AMBULATORIO
         WHERE
             ra.CD_REMESSA = :param
             -- AND
-            -- ia.CD_ATENDIMENTO = 239996
+            -- ia.CD_PRO_FAT = '40901361'
 ),
 REGRA_FATURAMENTO
     AS (
@@ -891,6 +901,7 @@ REGRA_FATURAMENTO
             itf.CD_GRU_FAT,
             pf.CD_PRO_FAT,
             pf.DS_PRO_FAT,
+            rf.CD_CONVENIO,
             itf.SN_PERTENCE_PACOTE,
             itf.VL_TOTAL_CONTA,
             itf.TP_PAGAMENTO,
@@ -913,6 +924,9 @@ FILTRO
 
             ra.DS_PRO_FAT AS PROCEDIMENTO,
             ra.CD_PRO_FAT AS CODIGO,
+
+            ra.CD_CONVENIO,
+
             ra.RG_FATURAMENTO AS RG_FATURAMENTO,
             ra.VL_TOTAL_CONTA  AS VL_TOTAL_CONTA,
 
@@ -937,6 +951,9 @@ FILTRO
 
             rf.DS_PRO_FAT AS PROCEDIMENTO,
             rf.CD_PRO_FAT AS CODIGO,
+
+            rf.CD_CONVENIO,
+
             rf.RG_FATURAMENTO AS RG_FATURAMENTO,
             rf.VL_TOTAL_CONTA  AS VL_TOTAL_CONTA,
 
@@ -955,8 +972,10 @@ TUSS_TAO
     AS (
         SELECT
             CD_PRO_FAT,
-            CD_TUSS
+            CD_TUSS,
+            CD_CONVENIO
         FROM DBAMV.TUSS
+        -- WHERE CD_PRO_FAT = '40901360'
 ),
 TREATS
     AS (
@@ -968,7 +987,9 @@ TREATS
             cf.NR_CARTEIRA  AS NIP,
 
             f.PROCEDIMENTO,
+
             COALESCE(t.CD_TUSS, f.CODIGO) AS CODIGO,
+
             f.UNI,
             f.RW,
 
@@ -980,7 +1001,7 @@ TREATS
 
         FROM FILTRO    f
         LEFT JOIN CONSULTA_FINAL cf  ON cf.CD_ATENDIMENTO = f.CD_ATENDIMENTO AND cf.CD_GUIA = f.CD_GUIA
-        LEFT JOIN TUSS_TAO t ON f.CODIGO = t.CD_PRO_FAT
+        LEFT JOIN TUSS_TAO t ON f.CODIGO = t.CD_PRO_FAT AND f.CD_CONVENIO = t.CD_CONVENIO
 )
 SELECT
     *
