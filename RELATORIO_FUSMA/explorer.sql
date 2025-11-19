@@ -221,7 +221,6 @@ JN_TUSS
 TREATS
     AS (
         SELECT
-            ur.CD_ATENDIMENTO,
             a.NR_GUIA AS N_GAU,
             a.NM_PACIENTE,
 
