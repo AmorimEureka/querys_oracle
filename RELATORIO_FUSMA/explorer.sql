@@ -52,7 +52,6 @@
 
 WITH FILTRO AS (
     SELECT
-        -- {V_CODIGO_DA_REMESSA} AS CD_REMESSA
         :param AS CD_REMESSA
     FROM DUAL
 ),
@@ -162,6 +161,8 @@ JN_UNION_REGRAS
     AS (
         SELECT
             ra.CD_ATENDIMENTO,
+            ra.CD_REMESSA,
+            ra.CD_GRU_FAT,
             ra.CD_GUIA,
 
             ra.SN_PERTENCE_PACOTE,
@@ -188,6 +189,8 @@ JN_UNION_REGRAS
 
         SELECT
             rh.CD_ATENDIMENTO,
+            rh.CD_REMESSA,
+            rh.CD_GRU_FAT,
             rh.CD_GUIA,
 
             rh.SN_PERTENCE_PACOTE,
@@ -222,6 +225,8 @@ TREATS
     AS (
         SELECT
             ur.CD_ATENDIMENTO,
+            ur.CD_REMESSA,
+            ur.CD_GRU_FAT,
             a.NR_GUIA AS N_GAU,
             a.NM_PACIENTE,
 
@@ -250,6 +255,8 @@ SELECT
     NIP,
     PROCEDIMENTO,
     CODIGO,
+    CD_REMESSA,
+    CD_GRU_FAT,
     VL_TOTAL_CONTA
 FROM TREATS
 WHERE RW = 1
