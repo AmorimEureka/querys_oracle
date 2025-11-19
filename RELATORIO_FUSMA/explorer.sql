@@ -221,6 +221,7 @@ JN_TUSS
 TREATS
     AS (
         SELECT
+            ur.CD_ATENDIMENTO,
             a.NR_GUIA AS N_GAU,
             a.NM_PACIENTE,
 
@@ -244,7 +245,12 @@ TREATS
         LEFT JOIN JN_TUSS t ON ur.CODIGO = t.CD_PRO_FAT AND ur.CD_CONVENIO = t.CD_CONVENIO
 )
 SELECT
-    *
+    N_GAU,
+    NM_PACIENTE,
+    NIP,
+    PROCEDIMENTO,
+    CODIGO,
+    VL_TOTAL_CONTA
 FROM TREATS
 WHERE RW = 1
 
