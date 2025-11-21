@@ -102,6 +102,13 @@ RELATORIO DE GUIAS FUSMA
       na query final
 
 <br>
+
+- Levantar relação de procedimentos com flag de pacote que não estão
+  no CD_GRU_FAT = 8
+    - Significa que não foram faturados/cobrados por estarem em pacote
+    - Na Urgência/Emergência
+
+<br>
 <br>
 
 
