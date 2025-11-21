@@ -38,7 +38,7 @@ RELATORIO DE GUIAS FUSMA
 <br>
 
 <details open>
-    <summary><strong>GUIAS EM REMESSAS/FATURAS/COMPETÊNCIAS DISTINTAS:</strong></summary>
+    <summary><strong>CASES:</strong></summary>
 
 <br>
 
