@@ -3,7 +3,7 @@
 /* ###################### RELATORIO DE GUIAS FUSMA ####################### */
 
 -- M_REMESSA_FFCV
--- M_LAN_AMB_PARTICULAR
+-- M_LAN_AMB_PART
 -- M_TUSS_FFCV
 
 
