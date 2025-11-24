@@ -2,89 +2,208 @@
 
 
 -- QUERY FINAL COM OS EXAMES
-WITH CONSULTA_FINAL
-    AS(
-        SELECT -- ATENDIDOS AGENDADOS
-        a.cd_atendimento,
-        'ATENDIDO AGENDADO' AS STATUS_ATENDIMENTO,
-        a.DT_ATENDIMENTO,
-        EXTRACT(MONTH FROM agen.hr_agenda) AS MES,
-        EXTRACT(YEAR FROM agen.hr_agenda) AS ANO,
-        a.cd_paciente,
-        pa.nm_paciente,
-        c.cd_convenio,
-        c.nm_convenio,
-        a.cd_prestador,
-        p.nm_prestador,
-            CASE
-                WHEN agen.hr_agenda >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
-                    AND st.cd_setor NOT IN (117,137)
-                    AND a.cd_prestador IN ('245', '268', '277', '318', '366', '372', '619', '645', '655', '682', '747', '762', '787', '874', '925', '945', '960') THEN
-                    'CLINICA 2'
-                WHEN agen.hr_agenda >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
-                    AND st.cd_setor NOT IN (117, 137)
-                    AND st.nm_setor LIKE '%2%'
-                    AND st.nm_setor NOT IN ('POSTO 2', 'UTI 2') THEN
-                    'CLINICA 2'
-                WHEN agen.hr_agenda >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
-                    AND st.cd_setor IN (117, 137) THEN
-                    'CLINICA 2'
-                ELSE
-                    'CLINICA 1'
-            END AS CLINICAS,
-        a.tp_atendimento,
-        a.SN_OBITO
-        FROM DBAMV.ATENDIME a
-        LEFT JOIN DBAMV.PACIENTE pa                ON a.cd_paciente         = pa.cd_paciente
-        LEFT JOIN DBAMV.PRESTADOR p                ON a.cd_prestador        = p.CD_PRESTADOR
-        LEFT JOIN DBAMV.CONVENIO c                 ON a.cd_convenio         = c.cd_convenio
-        LEFT JOIN DBAMV.ORI_ATE s                  ON a.cd_ori_ate          = s.cd_ori_ate
-        LEFT JOIN DBAMV.TIP_MAR t                  ON a.cd_tip_mar          = t.cd_tip_mar
-        LEFT JOIN DBAMV.ESPECIALID ia              ON a.cd_especialid       = ia.cd_especialid
-        LEFT JOIN (
-            SELECT
-            i.cd_atendimento,
-            i.hr_agenda,
-            i.cd_agenda_central,
-            i.ds_observacao_geral,
-            i.cd_item_agendamento,
-            i.dh_presenca_falta,
-            r.cd_recurso_central,
-            r.ds_recurso_central,
-            DECODE(a.TP_AGENDA,'L','LABORATORIO','I', 'IMAGEM','A', 'AMBULATORIO' ) AS TIPO_AGENDA,
-            a.qt_atendimento,
-            a.qt_marcados,
-            i.cd_usuario,
-            u.nm_usuario,
-            i.cd_tip_mar,
-            tr.ds_tip_mar
-            FROM DBAMV.IT_AGENDA_CENTRAL i
-            LEFT JOIN DBAMV.AGENDA_CENTRAL a    	   ON i.cd_agenda_central   = a.cd_agenda_central
-            LEFT JOIN DBAMV.ITEM_AGENDAMENTO ia 	   ON i.cd_item_agendamento = ia.cd_item_agendamento
-            LEFT JOIN DBAMV.SETOR s             	   ON s.cd_setor            = a.cd_setor
-            LEFT JOIN DBAMV.PRESTADOR pr        	   ON pr.cd_prestador       = a.cd_prestador
-            LEFT JOIN DBAMV.convenio c          	   ON c.cd_convenio         = i.cd_convenio
-            LEFT JOIN DBASGU.USUARIOS u         	   ON u.cd_usuario          = i.cd_usuario
-            LEFT JOIN DBAMV.RECURSO_CENTRAL r   	   ON r.cd_recurso_central  = a.cd_recurso_central
-            LEFT JOIN DBAMV.TIP_MAR tr          	   ON tr.cd_tip_mar         = i.cd_tip_mar
-            WHERE i.cd_atendimento  IS NOT NULL AND i.cd_it_agenda_pai IS NULL AND
-            EXISTS ( SELECT 1 FROM DBAMV.ATENDIME ate WHERE i.cd_atendimento = ate.cd_atendimento )
-        ) agen                                     ON a.CD_ATENDIMENTO      = agen.CD_ATENDIMENTO
-        LEFT JOIN DBAMV.SETOR st				   ON s.CD_SETOR            =   st.CD_SETOR
-        WHERE EXISTS ( SELECT 1 FROM DBAMV.IT_AGENDA_CENTRAL iac WHERE a.cd_atendimento = iac.cd_atendimento )
-        UNION ALL
-        SELECT -- ATENDIDOS NÃO AGENDADOS
-        a.cd_atendimento,
-        'ATENDIDO NÃO AGENDADO' AS STATUS_ATENDIMENTO,
-        a.DT_ATENDIMENTO,
-        EXTRACT(MONTH FROM a.dt_atendimento) AS MES,
-        EXTRACT(YEAR FROM a.dt_atendimento) AS ANO,
-        a.cd_paciente,
-        pa.nm_paciente,
-        c.cd_convenio,
-        c.nm_convenio,
-        a.cd_prestador,
-        p.nm_prestador,
+-- WITH CONSULTA_FINAL
+--     AS(
+--         SELECT -- ATENDIDOS AGENDADOS
+--         a.cd_atendimento,
+--         'ATENDIDO AGENDADO' AS STATUS_ATENDIMENTO,
+--         a.DT_ATENDIMENTO,
+--         EXTRACT(MONTH FROM agen.hr_agenda) AS MES,
+--         EXTRACT(YEAR FROM agen.hr_agenda) AS ANO,
+--         a.cd_paciente,
+--         pa.nm_paciente,
+--         c.cd_convenio,
+--         c.nm_convenio,
+--         a.cd_prestador,
+--         p.nm_prestador,
+--             CASE
+--                 WHEN agen.hr_agenda >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+--                     AND st.cd_setor NOT IN (117,137)
+--                     AND a.cd_prestador IN ('245', '268', '277', '318', '366', '372', '619', '645', '655', '682', '747', '762', '787', '874', '925', '945', '960') THEN
+--                     'CLINICA 2'
+--                 WHEN agen.hr_agenda >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+--                     AND st.cd_setor NOT IN (117, 137)
+--                     AND st.nm_setor LIKE '%2%'
+--                     AND st.nm_setor NOT IN ('POSTO 2', 'UTI 2') THEN
+--                     'CLINICA 2'
+--                 WHEN agen.hr_agenda >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+--                     AND st.cd_setor IN (117, 137) THEN
+--                     'CLINICA 2'
+--                 ELSE
+--                     'CLINICA 1'
+--             END AS CLINICAS,
+--         a.tp_atendimento,
+--         a.SN_OBITO
+--         FROM DBAMV.ATENDIME a
+--         LEFT JOIN DBAMV.PACIENTE pa                ON a.cd_paciente         = pa.cd_paciente
+--         LEFT JOIN DBAMV.PRESTADOR p                ON a.cd_prestador        = p.CD_PRESTADOR
+--         LEFT JOIN DBAMV.CONVENIO c                 ON a.cd_convenio         = c.cd_convenio
+--         LEFT JOIN DBAMV.ORI_ATE s                  ON a.cd_ori_ate          = s.cd_ori_ate
+--         LEFT JOIN DBAMV.TIP_MAR t                  ON a.cd_tip_mar          = t.cd_tip_mar
+--         LEFT JOIN DBAMV.ESPECIALID ia              ON a.cd_especialid       = ia.cd_especialid
+--         LEFT JOIN (
+--             SELECT
+--             i.cd_atendimento,
+--             i.hr_agenda,
+--             i.cd_agenda_central,
+--             i.ds_observacao_geral,
+--             i.cd_item_agendamento,
+--             i.dh_presenca_falta,
+--             r.cd_recurso_central,
+--             r.ds_recurso_central,
+--             DECODE(a.TP_AGENDA,'L','LABORATORIO','I', 'IMAGEM','A', 'AMBULATORIO' ) AS TIPO_AGENDA,
+--             a.qt_atendimento,
+--             a.qt_marcados,
+--             i.cd_usuario,
+--             u.nm_usuario,
+--             i.cd_tip_mar,
+--             tr.ds_tip_mar
+--             FROM DBAMV.IT_AGENDA_CENTRAL i
+--             LEFT JOIN DBAMV.AGENDA_CENTRAL a    	   ON i.cd_agenda_central   = a.cd_agenda_central
+--             LEFT JOIN DBAMV.ITEM_AGENDAMENTO ia 	   ON i.cd_item_agendamento = ia.cd_item_agendamento
+--             LEFT JOIN DBAMV.SETOR s             	   ON s.cd_setor            = a.cd_setor
+--             LEFT JOIN DBAMV.PRESTADOR pr        	   ON pr.cd_prestador       = a.cd_prestador
+--             LEFT JOIN DBAMV.convenio c          	   ON c.cd_convenio         = i.cd_convenio
+--             LEFT JOIN DBASGU.USUARIOS u         	   ON u.cd_usuario          = i.cd_usuario
+--             LEFT JOIN DBAMV.RECURSO_CENTRAL r   	   ON r.cd_recurso_central  = a.cd_recurso_central
+--             LEFT JOIN DBAMV.TIP_MAR tr          	   ON tr.cd_tip_mar         = i.cd_tip_mar
+--             WHERE i.cd_atendimento  IS NOT NULL AND i.cd_it_agenda_pai IS NULL AND
+--             EXISTS ( SELECT 1 FROM DBAMV.ATENDIME ate WHERE i.cd_atendimento = ate.cd_atendimento )
+--         ) agen                                     ON a.CD_ATENDIMENTO      = agen.CD_ATENDIMENTO
+--         LEFT JOIN DBAMV.SETOR st				   ON s.CD_SETOR            =   st.CD_SETOR
+--         WHERE EXISTS ( SELECT 1 FROM DBAMV.IT_AGENDA_CENTRAL iac WHERE a.cd_atendimento = iac.cd_atendimento )
+--         UNION ALL
+--         SELECT -- ATENDIDOS NÃO AGENDADOS
+--         a.cd_atendimento,
+--         'ATENDIDO NÃO AGENDADO' AS STATUS_ATENDIMENTO,
+--         a.DT_ATENDIMENTO,
+--         EXTRACT(MONTH FROM a.dt_atendimento) AS MES,
+--         EXTRACT(YEAR FROM a.dt_atendimento) AS ANO,
+--         a.cd_paciente,
+--         pa.nm_paciente,
+--         c.cd_convenio,
+--         c.nm_convenio,
+--         a.cd_prestador,
+--         p.nm_prestador,
+--             CASE
+--                 WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+--                     AND st.cd_setor NOT IN (117,137)
+--                     AND a.cd_prestador IN ('245', '268', '277', '318', '366', '372', '619', '645', '655', '682', '747', '762', '787', '874', '925', '945', '960') THEN
+--                     'CLINICA 2'
+--                 WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+--                     AND st.cd_setor NOT IN (117, 137)
+--                     AND st.nm_setor LIKE '%2%'
+--                     AND st.nm_setor NOT IN ('POSTO 2', 'UTI 2') THEN
+--                     'CLINICA 2'
+--                 WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+--                 AND  st.cd_setor IN (117, 137) THEN
+--                     'CLINICA 2'
+--                 ELSE
+--                     'CLINICA 1'
+--             END AS CLINICAS,
+--         a.tp_atendimento,
+--         a.SN_OBITO
+--         FROM DBAMV.ATENDIME a
+--         LEFT JOIN DBAMV.PACIENTE pa                ON a.cd_paciente         = pa.cd_paciente
+--         LEFT JOIN DBAMV.PRESTADOR p                ON a.cd_prestador        = p.CD_PRESTADOR
+--         LEFT JOIN DBAMV.CONVENIO c                 ON a.cd_convenio         = c.cd_convenio
+--         LEFT JOIN DBAMV.ORI_ATE s                  ON a.cd_ori_ate          = s.cd_ori_ate
+--         LEFT JOIN DBAMV.TIP_MAR t                  ON a.cd_tip_mar          = t.cd_tip_mar
+--         LEFT JOIN DBAMV.ESPECIALID ia              ON a.cd_especialid       = ia.cd_especialid
+--         LEFT JOIN DBAMV.SETOR st				   ON s.CD_SETOR            = st.CD_SETOR
+--         WHERE NOT EXISTS ( SELECT 1 FROM DBAMV.IT_AGENDA_CENTRAL iac WHERE a.cd_atendimento = iac.cd_atendimento )
+
+        -- SELECT
+        --     a.CD_ATENDIMENTO,
+        --     EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
+        --     EXTRACT(YEAR FROM  a.DT_ATENDIMENTO) AS ANO,
+        --     a.CD_PACIENTE,
+        --     p.NM_PACIENTE,
+        --     a.TP_ATENDIMENTO
+        -- FROM DBAMV.ATENDIME a
+        -- JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
+-- )
+
+
+
+
+WITH JN_PARAMETRO
+    AS (
+        SELECT
+            :param AS CD_ATENDIMENTO
+        FROM DUAL
+)
+SELECT
+    a.CD_ATENDIMENTO,
+    a.DT_ATENDIMENTO,
+    CASE
+        WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+            AND st.cd_setor NOT IN (117,137)
+            AND a.cd_prestador IN ('245', '268', '277', '318', '366', '372', '619', '645', '655', '682', '747', '762', '787', '874', '925', '945', '960') THEN
+            'CLINICA 2'
+        WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+            AND st.cd_setor NOT IN (117, 137)
+            AND st.nm_setor LIKE '%2%'
+            AND st.nm_setor NOT IN ('POSTO 2', 'UTI 2') THEN
+            'CLINICA 2'
+        WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+        AND  st.cd_setor IN (117, 137) THEN
+            'CLINICA 2'
+        ELSE
+            'CLINICA 1'
+    END AS CLINICAS,
+    EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
+    EXTRACT(YEAR FROM  a.DT_ATENDIMENTO) AS ANO,
+    a.CD_PACIENTE,
+    p.NM_PACIENTE,
+    a.TP_ATENDIMENTO,
+    c.NM_CONVENIO,
+    a.SN_OBITO,
+    g.CD_GUIA,
+    g.NR_GUIA,
+    g.TP_GUIA,
+    g.DT_AUTORIZACAO,
+    a.NR_CARTEIRA
+FROM DBAMV.ATENDIME a
+JOIN DBAMV.PACIENTE p       ON a.CD_PACIENTE    = p.CD_PACIENTE
+JOIN DBAMV.CONVENIO c       ON a.CD_CONVENIO    = c.CD_CONVENIO
+JOIN DBAMV.GUIA     g       ON a.CD_ATENDIMENTO = g.CD_ATENDIMENTO AND a.CD_CONVENIO = g.CD_CONVENIO
+LEFT JOIN DBAMV.ORI_ATE s   ON a.cd_ori_ate     = s.cd_ori_ate
+LEFT JOIN DBAMV.SETOR st	ON s.CD_SETOR       = st.CD_SETOR
+CROSS JOIN JN_PARAMETRO par
+WHERE
+    a.CD_ATENDIMENTO = par.CD_ATENDIMENTO AND
+    g.NR_GUIA IS NOT NULL
+;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+WITH
+--     JN_PARAMETRO
+--     AS (
+--         SELECT
+--             -- :param AS CD_ATENDIMENTO
+--             :param AS PERIODO
+--         FROM DUAL
+-- ),
+JN_ATENDIMENTO
+    AS (
+        SELECT
+            a.CD_ATENDIMENTO,
+            a.DT_ATENDIMENTO,
+            TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') AS MES_ANO,
             CASE
                 WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
                     AND st.cd_setor NOT IN (117,137)
@@ -101,149 +220,234 @@ WITH CONSULTA_FINAL
                 ELSE
                     'CLINICA 1'
             END AS CLINICAS,
-        a.tp_atendimento,
-        a.SN_OBITO
+            EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
+            EXTRACT(YEAR FROM  a.DT_ATENDIMENTO) AS ANO,
+            a.CD_PACIENTE,
+            p.NM_PACIENTE,
+            a.TP_ATENDIMENTO,
+            c.NM_CONVENIO,
+            a.SN_OBITO,
+            -- g.CD_GUIA,
+            -- g.NR_GUIA,
+            -- g.TP_GUIA,
+            -- g.DT_AUTORIZACAO,
+            a.NR_CARTEIRA
         FROM DBAMV.ATENDIME a
-        LEFT JOIN DBAMV.PACIENTE pa                ON a.cd_paciente         = pa.cd_paciente
-        LEFT JOIN DBAMV.PRESTADOR p                ON a.cd_prestador        = p.CD_PRESTADOR
-        LEFT JOIN DBAMV.CONVENIO c                 ON a.cd_convenio         = c.cd_convenio
-        LEFT JOIN DBAMV.ORI_ATE s                  ON a.cd_ori_ate          = s.cd_ori_ate
-        LEFT JOIN DBAMV.TIP_MAR t                  ON a.cd_tip_mar          = t.cd_tip_mar
-        LEFT JOIN DBAMV.ESPECIALID ia              ON a.cd_especialid       = ia.cd_especialid
-        LEFT JOIN DBAMV.SETOR st				   ON s.CD_SETOR            = st.CD_SETOR
-        WHERE NOT EXISTS ( SELECT 1 FROM DBAMV.IT_AGENDA_CENTRAL iac WHERE a.cd_atendimento = iac.cd_atendimento )
-
-        -- SELECT
-        --     a.CD_ATENDIMENTO,
-        --     EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
-        --     EXTRACT(YEAR FROM  a.DT_ATENDIMENTO) AS ANO,
-        --     a.CD_PACIENTE,
-        --     p.NM_PACIENTE,
-        --     a.TP_ATENDIMENTO
-        -- FROM DBAMV.ATENDIME a
-        -- JOIN DBAMV.PACIENTE p ON a.CD_PACIENTE = p.CD_PACIENTE
+        JOIN DBAMV.PACIENTE p       ON a.CD_PACIENTE    = p.CD_PACIENTE
+        JOIN DBAMV.CONVENIO c       ON a.CD_CONVENIO    = c.CD_CONVENIO
+        -- JOIN DBAMV.GUIA     g       ON a.CD_ATENDIMENTO = g.CD_ATENDIMENTO AND a.CD_CONVENIO = g.CD_CONVENIO
+        JOIN DBAMV.ORI_ATE s   ON a.cd_ori_ate     = s.cd_ori_ate
+        JOIN DBAMV.SETOR st	ON s.CD_SETOR       = st.CD_SETOR
+        -- CROSS JOIN JN_PARAMETRO par
+        WHERE
+            -- a.CD_ATENDIMENTO = par.CD_ATENDIMENTO --AND
+            EXTRACT(YEAR FROM a.DT_ATENDIMENTO) IN(EXTRACT(YEAR FROM SYSDATE), EXTRACT(YEAR FROM SYSDATE)-1)
+            -- TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') = par.PERIODO
+            -- g.NR_GUIA IS NOT NULL --AND
+            -- a.TP_ATENDIMENTO IN('A', 'E', 'U')
 ),
-REGRA_AMBULATORIO
-    AS (
-			SELECT
-				pf.CD_PRO_FAT,
-				ia.CD_REG_AMB,
-				ia.CD_PRESTADOR,
-                p.NM_PRESTADOR,
-				ia.CD_LANCAMENTO,
-                ia.CD_GRU_FAT,
-				ia.CD_CONVENIO,
-				ia.CD_ATENDIMENTO,
-				pf.DS_PRO_FAT,
-				ia.HR_LANCAMENTO,
-				ia.SN_PERTENCE_PACOTE,
-				ia.VL_TOTAL_CONTA,
-                ia.VL_PERCENTUAL_MULTIPLA,
-				ia.VL_BASE_REPASSADO,
-                ia.TP_PAGAMENTO
-			FROM DBAMV.ITREG_AMB ia
-			LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
-			LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
-            LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
-			-- WHERE ia.SN_REPASSADO IN ('S', 'N') OR ia.SN_REPASSADO IS NULL
-),
-REGRA_FATURAMENTO
+JN_REGRA_AMBULATORIO
     AS (
         SELECT
+            ia.CD_ATENDIMENTO,
+            -- CASE
+            --     WHEN (ia.CD_GRU_FAT = 8 OR ia.SN_PERTENCE_PACOTE = 'N') THEN
+            --         COALESCE(
+            --             FIRST_VALUE(CASE WHEN pf.CD_GRU_PRO = 0 THEN ia.CD_GUIA END)
+            --             OVER (
+            --                 PARTITION BY ia.CD_ATENDIMENTO
+            --                 ORDER BY CASE WHEN pf.CD_GRU_PRO = 0 THEN 1 ELSE 2 END
+            --                 ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            --             ),
+            --             ia.CD_GUIA
+            --         )
+            --     WHEN ia.SN_PERTENCE_PACOTE = 'N' THEN
+            --         COALESCE(FIRST_VALUE(CASE WHEN ia.CD_GRU_FAT = 8 THEN ia.CD_GUIA END) OVER (
+            --             PARTITION BY ia.CD_ATENDIMENTO
+            --             ORDER BY CASE WHEN ia.CD_GRU_FAT = 8 THEN 1 ELSE 2 END
+            --             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            --         ), ia.CD_GUIA)
+
+            --     ELSE ia.CD_GUIA
+            -- END AS CD_GUIA,
+            ia.CD_REG_AMB,
+            ra.CD_REMESSA,
+            pf.CD_GRU_PRO,
+            ia.CD_GRU_FAT,
             pf.CD_PRO_FAT,
-            itf.CD_REG_FAT,
-            itf.CD_PRESTADOR,
-            p.NM_PRESTADOR,
-            itf.CD_LANCAMENTO,
-            itf.CD_GRU_FAT,
-            rf.CD_CONVENIO,
-            rf.CD_ATENDIMENTO,
             pf.DS_PRO_FAT,
-            itf.DT_LANCAMENTO,
-            itf.SN_PERTENCE_PACOTE,
-            itf.VL_TOTAL_CONTA,
-            itf.VL_PERCENTUAL_MULTIPLA,
-            itf.VL_BASE_REPASSADO,
-            itf.TP_PAGAMENTO
-        FROM DBAMV.ITREG_FAT itf
-        LEFT JOIN DBAMV.PRO_FAT pf 	   ON itf.CD_PRO_FAT = pf.CD_PRO_FAT
-        LEFT JOIN DBAMV.REG_FAT rf 	   ON itf.CD_REG_FAT = rf.CD_REG_FAT
-        LEFT JOIN DBAMV.PRESTADOR p    ON itf.CD_PRESTADOR = p.CD_PRESTADOR
-        -- WHERE itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL
+            ia.CD_CONVENIO,
+            ia.SN_PERTENCE_PACOTE,
+            ia.VL_TOTAL_CONTA,
+            ia.TP_PAGAMENTO,
+            p.NM_PRESTADOR,
+            'AMBULATORIO' AS RG_FATURAMENTO
+        FROM DBAMV.ITREG_AMB ia
+        LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
+        LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
+        LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
+        -- CROSS JOIN JN_PARAMETRO par
+        -- WHERE ia.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+),
+JN_REGRA_HOSPITALAR
+    AS (
+        SELECT
+            rf.CD_ATENDIMENTO,
+            -- CASE
+            --     WHEN (ift.CD_GRU_FAT = 8 OR ift.SN_PERTENCE_PACOTE = 'N') THEN
+            --         COALESCE(FIRST_VALUE(CASE WHEN pf.CD_GRU_PRO = 0 THEN ift.CD_GUIA END) OVER (
+            --             PARTITION BY rf.CD_ATENDIMENTO
+            --             ORDER BY CASE WHEN pf.CD_GRU_PRO = 0 THEN 1 ELSE 2 END
+            --             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            --         ), ift.CD_GUIA)
+            --     WHEN ift.SN_PERTENCE_PACOTE = 'N' THEN
+            --         COALESCE(FIRST_VALUE(CASE WHEN ift.CD_GRU_FAT = 8 THEN ift.CD_GUIA END) OVER (
+            --             PARTITION BY rf.CD_ATENDIMENTO
+            --             ORDER BY CASE WHEN ift.CD_GRU_FAT = 8 THEN 1 ELSE 2 END
+            --             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            --         ), ift.CD_GUIA)
+
+            --     ELSE ift.CD_GUIA
+            -- END AS CD_GUIA,
+            ift.CD_REG_FAT,
+            rf.CD_REMESSA,
+            pf.CD_GRU_PRO,
+            ift.CD_GRU_FAT,
+            pf.CD_PRO_FAT,
+            pf.DS_PRO_FAT,
+            rf.CD_CONVENIO,
+            ift.SN_PERTENCE_PACOTE,
+            ift.VL_TOTAL_CONTA,
+            ift.TP_PAGAMENTO,
+            p.NM_PRESTADOR,
+            'FATURAMENTO' AS RG_FATURAMENTO
+        FROM DBAMV.ITREG_FAT ift
+        LEFT JOIN DBAMV.PRO_FAT pf 	   ON ift.CD_PRO_FAT = pf.CD_PRO_FAT
+        LEFT JOIN DBAMV.REG_FAT rf 	   ON ift.CD_REG_FAT = rf.CD_REG_FAT
+        LEFT JOIN DBAMV.PRESTADOR p    ON ift.CD_PRESTADOR = p.CD_PRESTADOR
+        -- CROSS JOIN JN_PARAMETRO par
+        -- WHERE rf.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+),
+JN_UNION_REGRAS
+    AS (
+        SELECT
+            ra.CD_ATENDIMENTO,
+            ra.CD_REMESSA,
+            ra.CD_GRU_FAT,
+            -- ra.CD_GUIA,
+
+            ra.SN_PERTENCE_PACOTE,
+
+            ra.DS_PRO_FAT AS PROCEDIMENTO,
+            ra.CD_PRO_FAT AS CODIGO,
+
+            ra.CD_CONVENIO,
+            ra.TP_PAGAMENTO,
+
+            ra.RG_FATURAMENTO,
+            ra.VL_TOTAL_CONTA,
+            ra.NM_PRESTADOR,
+
+            CASE WHEN ra.CD_PRO_FAT = '10805048' THEN 1 END UNI
+
+        FROM JN_REGRA_AMBULATORIO ra
+        WHERE ra.SN_PERTENCE_PACOTE = 'N'
+
+        UNION ALL
+
+        SELECT
+            rh.CD_ATENDIMENTO,
+            rh.CD_REMESSA,
+            rh.CD_GRU_FAT,
+            -- rh.CD_GUIA,
+
+            rh.SN_PERTENCE_PACOTE,
+
+            rh.DS_PRO_FAT AS PROCEDIMENTO,
+            rh.CD_PRO_FAT AS CODIGO,
+
+            rh.CD_CONVENIO,
+            rh.TP_PAGAMENTO,
+
+            rh.RG_FATURAMENTO,
+            rh.VL_TOTAL_CONTA,
+            rh.NM_PRESTADOR,
+
+            CASE WHEN rh.CD_PRO_FAT = '10805048' THEN 1 END UNI
+
+        FROM JN_REGRA_HOSPITALAR rh
+        WHERE rh.SN_PERTENCE_PACOTE = 'N'
+),
+TREATS
+    AS (
+        SELECT
+            a.CD_ATENDIMENTO,
+            -- a.DT_ATENDIMENTO,
+            a.MES,
+            a.ANO,
+
+            CASE a.TP_ATENDIMENTO
+                WHEN 'A' THEN 'AMBULATORIAL'
+                WHEN 'E' THEN 'EXTERNO'
+                WHEN 'U' THEN 'URGENCIA/EMERGENCIA'
+                WHEN 'I' THEN 'INTERNACAO'
+                ELSE 'Sem Correspondência'
+            END AS TIPO_ATENDIMENTO,
+
+            a.CLINICAS,
+
+            a.NM_CONVENIO,
+
+            CASE
+                WHEN ur.CODIGO = 'X0000000' THEN
+                    'SUS'
+                WHEN ur.TP_PAGAMENTO = 'P' OR ur.TP_PAGAMENTO IS NULL THEN
+                    'PRODUCAO'
+                WHEN ur.TP_PAGAMENTO = 'C' THEN
+                    'COOPERATIVA'
+                ELSE 'OUTROS'
+            END AS TP_FATURAMENTO,
+
+            a.NM_PACIENTE,
+            CASE WHEN a.SN_OBITO = 'S' THEN 'OBITO' END AS OBITO,
+
+            ur.NM_PRESTADOR AS PRESTADOR,
+
+            CASE
+                WHEN ur.CD_GRU_FAT IN(3,5,10) THEN
+                    'MEDICAMENTOS'
+                WHEN ur.CD_GRU_FAT = 1 THEN
+                    'DIARIAS'
+                WHEN ur.CD_GRU_FAT = 2 THEN
+                    'TAXAS'
+                WHEN ur.CD_GRU_FAT = 4 THEN
+                    'MATERIAIS'
+                WHEN ur.CD_GRU_FAT = 8 THEN
+                    'PACOTE'
+                WHEN ur.CD_GRU_FAT = 7 AND a.TP_ATENDIMENTO = 'I' THEN
+                    'PROCEDIMENTO_MED'
+                WHEN ur.CD_GRU_FAT = 7 AND a.TP_ATENDIMENTO IN('A', 'U') THEN
+                    'CONSULTA'
+                WHEN ur.CD_GRU_FAT = 6 AND a.TP_ATENDIMENTO = 'A'  THEN
+                    'EXAMES'
+                WHEN ur.CD_GRU_FAT IN(6, 7) AND a.TP_ATENDIMENTO IN('I', 'E', 'U') THEN
+                    'EXAMES'
+                ELSE 'OUTROS'
+            END AS PROCEDIMENTO_FATURADO,
+
+            ur.PROCEDIMENTO,
+            ur.VL_TOTAL_CONTA
+
+        FROM JN_ATENDIMENTO a
+        LEFT JOIN JN_UNION_REGRAS ur  ON a.CD_ATENDIMENTO = ur.CD_ATENDIMENTO --AND a.CD_GUIA = ur.CD_GUIA
+
+        WHERE
+            ur.SN_PERTENCE_PACOTE = 'N'
+        ORDER BY a.CD_ATENDIMENTO DESC
 )
 SELECT
-
-    cf.CD_ATENDIMENTO,
-    cf.STATUS_ATENDIMENTO,
-
-    CASE
-        WHEN COALESCE(ra.CD_PRO_FAT, rf.CD_PRO_FAT) = 'X0000000' THEN
-            'SUS'
-        WHEN COALESCE(ra.TP_PAGAMENTO, rf.TP_PAGAMENTO) = 'P' OR COALESCE(ra.TP_PAGAMENTO, rf.TP_PAGAMENTO) IS NULL THEN
-            'PRODUCAO'
-        WHEN COALESCE(ra.TP_PAGAMENTO, rf.TP_PAGAMENTO) = 'C' THEN
-            'COOPERATIVA'
-        ELSE 'OUTROS'
-    END AS TP_FATURAMENTO,
-
-    cf.DT_ATENDIMENTO,
-    cf.MES,
-    cf.ANO,
-
-    -- COALESCE(ra.HR_LANCAMENTO, rf.DT_LANCAMENTO) AS HR_LANCAMENTO,
-
-    CASE cf.TP_ATENDIMENTO
-        WHEN 'A' THEN 'AMBULATORIAL'
-        WHEN 'E' THEN 'EXTERNO'
-        WHEN 'U' THEN 'URGENCIA/EMERGENCIA'
-        WHEN 'I' THEN 'INTERNACAO'
-        ELSE 'Sem Correspondência'
-    END AS TIPO_ATENDIMENTO,
-
-    CASE WHEN cf.SN_OBITO = 'S' THEN 'OBITO' END AS OBITO,
-
-    cf.NM_CONVENIO,
-    cf.NM_PACIENTE,
-    COALESCE(ra.NM_PRESTADOR, rf.NM_PRESTADOR) AS PRESTADOR,
-    cf.CLINICAS,
-
-    CASE
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) IN(3,5,10) THEN
-            'MEDICAMENTOS'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 1 THEN
-            'DIARIAS'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 2 THEN
-            'TAXAS'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 4 THEN
-            'MATERIAIS'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 8 THEN
-            'PACOTE'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 7 AND cf.TP_ATENDIMENTO = 'I' THEN
-            'PROCEDIMENTO_MED'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) = 7 AND cf.TP_ATENDIMENTO IN('A', 'U') THEN
-            'CONSULTA'
-        WHEN rf.CD_GRU_FAT = 6 AND cf.TP_ATENDIMENTO = 'A'  THEN
-            'EXAMES'
-        WHEN COALESCE(ra.CD_GRU_FAT, rf.CD_GRU_FAT) IN(6, 7) AND cf.TP_ATENDIMENTO IN('I', 'E', 'U') THEN
-            'EXAMES'
-        ELSE 'OUTROS'
-    END AS PROCEDIMENTO_FATURADO,
-
-    COALESCE(ra.DS_PRO_FAT, rf.DS_PRO_FAT) AS PROCEDIMENTO,
-    COALESCE(ra.VL_TOTAL_CONTA, rf.VL_TOTAL_CONTA) AS VL_TOTAL_CONTA
-
-FROM CONSULTA_FINAL cf
-LEFT JOIN REGRA_AMBULATORIO ra ON cf.CD_ATENDIMENTO = ra.CD_ATENDIMENTO
-LEFT JOIN REGRA_FATURAMENTO rf ON cf.CD_ATENDIMENTO = rf.CD_ATENDIMENTO
-
-WHERE
-	-- cf.ANO = 2025 AND cf.MES = 9 AND
-    cf.CD_ATENDIMENTO = 253399 AND
-    COALESCE(rf.SN_PERTENCE_PACOTE, ra.SN_PERTENCE_PACOTE) = 'N'
-
-
-ORDER BY cf.CD_ATENDIMENTO DESC
-
+    *
+FROM TREATS --JN_UNION_REGRAS--JN_REGRA_HOSPITALAR
 ;
 
 -- ******* R_LISTA_ATENDE_PERIODO *******
@@ -361,117 +565,4 @@ LEFT JOIN DBAMV.EXA_RX er  	   ON pf.CD_PRO_FAT = er.EXA_RX_CD_PRO_FAT
 LEFT JOIN DBAMV.EXA_LAB el	   ON pf.CD_PRO_FAT = el.CD_PRO_FAT
 WHERE (itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL) AND  itf.CD_GRU_FAT = 8
 ;
-
-
-SELECT DISTINCT
-    rf.cd_atendimento AS cod_atend,
-    rf.cd_reg_fat AS conta,
-	a.cd_paciente AS cod_paciente,
-    p.nm_paciente AS nome_paciente,
-    rf.sn_fechada AS sn_fechada,
-    rf.dt_inicio AS dt_abertura,
-    rf.dt_final AS dt_alta,
-    rf.dt_fechamento AS dt_fechamento,
-    rf.cd_remessa AS cod_remessa,
-    rf.dt_remessa AS dt_remessa,
-    f.dt_competencia,
-    TO_CHAR(f.dt_competencia, 'MM/YYYY') AS competencia,
-    rf.cd_convenio AS cod_convenio,
-    c.nm_convenio AS nome_convenio,
-    rf.vl_total_conta AS vl_total,
-    CASE
-        WHEN a.tp_atendimento = 'A' THEN 'AMBULATORIO'
-        WHEN a.tp_atendimento = 'E' THEN 'EXAMES'
-        WHEN a.tp_atendimento = 'U' THEN 'URGENCIA/EMERGENCIA'
-        WHEN a.tp_atendimento = 'I' THEN 'INTERNACAO'
-    END AS tipo,
-	CASE
-		WHEN rf.cd_convenio = '3' THEN
-			'PARTICULAR'
-		WHEN s.CD_SUB_PLANO = '200' OR s.CD_SUB_PLANO = '300' THEN
-			s.ds_sub_plano
-	    WHEN rf.cd_convenio = '1' AND ot.cd_ori_ate = '3' THEN
-	    	'MUNICIPIO'
-	    WHEN rf.cd_convenio = '1' AND ot.cd_ori_ate = '18' THEN
-	    	'ESTADO'
-	    WHEN s.CD_SUB_PLANO <> '200' OR s.CD_SUB_PLANO <> '300' THEN
-	    	c.nm_convenio
-		ELSE NVL(s.ds_sub_plano, c.nm_convenio)
-	END AS SUB_PLANO
-FROM
-    dbamv.reg_fat rf
-LEFT JOIN
-    dbamv.atendime a ON rf.cd_atendimento = a.cd_atendimento
-LEFT JOIN
-	dbamv.ori_ate ot ON ot.cd_ori_ate = a.cd_ori_ate
-LEFT JOIN
-    dbamv.paciente p ON a.cd_paciente = p.cd_paciente
-LEFT JOIN
-    dbamv.remessa_fatura re ON rf.cd_remessa = re.cd_remessa
-LEFT JOIN
-    dbamv.fatura f ON re.cd_fatura = f.cd_fatura
-LEFT JOIN
-    dbamv.convenio c ON rf.cd_convenio = c.cd_convenio
-LEFT JOIN
-    dbamv.sub_plano s ON s.cd_convenio = c.cd_convenio AND s.cd_sub_plano = a.cd_sub_plano
-WHERE rf.cd_atendimento IS NOT NULL
-UNION ALL
-SELECT DISTINCT
-    ib.cd_atendimento AS cod_atend,
-    rb.cd_reg_amb AS conta,
-    a.cd_paciente AS cod_paciente,
-    p.nm_paciente AS nome_paciente,
-    rb.sn_fechada AS sn_fechada,
-    a.dt_atendimento AS dt_abertura,
-    a.dt_alta AS dt_alta,
-    ib.dt_fechamento AS dt_fechamento,
-    rb.cd_remessa AS cod_remessa,
-    rb.dt_remessa AS dt_remessa,
-    f.dt_competencia,
-    TO_CHAR(f.dt_competencia, 'MM/YYYY') AS competencia,
-    rb.cd_convenio AS cod_convenio,
-    c.nm_convenio AS nome_convenio,
-    rb.vl_total_conta AS vl_total,
-    CASE
-        WHEN a.tp_atendimento = 'A' THEN 'AMBULATORIO'
-        WHEN a.tp_atendimento = 'E' THEN 'EXAMES'
-        WHEN a.tp_atendimento = 'U' THEN 'URGENCIA/EMERGENCIA'
-        WHEN a.tp_atendimento = 'I' THEN 'INTERNACAO'
-    END AS tipo,
-	CASE
-		WHEN rb.cd_convenio = '3' THEN
-			'PARTICULAR'
-		WHEN s.CD_SUB_PLANO = '200' OR s.CD_SUB_PLANO = '300' THEN
-			s.ds_sub_plano
-	    WHEN rb.cd_convenio = '1' AND ot.cd_ori_ate = '3' THEN
-	    	'MUNICIPIO'
-	    WHEN rb.cd_convenio = '1' AND ot.cd_ori_ate = '18' THEN
-	    	'ESTADO'
-	    WHEN s.CD_SUB_PLANO <> '200' OR s.CD_SUB_PLANO <> '300' THEN
-	    	c.nm_convenio
-		ELSE NVL(s.ds_sub_plano, c.nm_convenio)
-	END AS SUB_PLANO
-FROM
-    dbamv.reg_amb rb
-LEFT JOIN
-    dbamv.itreg_amb ib ON rb.cd_reg_amb = ib.cd_reg_amb
-LEFT JOIN
-    dbamv.atendime a ON ib.cd_atendimento = a.cd_atendimento
-LEFT JOIN
-	dbamv.ori_ate ot ON ot.cd_ori_ate = a.cd_ori_ate
-LEFT JOIN
-    dbamv.paciente p ON a.cd_paciente = p.cd_paciente
-LEFT JOIN
-    dbamv.remessa_fatura re ON rb.cd_remessa = re.cd_remessa
-LEFT JOIN
-    dbamv.fatura f ON re.cd_fatura = f.cd_fatura
-LEFT JOIN
-    dbamv.convenio c ON a.cd_convenio = c.cd_convenio
-LEFT JOIN
-    dbamv.sub_plano s ON a.cd_convenio = s.cd_convenio AND s.cd_sub_plano = a.cd_sub_plano
-    WHERE ib.cd_atendimento IS NOT NULL
-;
-
-
-
 -- ################################################################################################
