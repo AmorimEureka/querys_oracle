@@ -194,8 +194,8 @@ WITH
 --     JN_PARAMETRO
 --     AS (
 --         SELECT
---             -- :param AS CD_ATENDIMENTO
---             :param AS PERIODO
+--             :param AS CD_ATENDIMENTO
+--             -- :param AS PERIODO
 --         FROM DUAL
 -- ),
 JN_ATENDIMENTO
@@ -227,49 +227,24 @@ JN_ATENDIMENTO
             a.TP_ATENDIMENTO,
             c.NM_CONVENIO,
             a.SN_OBITO,
-            -- g.CD_GUIA,
-            -- g.NR_GUIA,
-            -- g.TP_GUIA,
-            -- g.DT_AUTORIZACAO,
+
             a.NR_CARTEIRA
         FROM DBAMV.ATENDIME a
         JOIN DBAMV.PACIENTE p       ON a.CD_PACIENTE    = p.CD_PACIENTE
         JOIN DBAMV.CONVENIO c       ON a.CD_CONVENIO    = c.CD_CONVENIO
-        -- JOIN DBAMV.GUIA     g       ON a.CD_ATENDIMENTO = g.CD_ATENDIMENTO AND a.CD_CONVENIO = g.CD_CONVENIO
+
         JOIN DBAMV.ORI_ATE s   ON a.cd_ori_ate     = s.cd_ori_ate
         JOIN DBAMV.SETOR st	ON s.CD_SETOR       = st.CD_SETOR
         -- CROSS JOIN JN_PARAMETRO par
         WHERE
-            -- a.CD_ATENDIMENTO = par.CD_ATENDIMENTO --AND
+            -- a.CD_ATENDIMENTO = par.CD_ATENDIMENTO
             EXTRACT(YEAR FROM a.DT_ATENDIMENTO) IN(EXTRACT(YEAR FROM SYSDATE), EXTRACT(YEAR FROM SYSDATE)-1)
             -- TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') = par.PERIODO
-            -- g.NR_GUIA IS NOT NULL --AND
-            -- a.TP_ATENDIMENTO IN('A', 'E', 'U')
 ),
 JN_REGRA_AMBULATORIO
     AS (
         SELECT
             ia.CD_ATENDIMENTO,
-            -- CASE
-            --     WHEN (ia.CD_GRU_FAT = 8 OR ia.SN_PERTENCE_PACOTE = 'N') THEN
-            --         COALESCE(
-            --             FIRST_VALUE(CASE WHEN pf.CD_GRU_PRO = 0 THEN ia.CD_GUIA END)
-            --             OVER (
-            --                 PARTITION BY ia.CD_ATENDIMENTO
-            --                 ORDER BY CASE WHEN pf.CD_GRU_PRO = 0 THEN 1 ELSE 2 END
-            --                 ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-            --             ),
-            --             ia.CD_GUIA
-            --         )
-            --     WHEN ia.SN_PERTENCE_PACOTE = 'N' THEN
-            --         COALESCE(FIRST_VALUE(CASE WHEN ia.CD_GRU_FAT = 8 THEN ia.CD_GUIA END) OVER (
-            --             PARTITION BY ia.CD_ATENDIMENTO
-            --             ORDER BY CASE WHEN ia.CD_GRU_FAT = 8 THEN 1 ELSE 2 END
-            --             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-            --         ), ia.CD_GUIA)
-
-            --     ELSE ia.CD_GUIA
-            -- END AS CD_GUIA,
             ia.CD_REG_AMB,
             ra.CD_REMESSA,
             pf.CD_GRU_PRO,
@@ -278,6 +253,7 @@ JN_REGRA_AMBULATORIO
             pf.DS_PRO_FAT,
             ia.CD_CONVENIO,
             ia.SN_PERTENCE_PACOTE,
+            ia.QT_LANCAMENTO,
             ia.VL_TOTAL_CONTA,
             ia.TP_PAGAMENTO,
             p.NM_PRESTADOR,
@@ -293,22 +269,6 @@ JN_REGRA_HOSPITALAR
     AS (
         SELECT
             rf.CD_ATENDIMENTO,
-            -- CASE
-            --     WHEN (ift.CD_GRU_FAT = 8 OR ift.SN_PERTENCE_PACOTE = 'N') THEN
-            --         COALESCE(FIRST_VALUE(CASE WHEN pf.CD_GRU_PRO = 0 THEN ift.CD_GUIA END) OVER (
-            --             PARTITION BY rf.CD_ATENDIMENTO
-            --             ORDER BY CASE WHEN pf.CD_GRU_PRO = 0 THEN 1 ELSE 2 END
-            --             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-            --         ), ift.CD_GUIA)
-            --     WHEN ift.SN_PERTENCE_PACOTE = 'N' THEN
-            --         COALESCE(FIRST_VALUE(CASE WHEN ift.CD_GRU_FAT = 8 THEN ift.CD_GUIA END) OVER (
-            --             PARTITION BY rf.CD_ATENDIMENTO
-            --             ORDER BY CASE WHEN ift.CD_GRU_FAT = 8 THEN 1 ELSE 2 END
-            --             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-            --         ), ift.CD_GUIA)
-
-            --     ELSE ift.CD_GUIA
-            -- END AS CD_GUIA,
             ift.CD_REG_FAT,
             rf.CD_REMESSA,
             pf.CD_GRU_PRO,
@@ -317,6 +277,7 @@ JN_REGRA_HOSPITALAR
             pf.DS_PRO_FAT,
             rf.CD_CONVENIO,
             ift.SN_PERTENCE_PACOTE,
+            ift.QT_LANCAMENTO,
             ift.VL_TOTAL_CONTA,
             ift.TP_PAGAMENTO,
             p.NM_PRESTADOR,
@@ -334,7 +295,6 @@ JN_UNION_REGRAS
             ra.CD_ATENDIMENTO,
             ra.CD_REMESSA,
             ra.CD_GRU_FAT,
-            -- ra.CD_GUIA,
 
             ra.SN_PERTENCE_PACOTE,
 
@@ -348,10 +308,29 @@ JN_UNION_REGRAS
             ra.VL_TOTAL_CONTA,
             ra.NM_PRESTADOR,
 
-            CASE WHEN ra.CD_PRO_FAT = '10805048' THEN 1 END UNI
+            SUM(ra.QT_LANCAMENTO) AS QTD
+
 
         FROM JN_REGRA_AMBULATORIO ra
-        WHERE ra.SN_PERTENCE_PACOTE = 'N'
+        WHERE
+            ra.SN_PERTENCE_PACOTE = 'N' AND
+            ra.CD_REMESSA IS NOT NULL
+        GROUP BY
+            ra.CD_ATENDIMENTO,
+            ra.CD_REMESSA,
+            ra.CD_GRU_FAT,
+
+            ra.SN_PERTENCE_PACOTE,
+
+            ra.DS_PRO_FAT,
+            ra.CD_PRO_FAT,
+
+            ra.CD_CONVENIO,
+            ra.TP_PAGAMENTO,
+
+            ra.RG_FATURAMENTO,
+            ra.VL_TOTAL_CONTA,
+            ra.NM_PRESTADOR
 
         UNION ALL
 
@@ -359,7 +338,6 @@ JN_UNION_REGRAS
             rh.CD_ATENDIMENTO,
             rh.CD_REMESSA,
             rh.CD_GRU_FAT,
-            -- rh.CD_GUIA,
 
             rh.SN_PERTENCE_PACOTE,
 
@@ -373,16 +351,41 @@ JN_UNION_REGRAS
             rh.VL_TOTAL_CONTA,
             rh.NM_PRESTADOR,
 
-            CASE WHEN rh.CD_PRO_FAT = '10805048' THEN 1 END UNI
+            SUM(rh.QT_LANCAMENTO) AS QTD
 
         FROM JN_REGRA_HOSPITALAR rh
-        WHERE rh.SN_PERTENCE_PACOTE = 'N'
+        WHERE
+            rh.SN_PERTENCE_PACOTE = 'N' AND
+            rh.CD_REMESSA IS NOT NULL
+        GROUP BY
+            rh.CD_ATENDIMENTO,
+            rh.CD_REMESSA,
+            rh.CD_GRU_FAT,
+
+            rh.SN_PERTENCE_PACOTE,
+
+            rh.DS_PRO_FAT,
+            rh.CD_PRO_FAT,
+
+            rh.CD_CONVENIO,
+            rh.TP_PAGAMENTO,
+
+            rh.RG_FATURAMENTO,
+            rh.VL_TOTAL_CONTA,
+            rh.NM_PRESTADOR
+),
+JN_TUSS
+    AS (
+        SELECT
+            CD_PRO_FAT,
+            CD_TUSS,
+            CD_CONVENIO
+        FROM DBAMV.TUSS
 ),
 TREATS
     AS (
         SELECT
             a.CD_ATENDIMENTO,
-            -- a.DT_ATENDIMENTO,
             a.MES,
             a.ANO,
 
@@ -435,11 +438,14 @@ TREATS
                 ELSE 'OUTROS'
             END AS PROCEDIMENTO_FATURADO,
 
+            COALESCE(t.CD_TUSS, ur.CODIGO) AS CODIGO,
             ur.PROCEDIMENTO,
+            ur.QTD,
             ur.VL_TOTAL_CONTA
 
         FROM JN_ATENDIMENTO a
-        LEFT JOIN JN_UNION_REGRAS ur  ON a.CD_ATENDIMENTO = ur.CD_ATENDIMENTO --AND a.CD_GUIA = ur.CD_GUIA
+        LEFT JOIN JN_UNION_REGRAS ur  ON a.CD_ATENDIMENTO = ur.CD_ATENDIMENTO
+        LEFT JOIN JN_TUSS t ON ur.CODIGO = t.CD_PRO_FAT AND ur.CD_CONVENIO = t.CD_CONVENIO
 
         WHERE
             ur.SN_PERTENCE_PACOTE = 'N'
@@ -447,7 +453,7 @@ TREATS
 )
 SELECT
     *
-FROM TREATS --JN_UNION_REGRAS--JN_REGRA_HOSPITALAR
+FROM TREATS
 ;
 
 -- ******* R_LISTA_ATENDE_PERIODO *******
