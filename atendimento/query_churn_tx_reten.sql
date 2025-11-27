@@ -191,13 +191,13 @@ WHERE
 
 
 WITH
---     JN_PARAMETRO
---     AS (
---         SELECT
---             :param AS CD_ATENDIMENTO
---             -- :param AS PERIODO
---         FROM DUAL
--- ),
+    JN_PARAMETRO
+    AS (
+        SELECT
+            :param AS CD_ATENDIMENTO
+            -- :param AS PERIODO
+        FROM DUAL
+),
 JN_ATENDIMENTO
     AS (
         SELECT
@@ -225,27 +225,27 @@ JN_ATENDIMENTO
             a.CD_PACIENTE,
             p.NM_PACIENTE,
             a.TP_ATENDIMENTO,
-            c.NM_CONVENIO,
+            -- c.NM_CONVENIO,
             a.SN_OBITO,
 
             a.NR_CARTEIRA
         FROM DBAMV.ATENDIME a
         JOIN DBAMV.PACIENTE p       ON a.CD_PACIENTE    = p.CD_PACIENTE
-        JOIN DBAMV.CONVENIO c       ON a.CD_CONVENIO    = c.CD_CONVENIO
+        -- JOIN DBAMV.CONVENIO c       ON a.CD_CONVENIO    = c.CD_CONVENIO
 
         JOIN DBAMV.ORI_ATE s   ON a.cd_ori_ate     = s.cd_ori_ate
         JOIN DBAMV.SETOR st	ON s.CD_SETOR       = st.CD_SETOR
-        -- CROSS JOIN JN_PARAMETRO par
+        CROSS JOIN JN_PARAMETRO par
         WHERE
-            -- a.CD_ATENDIMENTO = par.CD_ATENDIMENTO
-            EXTRACT(YEAR FROM a.DT_ATENDIMENTO) IN(EXTRACT(YEAR FROM SYSDATE), EXTRACT(YEAR FROM SYSDATE)-1)
+            a.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+            -- EXTRACT(YEAR FROM a.DT_ATENDIMENTO) IN(EXTRACT(YEAR FROM SYSDATE), EXTRACT(YEAR FROM SYSDATE)-1)
             -- TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') = par.PERIODO
 ),
 JN_REGRA_AMBULATORIO
     AS (
         SELECT
             ia.CD_ATENDIMENTO,
-            ia.CD_REG_AMB,
+            ia.CD_REG_AMB AS CONTA,
             ra.CD_REMESSA,
             pf.CD_GRU_PRO,
             ia.CD_GRU_FAT,
@@ -262,14 +262,14 @@ JN_REGRA_AMBULATORIO
         LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
         LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
         LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
-        -- CROSS JOIN JN_PARAMETRO par
-        -- WHERE ia.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+        CROSS JOIN JN_PARAMETRO par
+        WHERE ia.CD_ATENDIMENTO = par.CD_ATENDIMENTO
 ),
 JN_REGRA_HOSPITALAR
     AS (
         SELECT
             rf.CD_ATENDIMENTO,
-            ift.CD_REG_FAT,
+            ift.CD_REG_FAT AS CONTA,
             rf.CD_REMESSA,
             pf.CD_GRU_PRO,
             ift.CD_GRU_FAT,
@@ -286,14 +286,15 @@ JN_REGRA_HOSPITALAR
         LEFT JOIN DBAMV.PRO_FAT pf 	   ON ift.CD_PRO_FAT = pf.CD_PRO_FAT
         LEFT JOIN DBAMV.REG_FAT rf 	   ON ift.CD_REG_FAT = rf.CD_REG_FAT
         LEFT JOIN DBAMV.PRESTADOR p    ON ift.CD_PRESTADOR = p.CD_PRESTADOR
-        -- CROSS JOIN JN_PARAMETRO par
-        -- WHERE rf.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+        CROSS JOIN JN_PARAMETRO par
+        WHERE rf.CD_ATENDIMENTO = par.CD_ATENDIMENTO
 ),
 JN_UNION_REGRAS
     AS (
         SELECT
             ra.CD_ATENDIMENTO,
             ra.CD_REMESSA,
+            ra.CONTA,
             ra.CD_GRU_FAT,
 
             ra.SN_PERTENCE_PACOTE,
@@ -305,9 +306,9 @@ JN_UNION_REGRAS
             ra.TP_PAGAMENTO,
 
             ra.RG_FATURAMENTO,
-            ra.VL_TOTAL_CONTA,
             ra.NM_PRESTADOR,
-
+            (ra.VL_TOTAL_CONTA / ra.QT_LANCAMENTO) AS VL_UNIDADE,
+            SUM(ra.VL_TOTAL_CONTA) AS VL_TOTAL_CONTA,
             SUM(ra.QT_LANCAMENTO) AS QTD
 
 
@@ -318,6 +319,7 @@ JN_UNION_REGRAS
         GROUP BY
             ra.CD_ATENDIMENTO,
             ra.CD_REMESSA,
+            ra.CONTA,
             ra.CD_GRU_FAT,
 
             ra.SN_PERTENCE_PACOTE,
@@ -329,14 +331,15 @@ JN_UNION_REGRAS
             ra.TP_PAGAMENTO,
 
             ra.RG_FATURAMENTO,
-            ra.VL_TOTAL_CONTA,
-            ra.NM_PRESTADOR
+            ra.NM_PRESTADOR,
+            (ra.VL_TOTAL_CONTA / ra.QT_LANCAMENTO)
 
         UNION ALL
 
         SELECT
             rh.CD_ATENDIMENTO,
             rh.CD_REMESSA,
+            rh.CONTA,
             rh.CD_GRU_FAT,
 
             rh.SN_PERTENCE_PACOTE,
@@ -348,9 +351,10 @@ JN_UNION_REGRAS
             rh.TP_PAGAMENTO,
 
             rh.RG_FATURAMENTO,
-            rh.VL_TOTAL_CONTA,
             rh.NM_PRESTADOR,
+            (rh.VL_TOTAL_CONTA / rh.QT_LANCAMENTO) AS VL_UNIDADE,
 
+            SUM(rh.VL_TOTAL_CONTA) AS VL_TOTAL_CONTA,
             SUM(rh.QT_LANCAMENTO) AS QTD
 
         FROM JN_REGRA_HOSPITALAR rh
@@ -360,6 +364,7 @@ JN_UNION_REGRAS
         GROUP BY
             rh.CD_ATENDIMENTO,
             rh.CD_REMESSA,
+            rh.CONTA,
             rh.CD_GRU_FAT,
 
             rh.SN_PERTENCE_PACOTE,
@@ -371,8 +376,8 @@ JN_UNION_REGRAS
             rh.TP_PAGAMENTO,
 
             rh.RG_FATURAMENTO,
-            rh.VL_TOTAL_CONTA,
-            rh.NM_PRESTADOR
+            rh.NM_PRESTADOR,
+            (rh.VL_TOTAL_CONTA / rh.QT_LANCAMENTO)
 ),
 JN_TUSS
     AS (
@@ -382,10 +387,21 @@ JN_TUSS
             CD_CONVENIO
         FROM DBAMV.TUSS
 ),
+JN_CONVENIO
+    AS (
+        SELECT
+            CD_CONVENIO,
+            NM_CONVENIO
+        FROM DBAMV.CONVENIO
+),
 TREATS
     AS (
         SELECT
             a.CD_ATENDIMENTO,
+
+            ur.CD_REMESSA,
+            ur.CONTA,
+
             a.MES,
             a.ANO,
 
@@ -399,7 +415,8 @@ TREATS
 
             a.CLINICAS,
 
-            a.NM_CONVENIO,
+            c.CD_CONVENIO,
+            c.NM_CONVENIO,
 
             CASE
                 WHEN ur.CODIGO = 'X0000000' THEN
@@ -441,11 +458,13 @@ TREATS
             COALESCE(t.CD_TUSS, ur.CODIGO) AS CODIGO,
             ur.PROCEDIMENTO,
             ur.QTD,
+            ur.VL_UNIDADE,
             ur.VL_TOTAL_CONTA
 
         FROM JN_ATENDIMENTO a
         LEFT JOIN JN_UNION_REGRAS ur  ON a.CD_ATENDIMENTO = ur.CD_ATENDIMENTO
         LEFT JOIN JN_TUSS t ON ur.CODIGO = t.CD_PRO_FAT AND ur.CD_CONVENIO = t.CD_CONVENIO
+        LEFT JOIN JN_CONVENIO c       ON ur.CD_CONVENIO    = c.CD_CONVENIO
 
         WHERE
             ur.SN_PERTENCE_PACOTE = 'N'
