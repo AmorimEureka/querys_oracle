@@ -33,8 +33,8 @@ CODE REVIEW TABIA
 
 # OCORRENCIAS:
 
-<details open>
-    <summary><strong>APPOINTMENTS POR PERIODO:</strong></summary>
+<details>
+    <summary><strong>⛧ APPOINTMENTS POR PERIODO:</strong></summary>
 
 * OBJETIVO: Listar bukets de agenda de cada lote de agenda das escalas por período
   ---
@@ -287,3 +287,171 @@ CODE REVIEW TABIA
 
 <br>
 <br>
+
+<details open>
+    <summary><strong>⛧ ENCOUNTERS POR PERIODO</strong></summary>
+
+* OBJETIVO: Listar atendimentos e procedimentos por período
+  ---
+
+<br>
+
+* **MUITOS REGISTROS COM TRADUÇÃO DO "TP_ATENDIMENTO" P/ CAMPO "type" AO ENVÉS DO PROCEDIMENTO:**
+
+    - **Muitos registros retornam a tradução do campo "TP_ATENDIMENTO" ao envés do procedimento que pode obitido das tabelas de faturamento**
+
+        ```sql
+            REPLACE(
+            NVL(
+                CASE
+                WHEN PS.CD_PROCEDIMENTO IS NULL THEN C.DS_CIRURGIA
+                WHEN A.CD_PRO_INT     IS NULL THEN PS.DS_PROCEDIMENTO
+                ELSE C.DS_CIRURGIA
+                END,
+                NVL(PF.DS_PRO_FAT,
+                    CASE
+                    WHEN A.TP_ATENDIMENTO = 'E' THEN 'Externo'
+                    WHEN A.TP_ATENDIMENTO = 'A' THEN 'Ambulatorial'
+                    WHEN A.TP_ATENDIMENTO = 'I' THEN 'Internacao'
+                    WHEN A.TP_ATENDIMENTO = 'U' THEN 'Urgencia'
+                    WHEN A.TP_ATENDIMENTO = 'H' THEN 'Home Care'
+                    WHEN A.TP_ATENDIMENTO = 'B' THEN 'Busca Ativa'
+                    WHEN A.TP_ATENDIMENTO = 'S' THEN 'SUS - AIH'
+                    WHEN A.TP_ATENDIMENTO = 'O' THEN 'Obito (nao utilizado)'
+                    ELSE 'Indefinido'
+                    END
+                )
+            ),
+            '"','\"')                                                       AS "type",
+        ```
+
+        - **Sugestão de Solução:**
+            - Valida se o ``CD_ATENDIMENTO`` possuí procedimento cirurgico vinculado, caso contrário retorna o procedimento faturado conforme tipo do atendimento (Hospitalar ou Ambulatórial); somente em última opção retona a tradução pelo tipo de atendimento.
+
+                ```sql
+                    REPLACE(
+                        NVL(
+                            CASE
+                                WHEN AC.CD_ATENDIMENTO  IS NOT NULL THEN C.DS_CIRURGIA
+                                WHEN AC.CD_ATENDIMENTO IS NULL THEN COALESCE( ra.DS_PRO_FAT, rh.DS_PRO_FAT)
+                                ELSE COALESCE( PF.DS_PRO_FAT, PS.DS_PROCEDIMENTO)
+                            END,
+                            CASE
+                                WHEN A.TP_ATENDIMENTO = 'E' THEN 'Externo'
+                                WHEN A.TP_ATENDIMENTO = 'A' THEN 'Ambulatorial'
+                                WHEN A.TP_ATENDIMENTO = 'I' THEN 'Internacao'
+                                WHEN A.TP_ATENDIMENTO = 'U' THEN 'Urgencia'
+                                WHEN A.TP_ATENDIMENTO = 'H' THEN 'Home Care'
+                                WHEN A.TP_ATENDIMENTO = 'B' THEN 'Busca Ativa'
+                                WHEN A.TP_ATENDIMENTO = 'S' THEN 'SUS - AIH'
+                                WHEN A.TP_ATENDIMENTO = 'O' THEN 'Obito (nao utilizado)'
+                                ELSE 'Indefinido'
+                            END
+                        ),
+                    '"','\"')                                                       AS "type",
+                ```
+
+            - Tabelas de faturamento com ``DS_PRO_FAT``:
+                ```sql
+                    WITH JN_REGRA_AMBULATORIO
+                        AS (
+                            SELECT
+                                ia.CD_ATENDIMENTO,
+                                pf.CD_PRO_FAT,
+                                pf.DS_PRO_FAT,
+                                p.CD_PRESTADOR,
+                                p.NM_PRESTADOR
+                            FROM DBAMV.ITREG_AMB ia
+                            LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
+                            LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
+                            LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
+                    ),
+                    JN_REGRA_HOSPITALAR
+                        AS (
+                                SELECT
+                                    rf.CD_ATENDIMENTO,
+                                    pf.CD_PRO_FAT,
+                                    pf.DS_PRO_FAT,
+                                    p.CD_PRESTADOR,
+                                    p.NM_PRESTADOR
+                                FROM DBAMV.ITREG_FAT itf
+                                LEFT JOIN DBAMV.PRO_FAT pf ON itf.CD_PRO_FAT = pf.CD_PRO_FAT
+                                LEFT JOIN DBAMV.REG_FAT rf ON itf.CD_REG_FAT = rf.CD_REG_FAT
+                                LEFT JOIN DBAMV.PRESTADOR p    ON itf.CD_PRESTADOR = p.CD_PRESTADOR
+                    ),
+                ```
+        ---
+
+<br>
+<br>
+
+
+- **REGISTRO DE ATENDIMENTO CIRURGICO C/ PRESTADOR DE ATENDIMENTO AMBULATÓRIAL**
+    - **Atendimento c/ procedimentos cirurgico retornando o mesmo prestador com origem na tabela de atendimento**
+        ```sql
+            CASE
+            WHEN NVL(PP.CD_PRESTADOR,0) = 0 THEN NULL
+            ELSE
+                '[' ||
+                '{' ||
+                    '"type":"PROFESSIONAL",' ||
+                    '"actor":{' ||
+                    '"reference":"' || TO_CHAR(PP.CD_PRESTADOR) || '",' ||
+                    '"display":"'   || REPLACE(NVL(PP.NM_PRESTADOR,''),'"','\"') || '"' ||
+                    '}' ||
+                '}' ||
+                ']'
+            END                                                             AS "participants",
+        ```
+
+
+        - **Sugestão de Solução:**
+            - Atendimentos com procedimentos cirurgicos devem exibir o prestador do procedimento cirurgico
+                ```sql
+                    CASE
+                        WHEN (
+                            CASE
+                                WHEN AC.CD_ATENDIMENTO IS NOT NULL THEN pa.CD_PRESTADOR
+                                ELSE PP.CD_PRESTADOR
+                            END
+                        ) IS NULL THEN NULL
+                        ELSE
+                        '[' ||
+                            '{' ||
+                            '"type":"PROFESSIONAL",' ||
+                            '"actor":{' ||
+                                '"reference":"' || TO_CHAR(
+                                    CASE
+                                        WHEN AC.CD_ATENDIMENTO IS NOT NULL THEN pa.CD_PRESTADOR
+                                        ELSE PP.CD_PRESTADOR
+                                    END
+                                ) || '",' ||
+                                '"display":"'   || REPLACE(
+                                                        NVL(
+                                                            CASE
+                                                                WHEN AC.CD_ATENDIMENTO IS NOT NULL THEN pp2.NM_PRESTADOR
+                                                                ELSE PP.NM_PRESTADOR
+                                                            END,
+                                                            ''
+                                                        ),
+                                                        '"','\"'
+                                                    ) || '"' ||
+                            '}' ||
+                            '}' ||
+                        ']'
+                    END                                                             AS "participants",
+                ```
+
+            - Para permitir isso é necessário ajustar o ``JOIN`` entre as tabelas no núcleo cirurgias e filtrar pelo *'prestador principal'* e *'procedimento principal'*:
+
+                ```sql
+                    LEFT JOIN DBAMV.AVISO_CIRURGIA AC    ON A.CD_ATENDIMENTO       = AC.CD_ATENDIMENTO
+                    LEFT JOIN DBAMV.CIRURGIA_AVISO CA    ON AC.CD_AVISO_CIRURGIA   = CA.CD_AVISO_CIRURGIA AND CA.SN_PRINCIPAL = 'S'
+                    LEFT JOIN DBAMV.PRESTADOR_AVISO pa   ON AC.CD_AVISO_CIRURGIA   = pa.CD_AVISO_CIRURGIA AND pa.SN_PRINCIPAL = 'S'
+                    LEFT JOIN DBAMV.CIRURGIA C           ON pa.CD_CIRURGIA         = C.CD_CIRURGIA
+                    LEFT JOIN JN_PRESTADOR pp2           ON PP2.CD_PRESTADOR       = pa.CD_PRESTADOR
+                ```
+    ---
+
+
+</details>
