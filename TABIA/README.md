@@ -724,8 +724,431 @@ CODE REVIEW TABIA
 
 <summary><strong>⛧ SERVICE REQUEST POR PERIODO [PEDIDOS - EXAMES/CIRURGIAS]:</strong></summary>
 
-* OBJETIVO: Loading ...⏳
+<br>
+
+OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
+---
+
+<br>
+
+- **Hipóteses:**
+    - PRESCRICAO COM PEDIDO
+    - PRESCRICAO COM PEDIDO
+    - PEDIDO SEM PRESCRICAO
+
+<br>
+
+- **Regras:**
+    - Atendimentos de Internação, Urgência e Emergência `[TP_ATENDIMENTO IN('I', 'U')]` geram Pedidos de forma automática a partir da prescrição.
+        - *Obs.: Há Alguns casos de atendimentos do tipo internação cujo pedido não será gerado automáticamente, tampouco proveniente de prescrição; geralmente são casos de exames realizados na Hemodinamica.*
+
+    - Atendimento Ambulatórial `[TP_ATENDIMENTO = 'A']`, os exames são prescritos em um atendimento e os pedidos são gerados e vinculados a outro código de atendimento que pode ser aberto no mesmo dia ou em dias posteriores conforme disponibilidade da agenda.
+
+    - Atendimento Externo `[TP_ATENDIMENTO = 'E']` refere-se a Pedidos de exames gerados sem vinculação à prescrição que pode ter sido emitida pelo próprio hospital ou por terceiro; esse tipo de atendimento pode ser originário de agendamentos ou marcação imediata na reecpção, conforme disponibilidade de agenda.
+
+        - *Obs.: Convênios IPM e ISSEC não utilizam a prescrição padrão; nestes casos a prescição é realizada por meio de Documento Eletrônico personalizado*
   ---
+
+<br>
+
+* **CAMPO `"id"` COMO ORIGEM DA REQUISIÇÃO DE EXAMES:**
+
+    - **Na query original o campo `"id"`, tradução dos campos originais `CD_PED_RX` e `CD_PED_LAB`, são interpretados como requisição de exame feita no MV, porém essa interpretação deve ser associada à prescrição `CD_PRE_MED`; os campos anteriores representam os pedidos já a serem efetivados (nesse momento pode haver desistências, mas entende-se que há mais 95% de chances da realização do exame, enquanto que na prescrição essa margem de conversão não é observada)**
+
+        - **Nova implementação do campo `"id"`: Um ou mais pedidos de exames são associados a uma prescrição, e uma ou mais prescrições são associadas a um atendimento, por tanto altera-se a formação do campo id para:**
+
+            ```sql
+                COALESCE(r.CD_PRESCRICAO, 0) || '-' ||
+                COALESCE(r.CD_PEDIDO, 0)  || '-' ||
+                COALESCE(r.CD_EXA, 0) AS "id",
+            ```
+
+<br>
+<br>
+
+* **DESCRIÇÃO DOS PROCEDIMENTOS DO CAMPO `"code"`:**
+
+    - **Nem todos os procedimentos de `PRO_FAT.CD_PRO_FAT` possuem equivalente em `TUSS.CD_TUSS`**
+
+        - **O campo `CD_PRO_FAT` pode ser originário da prescrição ou do pedido, vai depender das hipóteses citadas no objetivo**
+
+            ```sql
+                '{'||
+                    '"codes":['||
+                    '{'||
+                        '"system":"MV",'||
+                        '"code":"'    || REPLACE(COALESCE(t.CODIGO_PRO_FAT, r.CD_PRO_FAT),'"','\"') || '",'||
+                        '"display":"' || REPLACE(COALESCE(t.DESCRICAO_PRO_FAT, r.DS_EXA),'"','\"') || '"'||
+                    '}' ||
+                            ',{'||
+                            '"system":"TUSS",'||
+                            '"code":"'    || REPLACE(t.CODIGO_TUSS,'"','\"') || '",'||
+                            '"display":"' || REPLACE(t.DESCRICAO_TUSS,'"','\"') || '"'||
+                            '}'
+                    || '],'||
+                    '"text":"' || REPLACE(t.DESCRICAO_PRO_FAT,'"','\"') || '"'||
+                '}'                                        AS "code",
+            ```
+---
+
+<br>
+<br>
+
+
+* **CÓDIGO REFATORADO [SERVICE REQUEST POR PERIODO]:**
+
+
+
+    ```sql
+        WITH JN_PRESCRICAO
+            AS (
+                SELECT
+                    itm.CD_PRE_MED,
+                    itm.CD_ITPRE_MED,
+                    pm.CD_ATENDIMENTO,
+
+                    COALESCE(er.CD_EXA_RX, el.CD_EXA_LAB) AS CD_EXA,
+                    COALESCE(er.DS_EXA_RX, el.NM_EXA_LAB) AS DS_EXA,
+
+                    COALESCE(pm.CD_PRESTADOR, itm.CD_PRESTADOR) AS CD_PRESTADOR_PRESCRICAO,
+
+                    itm.CD_TIP_ESQ,
+
+                    itm.CD_SET_EXA,
+                    COALESCE(COALESCE(tp.CD_PRO_FAT, er.EXA_RX_CD_PRO_FAT),el.CD_PRO_FAT) AS CD_PRO_FAT,
+                    pm.DT_PRE_MED AS DT_PRESCRICAO
+
+                FROM DBAMV.ITPRE_MED itm
+                INNER JOIN DBAMV.PRE_MED pm   ON itm.CD_PRE_MED = pm.CD_PRE_MED
+                INNER JOIN DBAMV.TIP_PRESC tp ON itm.CD_TIP_PRESC = tp.CD_TIP_PRESC
+                LEFT JOIN DBAMV.EXA_RX er     ON tp.CD_EXA_RX = er.CD_EXA_RX
+                LEFT JOIN DBAMV.EXA_LAB el    ON tp.CD_EXA_LAB = el.CD_EXA_LAB
+                WHERE itm.CD_TIP_ESQ IN('EXI', 'EXL')
+        ),
+        JN_PEDIDOS_IMAGEM
+            AS (
+                SELECT
+                    itr.CD_PED_RX,
+                    itr.CD_ITPED_RX,
+                    pr.CD_PRE_MED,
+                    itr.CD_ITPRE_MED,
+                    pr.CD_ATENDIMENTO,
+                    pr.CD_CONVENIO,
+                    itr.CD_EXA_RX,
+                    er.DS_EXA_RX,
+                    pr.CD_PRESTADOR AS CD_PRESTADOR_PEDIDO,
+
+                    pr.CD_SET_EXA,
+                    er.EXA_RX_CD_PRO_FAT AS CD_PRO_FAT,
+                    pr.DT_PEDIDO AS DT_PEDIDO
+
+                FROM DBAMV.ITPED_RX itr
+                INNER JOIN DBAMV.PED_RX  pr ON itr.CD_PED_RX = pr.CD_PED_RX
+                INNER JOIN DBAMV.EXA_RX er ON itr.CD_EXA_RX = er.CD_EXA_RX
+        ),
+        JN_PEDIDOS_LABORATORIO
+            AS (
+                SELECT
+                    itl.CD_PED_LAB,
+                    itl.CD_ITPED_LAB,
+                    pl.CD_PRE_MED,
+                    itl.CD_ITPRE_MED,
+                    pl.CD_ATENDIMENTO,
+                    pl.CD_CONVENIO,
+                    itl.CD_EXA_LAB,
+                    el.NM_EXA_LAB,
+                    pl.CD_PRESTADOR AS CD_PRESTADOR_PEDIDO,
+
+                    itl.CD_SET_EXA,
+                    el.CD_PRO_FAT,
+                    pl.DT_PEDIDO AS DT_PEDIDO
+
+                FROM DBAMV.ITPED_LAB itl
+                INNER JOIN DBAMV.PED_LAB pl ON itl.CD_PED_LAB = pl.CD_PED_LAB
+                INNER JOIN DBAMV.EXA_LAB el ON itl.CD_EXA_LAB = el.CD_EXA_LAB
+        ),
+        JN_PEDIDOS
+            AS (
+                SELECT
+                    'I' AS TIPO_PEDIDO,
+                    CD_PED_RX AS CD_PEDIDO,
+                    CD_ITPED_RX AS CD_ITPEDIDO,
+                    CD_PRE_MED,
+                    CD_ITPRE_MED,
+                    CD_ATENDIMENTO,
+                    CD_CONVENIO,
+                    CD_EXA_RX AS CD_EXA,
+                    DS_EXA_RX AS DS_EXA,
+                    CD_PRESTADOR_PEDIDO,
+                    DT_PEDIDO,
+                    CD_SET_EXA,
+                    CD_PRO_FAT
+                FROM JN_PEDIDOS_IMAGEM
+                UNION ALL
+                SELECT
+                    'L' AS TIPO_PEDIDO,
+                    CD_PED_LAB     AS CD_PEDIDO,
+                    CD_ITPED_LAB   AS CD_ITPEDIDO,
+                    CD_PRE_MED,
+                    CD_ITPRE_MED,
+                    CD_ATENDIMENTO,
+                    CD_CONVENIO,
+                    CD_EXA_LAB     AS CD_EXAME,
+                    NM_EXA_LAB     AS DS_EXAME,
+                    CD_PRESTADOR_PEDIDO,
+                    DT_PEDIDO,
+                    CD_SET_EXA,
+                    CD_PRO_FAT
+                FROM JN_PEDIDOS_LABORATORIO
+        ),
+        JN_ATENDIMENTO
+            AS (
+                SELECT
+                    a.CD_ATENDIMENTO,
+                    a.CD_PACIENTE,
+                    a.CD_CONVENIO,
+                    c.CD_CID,
+                    a.CD_PRO_INT,
+                    a.TP_ATENDIMENTO,
+                    c.DS_CID
+                FROM DBAMV.ATENDIME a
+                LEFT JOIN DBAMV.CID c ON a.CD_CID = c.CD_CID
+        ),
+        JN_PACIENTE
+            AS (
+                SELECT
+                    CD_PACIENTE,
+                    NM_PACIENTE
+                FROM DBAMV.PACIENTE
+        ),
+        JN_PRESTADOR
+            AS (
+                SELECT
+                    CD_PRESTADOR,
+                    NM_PRESTADOR
+                FROM DBAMV.PRESTADOR
+        ),
+        JN_TUSS
+            AS (
+                SELECT
+                    t.CD_TUSS AS CODIGO_TUSS,
+                    p.CD_PRO_FAT AS CODIGO_PRO_FAT,
+                    t.CD_CONVENIO,
+                    t.DS_TUSS AS DESCRICAO_TUSS,
+                    p.DS_PRO_FAT AS DESCRICAO_PRO_FAT
+                FROM DBAMV.PRO_FAT p
+                LEFT JOIN  DBAMV.TUSS t ON t.CD_PRO_FAT = p.CD_PRO_FAT
+        ),
+        JN_PRESCRICAO_COM_PEDIDO
+            AS (
+                SELECT
+                    'PRESCRICAO_COM_PEDIDO' AS ORIGEM,
+
+                    p.CD_ATENDIMENTO,
+
+                    p.CD_PRO_FAT,
+
+                    p.CD_PRE_MED AS CD_PRESCRICAO,
+                    p.CD_ITPRE_MED,
+                    p.CD_PRESTADOR_PRESCRICAO,
+                    p.DT_PRESCRICAO,
+
+                    d.CD_PEDIDO,
+                    d.CD_ITPEDIDO,
+                    d.TIPO_PEDIDO,
+                    d.CD_PRESTADOR_PEDIDO,
+                    d.DT_PEDIDO,
+
+                    p.CD_EXA,
+                    p.DS_EXA,
+
+                    p.CD_TIP_ESQ,
+
+                    COALESCE(p.CD_SET_EXA, d.CD_SET_EXA) AS CD_SET_EXA
+
+
+                FROM JN_PRESCRICAO p
+                INNER JOIN JN_PEDIDOS d ON p.CD_ITPRE_MED = d.CD_ITPRE_MED
+        ),
+        JN_PRESCRICAO_SEM_PEDIDO
+            AS (
+                SELECT
+                    'PRESCRICAO_SEM_PEDIDO' AS ORIGEM,
+
+                    p.CD_ATENDIMENTO,
+
+                    p.CD_PRO_FAT,
+
+                    p.CD_PRE_MED AS CD_PRESCRICAO,
+                    p.CD_ITPRE_MED,
+                    p.CD_PRESTADOR_PRESCRICAO,
+                    p.DT_PRESCRICAO,
+
+                    NULL AS CD_PEDIDO,
+                    NULL AS CD_ITPEDIDO,
+                    NULL AS TIPO_PEDIDO,
+                    NULL AS CD_PRESTADOR_PEDIDO,
+                    NULL AS DT_PEDIDO,
+
+                    p.CD_EXA,
+                    p.DS_EXA,
+
+                    p.CD_TIP_ESQ,
+
+                    p.CD_SET_EXA
+
+                FROM JN_PRESCRICAO p
+                WHERE
+                    NOT EXISTS (
+                        SELECT
+                            1
+                        FROM JN_PEDIDOS d
+                        WHERE p.CD_ITPRE_MED = d.CD_ITPRE_MED
+                    )
+        ),
+        JN_PEDIDO_SEM_PRESCRICAO
+            AS (
+                SELECT
+                    'PEDIDO_SEM_PRESCRICAO' AS ORIGEM,
+
+                    d.CD_ATENDIMENTO,
+
+                    d.CD_PRO_FAT,
+
+                    d.CD_PRE_MED AS CD_PRESCRICAO,
+                    d.CD_ITPRE_MED,
+                    NULL AS CD_PRESTADOR_PRESCRICAO,
+                    NULL AS DT_PRESCRICAO,
+
+                    d.CD_PEDIDO,
+                    d.CD_ITPEDIDO,
+                    d.TIPO_PEDIDO,
+                    d.CD_PRESTADOR_PEDIDO,
+                    d.DT_PEDIDO,
+
+                    d.CD_EXA,
+                    d.DS_EXA,
+
+                    NULL AS CD_TIP_ESQ,
+
+                    d.CD_SET_EXA
+
+                FROM JN_PEDIDOS d
+                WHERE
+                    NOT EXISTS (
+                        SELECT
+                            1
+                        FROM JN_PRESCRICAO p
+                        WHERE p.CD_ITPRE_MED = d.CD_ITPRE_MED
+                    )
+        ),
+        JN_REGRAS
+            AS (
+                SELECT * FROM JN_PRESCRICAO_COM_PEDIDO
+                UNION ALL
+                SELECT * FROM JN_PRESCRICAO_SEM_PEDIDO
+                UNION ALL
+                SELECT * FROM JN_PEDIDO_SEM_PRESCRICAO
+        ),
+        TREATS
+            AS (
+                SELECT
+
+                    COALESCE(r.CD_PRESCRICAO, 0) || '-' ||
+                    COALESCE(r.CD_PEDIDO, 0)  || '-' ||
+                    COALESCE(r.CD_EXA, 0)                              AS "id",
+                    ''                                                 AS "intent",
+                    ''                                                 AS "priority",
+
+                    '[' ||
+                    '{"use":"official",' ||
+                    '"value":"' || r.CD_PRESCRICAO || '","system":"https://hospitalprontocardio.com.br/"' || '}' ||
+                    ']'                                                AS "identifiers",
+
+                    '{'||
+                        '"codes":['||
+                        '{'||
+                            '"system":"MV",'||
+                            '"code":"'    || REPLACE(COALESCE(t.CODIGO_PRO_FAT, r.CD_PRO_FAT),'"','\"') || '",'||
+                            '"display":"' || REPLACE(COALESCE(t.DESCRICAO_PRO_FAT, r.DS_EXA),'"','\"') || '"'||
+                        '}' ||
+                                ',{'||
+                                '"system":"TUSS",'||
+                                '"code":"'    || REPLACE(t.CODIGO_TUSS,'"','\"') || '",'||
+                                '"display":"' || REPLACE(t.DESCRICAO_TUSS,'"','\"') || '"'||
+                                '}'
+                        || '],'||
+                        '"text":"' || REPLACE(t.DESCRICAO_PRO_FAT,'"','\"') || '"'||
+                    '}'                                        AS "code",
+
+
+                    CASE
+                        WHEN a.CD_CID IS NULL THEN NULL
+                        ELSE '['||'{'||
+                            '"codes":[{'||
+                            '"system":"http://hl7.org/fhir/ValueSet/icd-10",'||
+                            '"code":"'    || REPLACE(a.CD_CID,'"','\"') || '",'||
+                            '"display":"' || REPLACE(a.CD_CID,'"','\"') || '"'||
+                            '}],'||
+                            '"text":"' || REPLACE(a.CD_CID,'"','\"') || '"'||
+                        '}]'
+                    END                                                AS "reasonCodes",
+
+
+                    TO_CHAR(r.DT_PRESCRICAO,'YYYY-MM-DD"T"HH24:MI:SS') AS "authoredOn",
+
+
+                    '{'||'"reference":"' || TO_CHAR(p.CD_PACIENTE) || '",'||
+                    '"display":"'   || REPLACE(NULLIF(TRIM(p.NM_PACIENTE),''),'"','\"') || '"'||
+                    '}'                                                AS "subject",
+
+
+                    '{'||'"reference":"' || TO_CHAR(pr.CD_PRESTADOR) || '",'||
+                    '"display":"'   || REPLACE(NVL(pr.NM_PRESTADOR,''), '"','\"') || '"'||
+                    '}'                                                AS "requester",
+
+
+                    '[' ||
+                    '{' ||
+                        '"display":"Hospital Geral Prontocardio",' ||
+                        '"reference":' || '"1"' || '}' || ']'          AS "locations",
+
+
+                    CASE
+                        WHEN a.CD_ATENDIMENTO IS NULL THEN NULL
+                        ELSE '{'||'"reference":"' || TO_CHAR(a.CD_ATENDIMENTO) || '"}'
+                    END                                                AS "encounter",
+
+
+                    LOWER(NULLIF(TRIM(p.NM_PACIENTE),''))              AS "filter_patient_name",
+                    p.CD_PACIENTE                                      AS "filter_medical_record_id",
+                    r.DT_PEDIDO                                        AS "filter_encounter_date",
+                    'active'                                           AS "status"
+
+                FROM JN_REGRAS r
+                INNER JOIN JN_ATENDIMENTO a ON r.CD_ATENDIMENTO = a.CD_ATENDIMENTO
+                LEFT JOIN JN_PACIENTE p     ON a.CD_PACIENTE = p.CD_PACIENTE
+                LEFT JOIN JN_PRESTADOR pr   ON r.CD_PRESTADOR_PRESCRICAO = pr.CD_PRESTADOR
+                LEFT JOIN JN_PRESTADOR pr1  ON r.CD_PRESTADOR_PEDIDO = pr1.CD_PRESTADOR
+                LEFT JOIN JN_TUSS t         ON r.CD_PRO_FAT = COALESCE(t.CODIGO_TUSS ,t.CODIGO_PRO_FAT) AND a.CD_CONVENIO =  t.CD_CONVENIO
+        )
+        SELECT
+        fe."id",
+        fe."identifiers",
+        fe."status",
+        fe."intent",
+        fe."priority",
+        fe."code",
+        fe."reasonCodes",
+        fe."authoredOn",
+        fe."subject",
+        fe."requester",
+        fe."encounter",
+        fe."locations"
+        FROM TREATS fe
+        ;
+
+    ```
 
 <br>
 
