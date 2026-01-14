@@ -49,6 +49,7 @@ WHERE fs.CD_FILA_SENHA = 1 AND ta.DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE,
 
 WITH TEMPO_TOTEM_CLASS_ADM_MED
     AS (
+        -- Armazena os tempos do processo de atendimento do paciente
         SELECT
             stp.CD_TEMPO_PROCESSO ,
             stp.CD_TRIAGEM_ATENDIMENTO ,
@@ -60,6 +61,7 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
 ),
 TIPO_PROCESSO
     AS (
+        -- Armazena os tipos de tempos do processo de atendimento do paciente
         SELECT
             sttp.CD_TIPO_TEMPO_PROCESSO ,
             sttp.DS_TIPO_TEMPO_PROCESSO
@@ -68,6 +70,7 @@ TIPO_PROCESSO
 ),
 TRIAGEM
     AS (
+        -- Cadastramento de pre-atendimento para classificacao de risco
         SELECT
             ta.CD_TRIAGEM_ATENDIMENTO ,
             ta.CD_ATENDIMENTO ,
@@ -83,6 +86,7 @@ TRIAGEM
 ),
 FILA
     AS (
+        -- Armazena as filas para geração de senhas
         SELECT
             fs.CD_FILA_SENHA ,
             fs.DS_FILA ,
@@ -91,6 +95,7 @@ FILA
 ),
 CLASSIFICACAO_RISCO
     AS (
+        -- Tabela que armazena a classificação de risco
         SELECT
             scr.CD_TRIAGEM_ATENDIMENTO ,
             scr.CD_CLASSIFICACAO_RISCO ,
@@ -101,6 +106,7 @@ CLASSIFICACAO_RISCO
 ),
 CLASSIFICACAO
     AS (
+        -- Tabela que armazena um protocolo
         SELECT
             sc.CD_CLASSIFICACAO ,
             sc.DS_TIPO_RISCO
@@ -108,6 +114,7 @@ CLASSIFICACAO
 ),
 COR
     AS (
+        -- Tabela que armazena as cores de referência
         SELECT
             scr.CD_COR_REFERENCIA ,
             scr.NM_COR ,
@@ -157,8 +164,9 @@ TREATS
         ORDER BY tcam.CD_TRIAGEM_ATENDIMENTO desc, tcam.DH_PROCESSO
 )
 -- MENSURANDO A QUANTIDADE DE OCORRENCIAS POR PROCESSO
-SELECT
-    DISTINCT CD_TIPO_TEMPO_PROCESSO , DS_TIPO_TEMPO_PROCESSO,
+SELECT DISTINCT
+    CD_TIPO_TEMPO_PROCESSO,
+    DS_TIPO_TEMPO_PROCESSO,
     COUNT(*) OVER (PARTITION BY DS_TIPO_TEMPO_PROCESSO) AS QTD
 FROM TREATS
 WHERE DS_FILA LIKE '%ANGIO TC%'
