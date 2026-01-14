@@ -126,9 +126,9 @@ Revisão dos Indicadores do HPC-CLINICA-Tempo Médio de Atendimento
     <br>
 
 > [!IMPORTANT]
-> No painel os calculos podem são agrupados poor:
+> No painel os calculos podem ser agrupados por:
 
-- Granularidade de Tempor (Mês, Trimmestre e Ano);
+- Granularidade de Tempo (Mês, Trimestre e Ano);
 - Por Atendente;
 - Por Médico;
 - Por Clinica;
@@ -171,9 +171,8 @@ compõem o fluxo de atendimento, independentemente do tipo de fila.
 
     - A tabela `sacr_tempo_processo` contém os tempos iniciais e finais de cada processo.
     - A tabela `sacr_tipo_tempo_processo` contém a descrição de cada processo.
-    - A query abaixo retorna os MAIORES tempos dos atendimentos que chegaram a ser abertos com *´CD_ATENDIMENTO´*
-    - Aparente o objetivo era retornar os maiores tempos entre os processos de atendimento ambulatorial (apenas exames)
-    para permitir realizar o calculo de tempo entre as etapas no painel.
+    - A query retorna os MAIORES tempos de cada processo por atendimento
+    - Aparente o objetivo é retornar os maiores tempos de cada processo  com atendimento efetivado, isto é, `CD_ATENDIMENTO IS NOT NULL` para permitir realizar o calculo de tempo entre as etapas no painel.
 
 
     ```sql
@@ -208,9 +207,7 @@ compõem o fluxo de atendimento, independentemente do tipo de fila.
 
     > CONSIDERAÇÕES:
 
-    - Query não permite calcular com precisão os KPI relacionados aos tempos entre os processos de forma real, pois além de
-    não retorna todos os atendimentos, até mesmo aqueles que não tem **´CD_ATENDIMENTO´**, omite as linhas necessárias
-    para calcular os tempos entre cada um dos processos das filas que são geradas nos atendimentos.
+    - Query não permite calcular com precisão os KPI relacionados ao tempo de cada processos de forma real, pois não retorna todos os atendimentos e omite linhas das senhas dos processos de filas que não gerou abertura atendimento.
 
     <br>
     <br>
