@@ -31,6 +31,12 @@ CODE REVIEW TABIA
 
 - **C_REVISAO_CIRURGIA:**
 
+- **PSDI/M_PED_RX:**
+    - Tela para consultar pedidos de exames de imagem
+
+- **M_PEDEXA:**
+    - Tela para consultar pedidos de exames de laboratorio
+
 <br>
 <br>
 
