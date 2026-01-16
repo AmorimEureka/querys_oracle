@@ -245,6 +245,9 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_TIPO_TEMPO_PROCESSO,
             stp.DH_PROCESSO
         FROM DBAMV.SACR_TEMPO_PROCESSO stp
+        -- WHERE stp.CD_ATENDIMENTO = 253330
+        -- WHERE stp.CD_TRIAGEM_ATENDIMENTO = 374978
+
 ),
 TIPO_PROCESSO
     AS (
@@ -273,6 +276,8 @@ TRIAGEM
             ta.DH_CHAMADA_CLASSIFICACAO,
             ta.DH_REMOVIDO
         FROM DBAMV.TRIAGEM_ATENDIMENTO ta
+        -- WHERE ta.CD_ATENDIMENTO = 253330
+        -- WHERE ta.CD_TRIAGEM_ATENDIMENTO = 374978
 ),
 FILA
     AS (
@@ -353,15 +358,43 @@ TRIAGEM_SEM_PROCESSO
         --          - DESISTENCIAS
         --      - COM CD_ATENDIMENTO:
         --          - ATENDIMENTO REALIZADO S/ PASSAR POR PROCESSOS
+    -- SELECT tri.*
+    -- FROM TRIAGEM tri
+    -- WHERE
+    --     NOT EXISTS (           -- 1) nenhum processo para essa TRIAGEM
+    --         SELECT 1
+    --         FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+    --         WHERE tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
+    --     )
+        -- AND NOT EXISTS (       -- 2) nenhum processo para esse ATENDIMENTO
+        --     SELECT 1
+        --     FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+        --     WHERE
+        --       tcam.CD_ATENDIMENTO = tri.CD_ATENDIMENTO
+
+        -- )
         SELECT
             tri.*
         FROM TRIAGEM tri
         WHERE
             NOT EXISTS (
                 SELECT 1
-                FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+                FROM PROCESSO_COM_TRIAGEM tcam
                 WHERE tcam.CD_ATENDIMENTO = tri.CD_ATENDIMENTO
+                -- WHERE (tcam.CD_ATENDIMENTO = tri.CD_ATENDIMENTO) OR (tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO)
         )
+
+        -- UNION ALL
+
+        -- SELECT
+        --     tri.*
+        -- FROM TRIAGEM tri
+        -- WHERE
+        --     NOT EXISTS (
+        --         SELECT 1
+        --         FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+        --         WHERE tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
+        -- )
 ),
 UNION_HIPOTESES
     AS (
@@ -433,14 +466,21 @@ TREATS
         FROM UNION_HIPOTESES tcam
         LEFT JOIN TIPO_PROCESSO tp        ON tcam.CD_TIPO_TEMPO_PROCESSO  = tp.CD_TIPO_TEMPO_PROCESSO
         LEFT JOIN TRIAGEM tri             ON tcam.CD_TRIAGEM_ATENDIMENTO  = tri.CD_TRIAGEM_ATENDIMENTO
-        LEFT  JOIN FILA fs                 ON tri.CD_FILA_SENHA            = fs.CD_FILA_SENHA
-        LEFT  JOIN CLASSIFICACAO_RISCO scr ON tri.CD_TRIAGEM_ATENDIMENTO   = scr.CD_TRIAGEM_ATENDIMENTO
-        LEFT  JOIN CLASSIFICACAO sc        ON scr.CD_CLASSIFICACAO         = sc.CD_CLASSIFICACAO
-        LEFT  JOIN COR co                  ON scr.CD_COR_REFERENCIA        = co.CD_COR_REFERENCIA
+
+        LEFT JOIN FILA fs                 ON tri.CD_FILA_SENHA            = fs.CD_FILA_SENHA
+        LEFT JOIN CLASSIFICACAO_RISCO scr ON tri.CD_TRIAGEM_ATENDIMENTO   = scr.CD_TRIAGEM_ATENDIMENTO
+        LEFT JOIN CLASSIFICACAO sc        ON scr.CD_CLASSIFICACAO         = sc.CD_CLASSIFICACAO
+        LEFT JOIN COR co                  ON scr.CD_COR_REFERENCIA        = co.CD_COR_REFERENCIA
 )
-SELECT * FROM TREATS
-WHERE CD_ATENDIMENTO = 253330
-ORDER BY CD_TRIAGEM_ATENDIMENTO DESC, CD_ATENDIMENTO, CD_TIPO_TEMPO_PROCESSO ASC
+SELECT
+    *
+FROM TREATS
+-- WHERE CD_ATENDIMENTO = 253330
+WHERE DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
+ORDER BY
+    CD_TRIAGEM_ATENDIMENTO DESC,
+    CD_ATENDIMENTO,
+    CD_TIPO_TEMPO_PROCESSO ASC
 ;
 
 
