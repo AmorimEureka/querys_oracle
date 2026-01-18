@@ -2,117 +2,83 @@
 
 --  QUERY PARA DASHBOARD KPI GESTAO A VISTA
 --  TAXA MORTALIDADE
-WITH OBITOS
-    AS (
-        SELECT
-            a.CD_ATENDIMENTO ,
-            a.TP_ATENDIMENTO ,
-            a.SN_OBITO ,
-            CASE
-                WHEN s.NM_SETOR LIKE '%POSTO%' THEN
-                    'POSTO'
-                ELSE s.NM_SETOR
-            END AS LOCAL,
-            a.DT_ALTA ,
-            MAX(a.DT_ALTA) OVER( PARTITION BY CASE WHEN s.NM_SETOR LIKE '%POSTO%' THEN 'POSTO' ELSE s.NM_SETOR END, EXTRACT(YEAR FROM a.DT_ALTA) ) AS ULTIMO_OBITO,
-            EXTRACT(MONTH FROM a.DT_ALTA) AS MES ,
-            EXTRACT(YEAR FROM a.DT_ALTA) AS ANO ,
-            ma.TP_MOT_ALTA
-        FROM DBAMV.ATENDIME a
-        LEFT JOIN SETOR s ON s.CD_SETOR = a.CD_SETOR_OBITO
-        LEFT JOIN DBAMV.MOT_ALT ma ON ma.CD_MOT_ALT = a.CD_MOT_ALT
-        WHERE EXTRACT(YEAR FROM a.DT_ALTA) = EXTRACT(YEAR FROM SYSDATE) AND a.SN_OBITO = 'S'
-        ORDER BY
-            CASE
-                WHEN s.NM_SETOR LIKE '%POSTO%' THEN
-                    'POSTO'
-                ELSE s.NM_SETOR
-            END,
-            EXTRACT(MONTH FROM a.DT_ALTA),
-            EXTRACT(YEAR FROM a.DT_ALTA),
-            a.DT_ALTA
+WITH OBITOS AS (
+    SELECT
+        a.CD_ATENDIMENTO ,
+        a.TP_ATENDIMENTO ,
+        a.SN_OBITO ,
+        CASE
+            WHEN s.NM_SETOR LIKE '%POSTO%' THEN
+                'POSTO'
+            ELSE s.NM_SETOR
+        END AS LOCAL,
+        a.DT_ALTA ,
+        MAX(a.DT_ALTA) OVER(
+            PARTITION BY
+                CASE
+                    WHEN s.NM_SETOR LIKE '%POSTO%' THEN 'POSTO'
+                    ELSE s.NM_SETOR
+                END,
+                EXTRACT(MONTH FROM a.DT_ALTA),
+                EXTRACT(YEAR  FROM a.DT_ALTA)
+        ) AS ULTIMO_OBITO,
+        EXTRACT(MONTH FROM a.DT_ALTA) AS MES ,
+        EXTRACT(YEAR  FROM a.DT_ALTA) AS ANO ,
+        ma.TP_MOT_ALTA
+    FROM DBAMV.ATENDIME a
+    LEFT JOIN SETOR s        ON s.CD_SETOR    = a.CD_SETOR_OBITO
+    LEFT JOIN DBAMV.MOT_ALT ma ON ma.CD_MOT_ALT = a.CD_MOT_ALT
+    WHERE
+        a.SN_OBITO = 'S'
+        AND a.DT_ALTA >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -12)  -- início da janela (13 meses atrás)
+        AND a.DT_ALTA <  ADD_MONTHS(TRUNC(SYSDATE, 'MM'),  1)   -- fim da janela (início do próximo mês)
 ),
-MOVIMENTACAO_UNIDADES
-    AS (
-        SELECT
-            EXTRACT(MONTH FROM mi.DT_MOV_INT) AS MES,
-            EXTRACT(YEAR FROM mi.DT_MOV_INT) AS ANO,
-            CASE
-                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
-                    'POSTO'
-                ELSE ui.DS_UNID_INT
-            END AS LOCAL,
-            COUNT(*)             AS SAI_TRANSFPARA
-        FROM
-        DBAMV.MOV_INT mi
-        JOIN DBAMV.LEITO l ON mi.CD_LEITO_ANTERIOR = l.CD_LEITO
-        JOIN DBAMV.LEITO l1 ON mi.CD_LEITO = l1.CD_LEITO
-        JOIN DBAMV.UNID_INT ui ON l.CD_UNID_INT = ui.CD_UNID_INT
-        JOIN DBAMV.UNID_INT ui1 ON l1.CD_UNID_INT = ui1.CD_UNID_INT
-        JOIN DBAMV.ATENDIME a ON a.CD_ATENDIMENTO = mi.CD_ATENDIMENTO
-        WHERE
-            mi.TP_MOV = 'O'
-            AND ui.CD_UNID_INT <> ui1.CD_UNID_INT
-            AND a.TP_ATENDIMENTO IN ('I')
-            AND EXTRACT(YEAR FROM mi.DT_MOV_INT) = EXTRACT(YEAR FROM SYSDATE)
-        GROUP BY
-            CASE
-                WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
-                    'POSTO'
-                ELSE ui.DS_UNID_INT
-            END,
-            EXTRACT(MONTH FROM mi.DT_MOV_INT),
-            EXTRACT(YEAR FROM mi.DT_MOV_INT)
+MOVIMENTACAO_UNIDADES AS (
+    SELECT
+        EXTRACT(MONTH FROM mi.DT_MOV_INT) AS MES,
+        EXTRACT(YEAR  FROM mi.DT_MOV_INT) AS ANO,
+        CASE
+            WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                'POSTO'
+            ELSE ui.DS_UNID_INT
+        END AS LOCAL,
+        COUNT(*) AS SAI_TRANSFPARA
+    FROM DBAMV.MOV_INT mi
+    JOIN DBAMV.LEITO     l   ON mi.CD_LEITO_ANTERIOR = l.CD_LEITO
+    JOIN DBAMV.LEITO     l1  ON mi.CD_LEITO          = l1.CD_LEITO
+    JOIN DBAMV.UNID_INT  ui  ON l.CD_UNID_INT        = ui.CD_UNID_INT
+    JOIN DBAMV.UNID_INT  ui1 ON l1.CD_UNID_INT       = ui1.CD_UNID_INT
+    JOIN DBAMV.ATENDIME  a   ON a.CD_ATENDIMENTO     = mi.CD_ATENDIMENTO
+    WHERE
+        mi.TP_MOV = 'O'
+        AND ui.CD_UNID_INT <> ui1.CD_UNID_INT
+        AND a.TP_ATENDIMENTO IN ('I')
+        AND mi.DT_MOV_INT >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -12)  -- últimos 13 meses
+        AND mi.DT_MOV_INT <  ADD_MONTHS(TRUNC(SYSDATE, 'MM'),  1)
+    GROUP BY
+        CASE
+            WHEN ui.DS_UNID_INT LIKE '%POSTO%' THEN
+                'POSTO'
+            ELSE ui.DS_UNID_INT
+        END,
+        EXTRACT(MONTH FROM mi.DT_MOV_INT),
+        EXTRACT(YEAR  FROM mi.DT_MOV_INT)
 )
 SELECT
-    o.MES,
-    CASE
-        WHEN o.MES = 1 THEN 'Jan'
-        WHEN o.MES = 2 THEN 'Fev'
-        WHEN o.MES = 3 THEN 'Mar'
-        WHEN o.MES = 4 THEN 'Abr'
-        WHEN o.MES = 5 THEN 'Mai'
-        WHEN o.MES = 6 THEN 'Jun'
-        WHEN o.MES = 7 THEN 'Jul'
-        WHEN o.MES = 8 THEN 'Ago'
-        WHEN o.MES = 9 THEN 'Set'
-        WHEN o.MES = 10 THEN 'Out'
-        WHEN o.MES = 11 THEN 'Nov'
-        WHEN o.MES = 11 THEN 'Dez'
-    END AS NOME_MES,
     o.ULTIMO_OBITO,
-    o.ANO,
     o.LOCAL,
-    COUNT(o.CD_ATENDIMENTO) AS QTD_OBITOS,
-    m.SAI_TRANSFPARA AS QTD_TRANSFER
+    'OBITOS' AS TIPO,
+    m.SAI_TRANSFPARA AS QTD_TRANSFER,
+    COUNT(o.CD_ATENDIMENTO) AS QTD_OBITOS
 FROM OBITOS o
-JOIN MOVIMENTACAO_UNIDADES m ON o.MES = m.MES AND o.ANO = m.ANO AND o.LOCAL = m.LOCAL
+JOIN MOVIMENTACAO_UNIDADES m  ON o.MES = m.MES AND o.ANO = m.ANO AND o.LOCAL = m.LOCAL
+WHERE o.LOCAL = '" & Unidade & "'
 GROUP BY
-    o.MES,
-    CASE
-        WHEN o.MES = 1 THEN 'Jan'
-        WHEN o.MES = 2 THEN 'Fev'
-        WHEN o.MES = 3 THEN 'Mar'
-        WHEN o.MES = 4 THEN 'Abr'
-        WHEN o.MES = 5 THEN 'Mai'
-        WHEN o.MES = 6 THEN 'Jun'
-        WHEN o.MES = 7 THEN 'Jul'
-        WHEN o.MES = 8 THEN 'Ago'
-        WHEN o.MES = 9 THEN 'Set'
-        WHEN o.MES = 10 THEN 'Out'
-        WHEN o.MES = 11 THEN 'Nov'
-        WHEN o.MES = 11 THEN 'Dez'
-    END,
     o.ULTIMO_OBITO,
-    o.ANO,
-    m.SAI_TRANSFPARA,
-    o.LOCAL
+    o.LOCAL,
+    m.SAI_TRANSFPARA
 ORDER BY
-    o.MES,
-    o.ANO,
-    m.SAI_TRANSFPARA,
-    o.LOCAL
-;
+    o.LOCAL;
 
 
 -- #########################################################################################################
