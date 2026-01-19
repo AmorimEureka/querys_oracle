@@ -175,8 +175,6 @@ WHERE DS_FILA LIKE '%ANGIO TC%'
 ORDER BY CD_TIPO_TEMPO_PROCESSO
 ;
 
-SELECT * FROM TREATS WHERE CD_TRIAGEM_ATENDIMENTO = 264366 ;
-
 
 
 
@@ -245,8 +243,6 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_TIPO_TEMPO_PROCESSO,
             stp.DH_PROCESSO
         FROM DBAMV.SACR_TEMPO_PROCESSO stp
-        -- WHERE stp.CD_ATENDIMENTO = 253330
-        -- WHERE stp.CD_TRIAGEM_ATENDIMENTO = 374978
 
 ),
 TIPO_PROCESSO
@@ -260,10 +256,6 @@ TIPO_PROCESSO
 TRIAGEM
     AS (
         -- Cadastramento de pre-atendimento para classificacao de risco
-        -- NEM TODOS REGISTROS DE TRIAGEM SAO CLASSIFICADOS EM RISCO
-        -- APESAR DO RELACIONAMENTO OBRIGATORIO; APENAS ATENDIMENTOS DE
-        -- URGENCIA/EMERGENCIA DEVEM SER CLASSIFICADOS (PROVAVEL ERROR
-        --DE MODELAGEM, POIS A RELACAO DEVERIA SER OPCIONAL)
         SELECT
             ta.CD_TRIAGEM_ATENDIMENTO,
             ta.CD_ATENDIMENTO,
@@ -276,8 +268,6 @@ TRIAGEM
             ta.DH_CHAMADA_CLASSIFICACAO,
             ta.DH_REMOVIDO
         FROM DBAMV.TRIAGEM_ATENDIMENTO ta
-        -- WHERE ta.CD_ATENDIMENTO = 253330
-        -- WHERE ta.CD_TRIAGEM_ATENDIMENTO = 374978
 ),
 FILA
     AS (
@@ -315,7 +305,6 @@ COR
 ),
 PROCESSO_COM_TRIAGEM
      AS (
-        -- REGISTROS DE TRIAGEM COM PROCESSO
         SELECT
             tcam.CD_TEMPO_PROCESSO,
             tcam.CD_TRIAGEM_ATENDIMENTO,
@@ -328,15 +317,6 @@ PROCESSO_COM_TRIAGEM
 ),
 PROCESSO_SEM_TRIAGEM
     AS (
-        -- REGISTROS DE PROCESSO SEM TRIAGEM
-        --      - SEM CD_ATENDIMENTO:
-        --          - MARCACOES CONSULTA/EXAMES
-        --          - ENTREGAS EXAMES
-        --          - RETIRADA DE MAPA E HOLTER
-        --          - SOLICITACAO DOCUMENTOS
-        --          - DESISTENCIAS
-        --      - COM CD_ATENDIMENTO:
-        --          - ATENDIMENTO REALIZADO S/ PASSAR POR TRIAGEM
         SELECT
             tcam.*
         FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
@@ -349,52 +329,15 @@ PROCESSO_SEM_TRIAGEM
 ),
 TRIAGEM_SEM_PROCESSO
     AS (
-        -- REGISTROS DE TRIAGEM SEM PROCESSO
-        --      - SEM CD_ATENDIMENTO:
-        --          - MARCACOES CONSULTA/EXAMES
-        --          - ENTREGAS EXAMES
-        --          - RETIRADA DE MAPA E HOLTER
-        --          - SOLICITACAO DOCUMENTOS
-        --          - DESISTENCIAS
-        --      - COM CD_ATENDIMENTO:
-        --          - ATENDIMENTO REALIZADO S/ PASSAR POR PROCESSOS
-    -- SELECT tri.*
-    -- FROM TRIAGEM tri
-    -- WHERE
-    --     NOT EXISTS (           -- 1) nenhum processo para essa TRIAGEM
-    --         SELECT 1
-    --         FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
-    --         WHERE tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
-    --     )
-        -- AND NOT EXISTS (       -- 2) nenhum processo para esse ATENDIMENTO
-        --     SELECT 1
-        --     FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
-        --     WHERE
-        --       tcam.CD_ATENDIMENTO = tri.CD_ATENDIMENTO
-
-        -- )
         SELECT
             tri.*
         FROM TRIAGEM tri
         WHERE
             NOT EXISTS (
                 SELECT 1
-                FROM PROCESSO_COM_TRIAGEM tcam
-                WHERE tcam.CD_ATENDIMENTO = tri.CD_ATENDIMENTO
-                -- WHERE (tcam.CD_ATENDIMENTO = tri.CD_ATENDIMENTO) OR (tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO)
+                FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+                WHERE tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
         )
-
-        -- UNION ALL
-
-        -- SELECT
-        --     tri.*
-        -- FROM TRIAGEM tri
-        -- WHERE
-        --     NOT EXISTS (
-        --         SELECT 1
-        --         FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
-        --         WHERE tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
-        -- )
 ),
 UNION_HIPOTESES
     AS (
@@ -475,23 +418,14 @@ TREATS
 SELECT
     *
 FROM TREATS
--- WHERE CD_ATENDIMENTO = 253330
-WHERE DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
+WHERE
+    DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
 ORDER BY
     CD_TRIAGEM_ATENDIMENTO DESC,
     CD_ATENDIMENTO,
     CD_TIPO_TEMPO_PROCESSO ASC
 ;
 
-
-SELECT
-    ta .*
-FROM TRIAGEM_ATENDIMENTO ta
--- , SACR_CLASSIFICACAO_RISCO scr --ON ta.CD_TRIAGEM_ATENDIMENTO = scr.CD_TRIAGEM_ATENDIMENTO
-WHERE
-    -- ta.CD_TRIAGEM_ATENDIMENTO = scr.CD_TRIAGEM_ATENDIMENTO AND
-    ta.CD_TRIAGEM_ATENDIMENTO = 253330
-;
 
 
 -- SEU SELECT FINAL AQUI
@@ -503,6 +437,9 @@ FROM TREATS
 WHERE DS_FILA LIKE '%ANGIO TC%'
 ORDER BY CD_TIPO_TEMPO_PROCESSO
 ;
+
+
+
 
 /* ******************************************************************************************************* */
 /* ******************************************************************************************************* */

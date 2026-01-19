@@ -308,109 +308,199 @@ Refatoração:
     <p></p>
 
 ```sql
-    WITH TEMPO_TOTEM_CLASS_ADM_MED
-        AS (
-            SELECT
-                stp.CD_TEMPO_PROCESSO ,
-                stp.CD_TRIAGEM_ATENDIMENTO ,
-                stp.CD_ATENDIMENTO ,
-                stp.CD_TIPO_TEMPO_PROCESSO ,
-                stp.DH_PROCESSO
-            FROM
-                DBAMV.SACR_TEMPO_PROCESSO stp
-    ),
-    TIPO_PROCESSO
-        AS (
-            SELECT
-                sttp.CD_TIPO_TEMPO_PROCESSO ,
-                sttp.DS_TIPO_TEMPO_PROCESSO
-            FROM
-                DBAMV.SACR_TIPO_TEMPO_PROCESSO sttp
-    ),
-    TRIAGEM
-        AS (
-            SELECT
-                ta.CD_TRIAGEM_ATENDIMENTO ,
-                ta.CD_ATENDIMENTO ,
-                ta.CD_FILA_SENHA ,
-                ta.CD_FILA_PRINCIPAL ,
-                ta.CD_SETOR ,
-                ta.DH_PRE_ATENDIMENTO ,
-                ta.DH_PRE_ATENDIMENTO_FIM ,
-                ta.DH_CHAMADA_CLASSIFICACAO ,
-                ta.DH_REMOVIDO
-            FROM DBAMV.TRIAGEM_ATENDIMENTO ta
-    ),
-    FILA
-        AS (
-            SELECT
-                fs.CD_FILA_SENHA ,
-                fs.DS_FILA ,
-                fs.DS_IDENTIFICADOR_FILA
-            FROM DBAMV.FILA_SENHA fs
-    ),
-    CLASSIFICACAO_RISCO
-        AS (
-            SELECT
-                scr.CD_TRIAGEM_ATENDIMENTO ,
-                scr.CD_CLASSIFICACAO_RISCO ,
-                scr.CD_CLASSIFICACAO ,
-                scr.CD_COR_REFERENCIA ,
-                scr.DH_CLASSIFICACAO_RISCO
-            FROM DBAMV.SACR_CLASSIFICACAO_RISCO scr
-    ),
-    CLASSIFICACAO
-        AS (
-            SELECT
-                sc.CD_CLASSIFICACAO ,
-                sc.DS_TIPO_RISCO
-            FROM DBAMV.SACR_CLASSIFICACAO sc
-    ),
-    COR
-        AS (
-            SELECT
-                scr.CD_COR_REFERENCIA ,
-                scr.NM_COR ,
-                scr.DS_RGB_DECIMAL ,
-                scr.DS_RGB_HEXADECIMAL
-            FROM DBAMV.SACR_COR_REFERENCIA scr
-    )
-    SELECT
-        tcam.CD_TRIAGEM_ATENDIMENTO,
-        tcam.CD_ATENDIMENTO ,
-        tcam.DH_PROCESSO ,
-        EXTRACT(MONTH FROM tcam.DH_PROCESSO) AS MES ,
-        EXTRACT(YEAR FROM tcam.DH_PROCESSO)  AS ANO ,
-        LAG(tcam.DH_PROCESSO) OVER (PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO ORDER BY tcam.DH_PROCESSO) AS PREV_DH_PROCESSO,
-        ROUND((tcam.DH_PROCESSO - LAG(tcam.DH_PROCESSO) OVER (PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO ORDER BY tcam.DH_PROCESSO)) * 24 * 60, 2) AS INTERVALO_TEMPO,
-        tp.DS_TIPO_TEMPO_PROCESSO ,
-        tri.DH_PRE_ATENDIMENTO ,
-        tri.DH_PRE_ATENDIMENTO_FIM ,
-        tri.DH_CHAMADA_CLASSIFICACAO ,
-        tri.DH_REMOVIDO ,
-        fs.DS_FILA ,
-        CASE WHEN fs.CD_FILA_SENHA IN(2, 21, 3, 20) THEN
-            'CLINICA 1'
-            WHEN fs.CD_FILA_SENHA IN(12, 22, 13, 19) THEN
-            'CLINICA 2'
-            WHEN fs.CD_FILA_SENHA = 1 THEN
-                'URGENCIA/EMERGENCIA'
-        ELSE NULL END AS CLINICA ,
-        CASE WHEN fs.CD_FILA_SENHA IN(2, 21, 12, 22) THEN
-            'CONSULTA'
-            WHEN fs.CD_FILA_SENHA IN(3, 20, 13, 19) THEN
-            'EXAME'
-        ELSE NULL END AS ATEND_AMBULATORIAL ,
-        sc.DS_TIPO_RISCO ,
-        co.NM_COR
-    FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
-    INNER JOIN TIPO_PROCESSO tp ON tcam.CD_TIPO_TEMPO_PROCESSO = tp.CD_TIPO_TEMPO_PROCESSO
-    INNER JOIN TRIAGEM tri ON tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
-    LEFT JOIN FILA fs ON tri.CD_FILA_SENHA = fs.CD_FILA_SENHA
-    LEFT JOIN CLASSIFICACAO_RISCO scr ON tri.CD_TRIAGEM_ATENDIMENTO = scr.CD_TRIAGEM_ATENDIMENTO
-    LEFT JOIN CLASSIFICACAO sc ON scr.CD_CLASSIFICACAO = sc.CD_CLASSIFICACAO
-    LEFT JOIN COR co ON scr.CD_COR_REFERENCIA = co.CD_COR_REFERENCIA
-    ORDER BY tcam.CD_TRIAGEM_ATENDIMENTO desc, tcam.DH_PROCESSO;
+WITH TEMPO_TOTEM_CLASS_ADM_MED
+    AS (
+        -- Armazena os tempos do processo de atendimento do paciente
+        SELECT
+            stp.CD_TEMPO_PROCESSO,
+            stp.CD_TRIAGEM_ATENDIMENTO,
+            stp.CD_ATENDIMENTO,
+            stp.CD_TIPO_TEMPO_PROCESSO,
+            stp.DH_PROCESSO
+        FROM DBAMV.SACR_TEMPO_PROCESSO stp
+
+),
+TIPO_PROCESSO
+    AS (
+        -- Armazena os tipos de tempos do processo de atendimento do paciente
+        SELECT
+            sttp.CD_TIPO_TEMPO_PROCESSO,
+            sttp.DS_TIPO_TEMPO_PROCESSO
+        FROM DBAMV.SACR_TIPO_TEMPO_PROCESSO sttp
+),
+TRIAGEM
+    AS (
+        -- Cadastramento de pre-atendimento para classificacao de risco
+        SELECT
+            ta.CD_TRIAGEM_ATENDIMENTO,
+            ta.CD_ATENDIMENTO,
+            ta.CD_FILA_SENHA,
+            ta.CD_FILA_PRINCIPAL,
+            ta.CD_SETOR,
+            ta.DS_SENHA,
+            ta.DH_PRE_ATENDIMENTO,
+            ta.DH_PRE_ATENDIMENTO_FIM,
+            ta.DH_CHAMADA_CLASSIFICACAO,
+            ta.DH_REMOVIDO
+        FROM DBAMV.TRIAGEM_ATENDIMENTO ta
+),
+FILA
+    AS (
+        SELECT
+            fs.CD_FILA_SENHA,
+            fs.DS_FILA,
+            fs.DS_IDENTIFICADOR_FILA
+        FROM DBAMV.FILA_SENHA fs
+),
+CLASSIFICACAO_RISCO
+    AS (
+        SELECT
+            scr.CD_TRIAGEM_ATENDIMENTO,
+            scr.CD_CLASSIFICACAO_RISCO,
+            scr.CD_CLASSIFICACAO,
+            scr.CD_COR_REFERENCIA,
+            scr.DH_CLASSIFICACAO_RISCO
+        FROM DBAMV.SACR_CLASSIFICACAO_RISCO scr
+),
+CLASSIFICACAO
+    AS (
+        SELECT
+            sc.CD_CLASSIFICACAO,
+            sc.DS_TIPO_RISCO
+        FROM DBAMV.SACR_CLASSIFICACAO sc
+),
+COR
+    AS (
+        SELECT
+            scr.CD_COR_REFERENCIA,
+            scr.NM_COR,
+            scr.DS_RGB_DECIMAL,
+            scr.DS_RGB_HEXADECIMAL
+        FROM DBAMV.SACR_COR_REFERENCIA scr
+),
+PROCESSO_COM_TRIAGEM
+     AS (
+        SELECT
+            tcam.CD_TEMPO_PROCESSO,
+            tcam.CD_TRIAGEM_ATENDIMENTO,
+            tcam.CD_ATENDIMENTO,
+            tcam.CD_TIPO_TEMPO_PROCESSO,
+            COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO) AS DH_PROCESSO
+
+        FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+        INNER JOIN TRIAGEM tri ON tri.CD_TRIAGEM_ATENDIMENTO = tcam.CD_TRIAGEM_ATENDIMENTO
+),
+PROCESSO_SEM_TRIAGEM
+    AS (
+        SELECT
+            tcam.*
+        FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+        WHERE
+            NOT EXISTS (
+                SELECT 1
+                FROM TRIAGEM tri
+                WHERE tri.CD_TRIAGEM_ATENDIMENTO = tcam.CD_TRIAGEM_ATENDIMENTO
+        )
+),
+TRIAGEM_SEM_PROCESSO
+    AS (
+        SELECT
+            tri.*
+        FROM TRIAGEM tri
+        WHERE
+            NOT EXISTS (
+                SELECT 1
+                FROM TEMPO_TOTEM_CLASS_ADM_MED tcam
+                WHERE tcam.CD_TRIAGEM_ATENDIMENTO = tri.CD_TRIAGEM_ATENDIMENTO
+        )
+),
+UNION_HIPOTESES
+    AS (
+        SELECT
+            'PROCESSO_COM_TRIAGEM' AS TIPO,
+            tcam.CD_TRIAGEM_ATENDIMENTO,
+            tcam.CD_ATENDIMENTO,
+            tcam.CD_TIPO_TEMPO_PROCESSO,
+            tcam.DH_PROCESSO
+        FROM PROCESSO_COM_TRIAGEM tcam
+
+        UNION ALL
+
+        SELECT
+            'PROCESSO_SEM_TRIAGEM' AS TIPO,
+            tcam.CD_TRIAGEM_ATENDIMENTO,
+            tcam.CD_ATENDIMENTO,
+            tcam.CD_TIPO_TEMPO_PROCESSO,
+            tcam.DH_PROCESSO
+        FROM PROCESSO_SEM_TRIAGEM tcam
+
+        UNION ALL
+
+        SELECT
+            'TRIAGEM_SEM_PROCESSO' AS TIPO,
+            tri.CD_TRIAGEM_ATENDIMENTO,
+            tri.CD_ATENDIMENTO,
+            NULL AS CD_TIPO_TEMPO_PROCESSO,
+            NULL AS DH_PROCESSO
+        FROM TRIAGEM_SEM_PROCESSO tri
+),
+TREATS
+    AS (
+        SELECT
+
+            tcam.TIPO,
+
+            tcam.CD_TRIAGEM_ATENDIMENTO,
+            tcam.CD_ATENDIMENTO,
+            tcam.DH_PROCESSO,
+            EXTRACT(MONTH FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS MES,
+            EXTRACT(YEAR  FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS ANO,
+            ROUND((tcam.DH_PROCESSO
+                - LAG(tcam.DH_PROCESSO) OVER (
+                        PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO
+                        ORDER BY tcam.DH_PROCESSO
+                    )) * 24 * 60, 2) AS INTERVALO_TEMPO,
+            tp.CD_TIPO_TEMPO_PROCESSO,
+            tp.DS_TIPO_TEMPO_PROCESSO,
+            tri.DH_PRE_ATENDIMENTO,
+            tri.DH_PRE_ATENDIMENTO_FIM,
+            tri.DH_CHAMADA_CLASSIFICACAO,
+            tri.DH_REMOVIDO,
+            tri.DS_SENHA,
+            fs.DS_FILA,
+            CASE
+                WHEN fs.CD_FILA_SENHA IN (2,21,3,20)       THEN 'CLINICA 1'
+                WHEN fs.CD_FILA_SENHA IN (12,22,13,19)     THEN 'CLINICA 2'
+                WHEN fs.CD_FILA_SENHA = 1                  THEN 'URGENCIA/EMERGENCIA'
+                ELSE NULL
+            END AS CLINICA,
+            CASE
+                WHEN fs.CD_FILA_SENHA IN (2,21,12,22)      THEN 'CONSULTA'
+                WHEN fs.CD_FILA_SENHA IN (3,20,13,19)      THEN 'EXAME'
+                ELSE NULL
+            END AS ATEND_AMBULATORIAL,
+            sc.DS_TIPO_RISCO,
+            co.NM_COR
+        FROM UNION_HIPOTESES tcam
+        LEFT JOIN TIPO_PROCESSO tp        ON tcam.CD_TIPO_TEMPO_PROCESSO  = tp.CD_TIPO_TEMPO_PROCESSO
+        LEFT JOIN TRIAGEM tri             ON tcam.CD_TRIAGEM_ATENDIMENTO  = tri.CD_TRIAGEM_ATENDIMENTO
+
+        LEFT JOIN FILA fs                 ON tri.CD_FILA_SENHA            = fs.CD_FILA_SENHA
+        LEFT JOIN CLASSIFICACAO_RISCO scr ON tri.CD_TRIAGEM_ATENDIMENTO   = scr.CD_TRIAGEM_ATENDIMENTO
+        LEFT JOIN CLASSIFICACAO sc        ON scr.CD_CLASSIFICACAO         = sc.CD_CLASSIFICACAO
+        LEFT JOIN COR co                  ON scr.CD_COR_REFERENCIA        = co.CD_COR_REFERENCIA
+)
+SELECT
+    *
+FROM TREATS
+WHERE
+    DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
+ORDER BY
+    CD_TRIAGEM_ATENDIMENTO DESC,
+    CD_ATENDIMENTO,
+    CD_TIPO_TEMPO_PROCESSO ASC
+;
+
 ```
 <br>
 <br>
