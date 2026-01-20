@@ -241,6 +241,7 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_TRIAGEM_ATENDIMENTO,
             stp.CD_ATENDIMENTO,
             a.NM_USUARIO,
+            a.CD_PRESTADOR,
             stp.CD_TIPO_TEMPO_PROCESSO,
             stp.DH_PROCESSO
         FROM DBAMV.SACR_TEMPO_PROCESSO stp
@@ -266,6 +267,7 @@ TRIAGEM
             ta.CD_SETOR,
             -- ta.CD_USUARIO,
             a.NM_USUARIO,
+            a.CD_PRESTADOR,
             ta.DS_SENHA,
             ta.DH_PRE_ATENDIMENTO,
             ta.DH_PRE_ATENDIMENTO_FIM,
@@ -315,12 +317,21 @@ USUARIO
             NM_USUARIO
         FROM DBASGU.USUARIOS
 ),
+PRESTADORESS
+    AS (
+        SELECT
+            CD_PRESTADOR,
+            NM_PRESTADOR
+        FROM DBAMV.PRESTADOR
+),
 PROCESSO_COM_TRIAGEM
      AS (
         SELECT
             tcam.CD_TEMPO_PROCESSO,
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
+            tcam.CD_PRESTADOR,
+            tcam.NM_USUARIO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO) AS DH_PROCESSO
 
@@ -357,6 +368,8 @@ UNION_HIPOTESES
             'PROCESSO_COM_TRIAGEM' AS TIPO,
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
+            tcam.NM_USUARIO,
+            tcam.CD_PRESTADOR,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tcam.DH_PROCESSO
         FROM PROCESSO_COM_TRIAGEM tcam
@@ -367,6 +380,8 @@ UNION_HIPOTESES
             'PROCESSO_SEM_TRIAGEM' AS TIPO,
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
+            tcam.NM_USUARIO,
+            tcam.CD_PRESTADOR,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tcam.DH_PROCESSO
         FROM PROCESSO_SEM_TRIAGEM tcam
@@ -377,6 +392,8 @@ UNION_HIPOTESES
             'TRIAGEM_SEM_PROCESSO' AS TIPO,
             tri.CD_TRIAGEM_ATENDIMENTO,
             tri.CD_ATENDIMENTO,
+            tri.NM_USUARIO,
+            tri.CD_PRESTADOR,
             NULL AS CD_TIPO_TEMPO_PROCESSO,
             NULL AS DH_PROCESSO
         FROM TRIAGEM_SEM_PROCESSO tri
@@ -391,6 +408,8 @@ TREATS
             tcam.CD_ATENDIMENTO,
             tri.NM_USUARIO AS CD_USUARIO,
             u.NM_USUARIO,
+            p.CD_PRESTADOR,
+            p.NM_PRESTADOR,
             tcam.DH_PROCESSO,
             EXTRACT(MONTH FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS MES,
             EXTRACT(YEAR  FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS ANO,
@@ -399,7 +418,25 @@ TREATS
                         PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO
                         ORDER BY tcam.DH_PROCESSO
                     )) * 24 * 60, 2) AS INTERVALO_TEMPO,
-            tp.CD_TIPO_TEMPO_PROCESSO,
+            CASE
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 20 THEN
+                    'TE Guiche'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(21, 22) THEN
+                    'TA Guiche'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 30 THEN
+                    'TE Consulta'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(31, 32, 90) THEN
+                    'TA Consulta'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 50 THEN
+                    'TE Exame Laboratorio'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(51, 52) THEN
+                    'TA Exame Laboratorio'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 60 THEN
+                    'TE Exame Imagem'
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(61, 62) THEN
+                    'TA Exame Imagem'
+                ELSE NULL
+            END AS CLASSIFICACAO_PROCESSO,
             tp.DS_TIPO_TEMPO_PROCESSO,
             tri.DH_PRE_ATENDIMENTO,
             tri.DH_PRE_ATENDIMENTO_FIM,
@@ -434,17 +471,20 @@ TREATS
         LEFT JOIN CLASSIFICACAO_RISCO scr ON tri.CD_TRIAGEM_ATENDIMENTO   = scr.CD_TRIAGEM_ATENDIMENTO
         LEFT JOIN CLASSIFICACAO sc        ON scr.CD_CLASSIFICACAO         = sc.CD_CLASSIFICACAO
         LEFT JOIN COR co                  ON scr.CD_COR_REFERENCIA        = co.CD_COR_REFERENCIA
-        LEFT JOIN USUARIO u               ON tri.NM_USUARIO               = u.CD_USUARIO
+
+        -- LEFT JOIN USUARIO u               ON tri.NM_USUARIO               = u.CD_USUARIO
+        LEFT JOIN USUARIO u               ON tcam.NM_USUARIO              = u.CD_USUARIO
+        LEFT JOIN PRESTADORESS p          ON tcam.CD_PRESTADOR            = p.CD_PRESTADOR
 )
 SELECT
     *
 FROM TREATS
 WHERE
     DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
-ORDER BY
-    CD_TRIAGEM_ATENDIMENTO DESC,
-    CD_ATENDIMENTO,
-    CD_TIPO_TEMPO_PROCESSO ASC
+-- ORDER BY
+--     CD_TRIAGEM_ATENDIMENTO DESC,
+--     CD_ATENDIMENTO,
+--     CD_TIPO_TEMPO_PROCESSO ASC
 ;
 
 
