@@ -393,12 +393,18 @@ TREATS
             tri.DH_REMOVIDO,
             tri.DS_SENHA,
             fs.DS_FILA,
-            CASE
-                WHEN fs.CD_FILA_SENHA IN (2,21,3,20)       THEN 'CLINICA 1'
-                WHEN fs.CD_FILA_SENHA IN (12,22,13,19)     THEN 'CLINICA 2'
-                WHEN fs.CD_FILA_SENHA = 1                  THEN 'URGENCIA/EMERGENCIA'
-                ELSE NULL
-            END AS CLINICA,
+            COALESCE(
+                CASE
+                    WHEN fs.CD_FILA_SENHA IN (2,21,3,20)       THEN 'CLINICA 1'
+                    WHEN fs.CD_FILA_SENHA IN (12,22,13,19)     THEN 'CLINICA 2'
+                    WHEN fs.CD_FILA_SENHA = 1                  THEN 'URGENCIA/EMERGENCIA'
+                    ELSE NULL
+                END,
+                CASE
+                    WHEN REGEXP_LIKE(fs.DS_FILA, '2') THEN 'CLINICA 2'
+                    ELSE 'CLINICA 1'
+                END
+            ) AS CLINICA,
             CASE
                 WHEN fs.CD_FILA_SENHA IN (2,21,12,22)      THEN 'CONSULTA'
                 WHEN fs.CD_FILA_SENHA IN (3,20,13,19)      THEN 'EXAME'
