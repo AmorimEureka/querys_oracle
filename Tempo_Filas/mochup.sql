@@ -240,9 +240,11 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_TEMPO_PROCESSO,
             stp.CD_TRIAGEM_ATENDIMENTO,
             stp.CD_ATENDIMENTO,
+            a.NM_USUARIO,
             stp.CD_TIPO_TEMPO_PROCESSO,
             stp.DH_PROCESSO
         FROM DBAMV.SACR_TEMPO_PROCESSO stp
+        LEFT JOIN DBAMV.ATENDIME a ON stp.CD_ATENDIMENTO = a.CD_ATENDIMENTO
 
 ),
 TIPO_PROCESSO
@@ -262,12 +264,15 @@ TRIAGEM
             ta.CD_FILA_SENHA,
             ta.CD_FILA_PRINCIPAL,
             ta.CD_SETOR,
+            -- ta.CD_USUARIO,
+            a.NM_USUARIO,
             ta.DS_SENHA,
             ta.DH_PRE_ATENDIMENTO,
             ta.DH_PRE_ATENDIMENTO_FIM,
             ta.DH_CHAMADA_CLASSIFICACAO,
             ta.DH_REMOVIDO
         FROM DBAMV.TRIAGEM_ATENDIMENTO ta
+        LEFT JOIN DBAMV.ATENDIME a ON ta.CD_ATENDIMENTO = a.CD_ATENDIMENTO
 ),
 FILA
     AS (
@@ -302,6 +307,13 @@ COR
             scr.DS_RGB_DECIMAL,
             scr.DS_RGB_HEXADECIMAL
         FROM DBAMV.SACR_COR_REFERENCIA scr
+),
+USUARIO
+    AS (
+        SELECT
+            CD_USUARIO,
+            NM_USUARIO
+        FROM DBASGU.USUARIOS
 ),
 PROCESSO_COM_TRIAGEM
      AS (
@@ -377,6 +389,8 @@ TREATS
 
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
+            tri.NM_USUARIO AS CD_USUARIO,
+            u.NM_USUARIO,
             tcam.DH_PROCESSO,
             EXTRACT(MONTH FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS MES,
             EXTRACT(YEAR  FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS ANO,
@@ -420,6 +434,7 @@ TREATS
         LEFT JOIN CLASSIFICACAO_RISCO scr ON tri.CD_TRIAGEM_ATENDIMENTO   = scr.CD_TRIAGEM_ATENDIMENTO
         LEFT JOIN CLASSIFICACAO sc        ON scr.CD_CLASSIFICACAO         = sc.CD_CLASSIFICACAO
         LEFT JOIN COR co                  ON scr.CD_COR_REFERENCIA        = co.CD_COR_REFERENCIA
+        LEFT JOIN USUARIO u               ON tri.NM_USUARIO               = u.CD_USUARIO
 )
 SELECT
     *

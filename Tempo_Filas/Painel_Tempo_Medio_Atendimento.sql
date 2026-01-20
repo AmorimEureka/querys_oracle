@@ -22,6 +22,10 @@ WHERE stp.cd_atendimento IS NOT NULL
 AND stp.cd_triagem_atendimento IS NOT NULL AND stp.cd_atendimento = 203689
 GROUP BY stp.cd_triagem_atendimento, stp.cd_atendimento ;
 
+
+
+/* ******************************************************************************************************* */
+
 -- Query 'Triagem Desistentes' do Painel "HPC-CLINICA-Tempo Médio de Atendimento"
 SELECT a.CD_ATENDIMENTO COD_ATEND,
 a.CD_PACIENTE COD_PAC,
@@ -47,6 +51,8 @@ LEFT JOIN TRIAGEM_ATENDIMENTO ta ON a.CD_ATENDIMENTO = ta.CD_ATENDIMENTO
 LEFT JOIN PRESTADOR p ON a.CD_PRESTADOR = p.CD_PRESTADOR
 LEFT JOIN dbasgu.usuarios d ON a.NM_USUARIO = d.CD_USUARIO ;
 
+
+/* ******************************************************************************************************* */
 
 -- Query 'Triagem Atendimento' do Painel "HPC-CLINICA-Tempo Médio de Atendimento"
 SELECT DISTINCT
@@ -76,7 +82,9 @@ LEFT JOIN convenio c ON c.cd_convenio = a.cd_convenio
 WHERE ta.nm_paciente IS NOT NULL ;
 
 
+/* ******************************************************************************************************* */
 -- Query 'Agendados' do Painel "HPC-CLINICA-Tempo Médio de Atendimento"
+
 SELECT
     i.cd_atendimento,
     MIN(i.hr_agenda) hr_agenda,
@@ -129,3 +137,6 @@ GROUP BY
     --a.cd_prestador,
     --INITCAP(pr.nm_prestador),
     i.nm_paciente || '_' || TO_CHAR(i.hr_agenda, 'DD-MM-YYYY') ;
+
+
+/* ******************************************************************************************************* */
