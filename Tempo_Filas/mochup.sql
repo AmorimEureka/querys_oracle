@@ -242,6 +242,7 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_ATENDIMENTO,
             a.NM_USUARIO,
             a.CD_PRESTADOR,
+            a.TP_ATENDIMENTO,
             stp.CD_TIPO_TEMPO_PROCESSO,
             stp.DH_PROCESSO
         FROM DBAMV.SACR_TEMPO_PROCESSO stp
@@ -268,6 +269,7 @@ TRIAGEM
             -- ta.CD_USUARIO,
             a.NM_USUARIO,
             a.CD_PRESTADOR,
+            a.TP_ATENDIMENTO,
             ta.DS_SENHA,
             ta.DH_PRE_ATENDIMENTO,
             ta.DH_PRE_ATENDIMENTO_FIM,
@@ -280,8 +282,7 @@ FILA
     AS (
         SELECT
             fs.CD_FILA_SENHA,
-            fs.DS_FILA,
-            fs.DS_IDENTIFICADOR_FILA
+            fs.DS_FILA
         FROM DBAMV.FILA_SENHA fs
 ),
 CLASSIFICACAO_RISCO
@@ -331,6 +332,7 @@ PROCESSO_COM_TRIAGEM
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
             tcam.CD_PRESTADOR,
+            tcam.TP_ATENDIMENTO,
             tcam.NM_USUARIO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO) AS DH_PROCESSO
@@ -370,6 +372,7 @@ UNION_HIPOTESES
             tcam.CD_ATENDIMENTO,
             tcam.NM_USUARIO,
             tcam.CD_PRESTADOR,
+            tcam.TP_ATENDIMENTO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tcam.DH_PROCESSO
         FROM PROCESSO_COM_TRIAGEM tcam
@@ -382,6 +385,7 @@ UNION_HIPOTESES
             tcam.CD_ATENDIMENTO,
             tcam.NM_USUARIO,
             tcam.CD_PRESTADOR,
+            tcam.TP_ATENDIMENTO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tcam.DH_PROCESSO
         FROM PROCESSO_SEM_TRIAGEM tcam
@@ -394,6 +398,7 @@ UNION_HIPOTESES
             tri.CD_ATENDIMENTO,
             tri.NM_USUARIO,
             tri.CD_PRESTADOR,
+            tri.TP_ATENDIMENTO,
             NULL AS CD_TIPO_TEMPO_PROCESSO,
             NULL AS DH_PROCESSO
         FROM TRIAGEM_SEM_PROCESSO tri
@@ -406,6 +411,15 @@ TREATS
 
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
+
+            CASE
+                WHEN tcam.TP_ATENDIMENTO = 'U' THEN 'EMERGÊNCIA'
+                WHEN tcam.TP_ATENDIMENTO = 'I' THEN 'INTERNAÇÃO'
+                WHEN tcam.TP_ATENDIMENTO = 'A' THEN 'AMBULATÓRIO'
+                WHEN tcam.TP_ATENDIMENTO = 'E' THEN 'EXTERNO'
+                ELSE NULL
+            END AS TP_ATENDIMENTO,
+
             tri.NM_USUARIO AS CD_USUARIO,
             u.NM_USUARIO,
             p.CD_PRESTADOR,
@@ -413,6 +427,7 @@ TREATS
             tcam.DH_PROCESSO,
             EXTRACT(MONTH FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS MES,
             EXTRACT(YEAR  FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS ANO,
+
             ROUND((tcam.DH_PROCESSO
                 - LAG(tcam.DH_PROCESSO) OVER (
                         PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO
@@ -437,17 +452,20 @@ TREATS
                     'TA Exame Imagem'
                 ELSE NULL
             END AS CLASSIFICACAO_PROCESSO,
+
+            tcam.CD_TIPO_TEMPO_PROCESSO,
             tp.DS_TIPO_TEMPO_PROCESSO,
             tri.DH_PRE_ATENDIMENTO,
             tri.DH_PRE_ATENDIMENTO_FIM,
             tri.DH_CHAMADA_CLASSIFICACAO,
             tri.DH_REMOVIDO,
             tri.DS_SENHA,
-            fs.DS_FILA,
+            -- fs.DS_FILA,
+
             COALESCE(
                 CASE
-                    WHEN fs.CD_FILA_SENHA IN (2,21,3,20)       THEN 'CLINICA 1'
-                    WHEN fs.CD_FILA_SENHA IN (12,22,13,19)     THEN 'CLINICA 2'
+                    WHEN fs.CD_FILA_SENHA IN (2, 21, 3, 20)       THEN 'CLINICA 1'
+                    WHEN fs.CD_FILA_SENHA IN (12, 22, 13, 19)     THEN 'CLINICA 2'
                     WHEN fs.CD_FILA_SENHA = 1                  THEN 'URGENCIA/EMERGENCIA'
                     ELSE NULL
                 END,
@@ -456,13 +474,20 @@ TREATS
                     ELSE 'CLINICA 1'
                 END
             ) AS CLINICA,
+
             CASE
-                WHEN fs.CD_FILA_SENHA IN (2,21,12,22)      THEN 'CONSULTA'
-                WHEN fs.CD_FILA_SENHA IN (3,20,13,19)      THEN 'EXAME'
-                ELSE NULL
-            END AS ATEND_AMBULATORIAL,
+                WHEN fs.CD_FILA_SENHA IN (2, 21, 12, 22)   THEN 'CONSULTA'
+                WHEN fs.CD_FILA_SENHA IN (3, 20, 13, 19)   THEN 'EXAME'
+                WHEN fs.CD_FILA_SENHA IN (4, 14)           THEN 'MARCAÇÃO CONSULTA/EXAMES'
+                WHEN fs.CD_FILA_SENHA IN (7, 17)           THEN 'RETIRADA MAPA e HOLTER'
+                WHEN fs.CD_FILA_SENHA IN (6,16)            THEN 'SOLICITAÇÃO DE DOCUMENTOS'
+                WHEN fs.CD_FILA_SENHA = 23                 THEN 'ASO'
+                ELSE fs.DS_FILA
+            END AS FILA,
+
             sc.DS_TIPO_RISCO,
             co.NM_COR
+
         FROM UNION_HIPOTESES tcam
         LEFT JOIN TIPO_PROCESSO tp        ON tcam.CD_TIPO_TEMPO_PROCESSO  = tp.CD_TIPO_TEMPO_PROCESSO
         LEFT JOIN TRIAGEM tri             ON tcam.CD_TRIAGEM_ATENDIMENTO  = tri.CD_TRIAGEM_ATENDIMENTO
@@ -472,7 +497,6 @@ TREATS
         LEFT JOIN CLASSIFICACAO sc        ON scr.CD_CLASSIFICACAO         = sc.CD_CLASSIFICACAO
         LEFT JOIN COR co                  ON scr.CD_COR_REFERENCIA        = co.CD_COR_REFERENCIA
 
-        -- LEFT JOIN USUARIO u               ON tri.NM_USUARIO               = u.CD_USUARIO
         LEFT JOIN USUARIO u               ON tcam.NM_USUARIO              = u.CD_USUARIO
         LEFT JOIN PRESTADORESS p          ON tcam.CD_PRESTADOR            = p.CD_PRESTADOR
 )
