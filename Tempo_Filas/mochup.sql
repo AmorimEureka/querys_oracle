@@ -242,6 +242,7 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_ATENDIMENTO,
             a.NM_USUARIO,
             a.CD_PRESTADOR,
+            a.CD_CONVENIO,
             a.TP_ATENDIMENTO,
             stp.CD_TIPO_TEMPO_PROCESSO,
             stp.DH_PROCESSO
@@ -269,6 +270,7 @@ TRIAGEM
             -- ta.CD_USUARIO,
             a.NM_USUARIO,
             a.CD_PRESTADOR,
+            a.CD_CONVENIO,
             a.TP_ATENDIMENTO,
             ta.DS_SENHA,
             ta.DH_PRE_ATENDIMENTO,
@@ -325,6 +327,13 @@ PRESTADORESS
             NM_PRESTADOR
         FROM DBAMV.PRESTADOR
 ),
+CONVENIOS
+    AS (
+        SELECT
+            CD_CONVENIO,
+            NM_CONVENIO
+        FROM DBAMV.CONVENIO
+),
 PROCESSO_COM_TRIAGEM
      AS (
         SELECT
@@ -332,6 +341,7 @@ PROCESSO_COM_TRIAGEM
             tcam.CD_TRIAGEM_ATENDIMENTO,
             tcam.CD_ATENDIMENTO,
             tcam.CD_PRESTADOR,
+            tcam.CD_CONVENIO,
             tcam.TP_ATENDIMENTO,
             tcam.NM_USUARIO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
@@ -372,6 +382,7 @@ UNION_HIPOTESES
             tcam.CD_ATENDIMENTO,
             tcam.NM_USUARIO,
             tcam.CD_PRESTADOR,
+            tcam.CD_CONVENIO,
             tcam.TP_ATENDIMENTO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tcam.DH_PROCESSO
@@ -385,6 +396,7 @@ UNION_HIPOTESES
             tcam.CD_ATENDIMENTO,
             tcam.NM_USUARIO,
             tcam.CD_PRESTADOR,
+            tcam.CD_CONVENIO,
             tcam.TP_ATENDIMENTO,
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tcam.DH_PROCESSO
@@ -398,6 +410,7 @@ UNION_HIPOTESES
             tri.CD_ATENDIMENTO,
             tri.NM_USUARIO,
             tri.CD_PRESTADOR,
+            tri.CD_CONVENIO,
             tri.TP_ATENDIMENTO,
             NULL AS CD_TIPO_TEMPO_PROCESSO,
             NULL AS DH_PROCESSO
@@ -424,6 +437,9 @@ TREATS
             u.NM_USUARIO,
             p.CD_PRESTADOR,
             p.NM_PRESTADOR,
+
+            c.NM_CONVENIO,
+
             tcam.DH_PROCESSO,
             EXTRACT(MONTH FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS MES,
             EXTRACT(YEAR  FROM COALESCE(tcam.DH_PROCESSO, tri.DH_PRE_ATENDIMENTO)) AS ANO,
@@ -433,6 +449,7 @@ TREATS
                         PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO
                         ORDER BY tcam.DH_PROCESSO
                     )) * 24 * 60, 2) AS INTERVALO_TEMPO,
+
             CASE
                 WHEN tp.CD_TIPO_TEMPO_PROCESSO = 20 THEN
                     'TE Guiche'
@@ -452,6 +469,25 @@ TREATS
                     'TA Exame Imagem'
                 ELSE NULL
             END AS CLASSIFICACAO_PROCESSO,
+
+            CASE
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 20 THEN
+                    1
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(21, 22) THEN
+                    2
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 30 THEN
+                    3
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(31, 32, 90) THEN
+                    4
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 50 THEN
+                    5
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(51, 52) THEN
+                    6
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO = 60 THEN
+                    7
+                WHEN tp.CD_TIPO_TEMPO_PROCESSO IN(61, 62) THEN
+                    8
+            END AS ORDEM_PROCESSO,
 
             tcam.CD_TIPO_TEMPO_PROCESSO,
             tp.DS_TIPO_TEMPO_PROCESSO,
@@ -499,12 +535,88 @@ TREATS
 
         LEFT JOIN USUARIO u               ON tcam.NM_USUARIO              = u.CD_USUARIO
         LEFT JOIN PRESTADORESS p          ON tcam.CD_PRESTADOR            = p.CD_PRESTADOR
+        LEFT JOIN CONVENIOS c             ON tcam.CD_CONVENIO             = c.CD_CONVENIO
+),
+AGRUPAMENTOS
+    AS (
+        SELECT
+            TIPO,
+            TO_DATE(DH_PROCESSO) AS DT,
+            MES,
+            ANO,
+            NM_CONVENIO,
+            TP_ATENDIMENTO,
+            NM_USUARIO,
+            NM_PRESTADOR,
+            CLINICA,
+            FILA,
+            ORDEM_PROCESSO,
+            CLASSIFICACAO_PROCESSO,
+            NM_COR,
+            SUM(INTERVALO_TEMPO) AS TEMPO_MINUTOS
+        FROM TREATS
+        WHERE
+            -- DH_PROCESSO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM') AND
+            INTERVALO_TEMPO IS NOT NULL
+        GROUP BY
+            TIPO,
+            TO_DATE(DH_PROCESSO),
+            NM_USUARIO,
+            NM_PRESTADOR,
+            MES,
+            ANO,
+            NM_CONVENIO,
+            TP_ATENDIMENTO,
+            CLINICA,
+            FILA,
+            ORDEM_PROCESSO,
+            CLASSIFICACAO_PROCESSO,
+            NM_COR
 )
 SELECT
-    *
-FROM TREATS
-WHERE
-    DH_PRE_ATENDIMENTO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
+    TIPO,
+    DT,
+    MES,
+    ANO,
+    NM_CONVENIO,
+    TP_ATENDIMENTO,
+    NM_USUARIO,
+    NM_PRESTADOR,
+    CLINICA,
+    FILA,
+    ORDEM_PROCESSO,
+    CLASSIFICACAO_PROCESSO,
+    NM_COR,
+    CASE
+        WHEN TEMPO_MINUTOS <   5 THEN 'Até 5 min'
+        WHEN TEMPO_MINUTOS <  10 THEN 'Até 10 min'
+        WHEN TEMPO_MINUTOS <  15 THEN 'Até 15 min'
+        WHEN TEMPO_MINUTOS <  20 THEN 'Até 20 min'
+        WHEN TEMPO_MINUTOS <  30 THEN 'Até 30 min'
+        WHEN TEMPO_MINUTOS <  40 THEN 'Até 40 min'
+        WHEN TEMPO_MINUTOS <  60 THEN 'Até 1h'
+        WHEN TEMPO_MINUTOS < 120 THEN 'Até 2h'
+        WHEN TEMPO_MINUTOS < 180 THEN 'Até 3h'
+        WHEN TEMPO_MINUTOS < 240 THEN 'Até 4h'
+        WHEN TEMPO_MINUTOS < 300 THEN 'Até 5h'
+        WHEN TEMPO_MINUTOS < 360 THEN 'Até 6h'
+        ELSE '> 6h'
+    END AS BUCKET_TEMP,
+    TEMPO_MINUTOS
+FROM AGRUPAMENTOS
+ORDER BY
+    TIPO,
+    DT,
+    TP_ATENDIMENTO,
+    NM_CONVENIO,
+    NM_USUARIO,
+    NM_PRESTADOR,
+    MES,
+    ANO,
+    ORDEM_PROCESSO
+-- opcional:
+-- ORDER BY DT, NM_USUARIO, NM_PRESTADOR, CLASSIFICACAO_PROCESSO;
+
 -- ORDER BY
 --     CD_TRIAGEM_ATENDIMENTO DESC,
 --     CD_ATENDIMENTO,
@@ -513,7 +625,20 @@ WHERE
 
 
 
--- SEU SELECT FINAL AQUI
+SELECT
+    *
+FROM TREATS
+WHERE
+DH_PROCESSO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
+ORDER BY
+    CD_TRIAGEM_ATENDIMENTO DESC,
+    CD_ATENDIMENTO,
+    CD_TIPO_TEMPO_PROCESSO ASC
+;
+
+
+
+SEU SELECT FINAL AQUI
 SELECT DISTINCT
     CD_TIPO_TEMPO_PROCESSO,
     DS_TIPO_TEMPO_PROCESSO,
@@ -535,9 +660,6 @@ ORDER BY CD_TIPO_TEMPO_PROCESSO
 /* ******************************************************************************************************* */
 /* ******************************************************************************************************* */
 /* ******************************************************************************************************* */
-
-
-
 
 
 
