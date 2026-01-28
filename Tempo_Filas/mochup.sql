@@ -242,10 +242,18 @@ WITH TEMPO_TOTEM_CLASS_ADM_MED
             stp.CD_ATENDIMENTO,
             a.NM_USUARIO,
             a.CD_PRESTADOR,
+            a.CD_PACIENTE,
             a.CD_CONVENIO,
             a.TP_ATENDIMENTO,
             stp.CD_TIPO_TEMPO_PROCESSO,
-            stp.DH_PROCESSO
+            CASE
+                WHEN TO_CHAR(a.HR_ATENDIMENTO, 'YYYY-MM') != TO_CHAR(stp.DH_PROCESSO, 'YYYY-MM') THEN
+                    TRUNC(a.HR_ATENDIMENTO) + (stp.DH_PROCESSO - TRUNC(stp.DH_PROCESSO))
+                ELSE
+                    stp.DH_PROCESSO
+            END AS DH_PROCESSO,
+            stp.DH_PROCESSO AS DH_PROCESSO_ANTIGO,
+            a.HR_ATENDIMENTO
         FROM DBAMV.SACR_TEMPO_PROCESSO stp
         LEFT JOIN DBAMV.ATENDIME a ON stp.CD_ATENDIMENTO = a.CD_ATENDIMENTO
 
@@ -538,7 +546,6 @@ TREATS
         LEFT JOIN PRESTADORESS p          ON tcam.CD_PRESTADOR            = p.CD_PRESTADOR
         LEFT JOIN CONVENIOS c             ON tcam.CD_CONVENIO             = c.CD_CONVENIO
         WHERE
-            -- tcam.DH_PROCESSO > TRUNC(ADD_MONTHS(SYSDATE, -1), 'MM')
             tcam.DH_PROCESSO >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -12) AND
             tcam.DH_PROCESSO <  ADD_MONTHS(TRUNC(SYSDATE, 'MM'),  1)
 ),
