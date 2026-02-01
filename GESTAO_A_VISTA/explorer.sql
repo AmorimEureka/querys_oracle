@@ -798,20 +798,7 @@ TREATS
             a.DH_ALTA,
 
             EXTRACT(MONTH FROM pvm.DT_START) AS MES,
-            CASE
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 1 THEN 'Jan'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 2 THEN 'Fev'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 3 THEN 'Mar'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 4 THEN 'Abr'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 5 THEN 'Mai'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 6 THEN 'Jun'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 7 THEN 'Jul'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 8 THEN 'Ago'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 9 THEN 'Set'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 10 THEN 'Out'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 11 THEN 'Nov'
-                WHEN EXTRACT(MONTH FROM pvm.DT_START) = 11 THEN 'Dez'
-            END AS NOME_MES,
+            SUBSTR(TO_CHAR(pvm.DT_START, 'FMMONTH', 'NLS_DATE_LANGUAGE=PORTUGUESE'), 1, 3)  AS NOME_MES,
 
             EXTRACT(YEAR FROM pvm.DT_START) AS ANO,
 
