@@ -281,6 +281,7 @@ TRIAGEM
             a.CD_CONVENIO,
             a.TP_ATENDIMENTO,
             ta.DS_SENHA,
+            a.DT_ALTA  AS DH_PROCESSO,
             ta.DH_PRE_ATENDIMENTO,
             ta.DH_PRE_ATENDIMENTO_FIM,
             ta.DH_CHAMADA_CLASSIFICACAO,
@@ -424,6 +425,93 @@ UNION_HIPOTESES
             NULL AS DH_PROCESSO
         FROM TRIAGEM_SEM_PROCESSO tri
 ),
+ULTIMO_PROCESSO
+    AS (
+        -- Identifica o último processo registrado para cada triagem
+        SELECT
+            uh.CD_TRIAGEM_ATENDIMENTO,
+            uh.CD_ATENDIMENTO,
+            uh.NM_USUARIO,
+            uh.CD_PRESTADOR,
+            uh.CD_CONVENIO,
+            uh.TP_ATENDIMENTO,
+            uh.TIPO,
+            uh.CD_TIPO_TEMPO_PROCESSO,
+            uh.DH_PROCESSO,
+            ROW_NUMBER() OVER(PARTITION BY uh.CD_TRIAGEM_ATENDIMENTO ORDER BY uh.DH_PROCESSO DESC NULLS LAST) AS RN
+        FROM UNION_HIPOTESES uh
+),
+PROCESSO_ANTERIOR
+    AS (
+        -- Obtém a data de processo do CD_TIPO_TEMPO_PROCESSO=31
+        SELECT
+            CD_TRIAGEM_ATENDIMENTO,
+            DH_PROCESSO AS DH_PROCESSO_31
+        FROM UNION_HIPOTESES
+        WHERE CD_TIPO_TEMPO_PROCESSO = 31
+),
+REGISTROS_SEM_FINALIZACAO
+    AS (
+        -- Cria registros com CD_TIPO_TEMPO_PROCESSO=32 para triagens que não possuem essa linha
+        SELECT DISTINCT
+            up.TIPO,
+            up.CD_TRIAGEM_ATENDIMENTO,
+            up.CD_ATENDIMENTO,
+            up.NM_USUARIO,
+            up.CD_PRESTADOR,
+            up.CD_CONVENIO,
+            up.TP_ATENDIMENTO,
+            32 AS CD_TIPO_TEMPO_PROCESSO,
+            CASE
+                -- Se DT_ALTA existe e é menor que DH_PROCESSO_31, usar p31 + 15min
+                WHEN pa.DH_PROCESSO_31 IS NOT NULL
+                     AND tca.DH_PROCESSO IS NOT NULL
+                     AND tca.DH_PROCESSO < pa.DH_PROCESSO_31 THEN
+                    pa.DH_PROCESSO_31 + INTERVAL '15' MINUTE
+
+                -- Se DT_ALTA existe e é >= pa, usar DT_ALTA
+                WHEN pa.DH_PROCESSO_31 IS NOT NULL
+                     AND tca.DH_PROCESSO IS NOT NULL
+                     AND tca.DH_PROCESSO >= pa.DH_PROCESSO_31 THEN
+                    tca.DH_PROCESSO
+
+                -- Se DT_ALTA não existe mas pa existe, usar pa + 15min
+                WHEN pa.DH_PROCESSO_31 IS NOT NULL
+                     AND tca.DH_PROCESSO IS NULL THEN
+                    pa.DH_PROCESSO_31 + INTERVAL '15' MINUTE
+
+                ELSE NULL
+            END AS DH_PROCESSO
+
+        FROM ULTIMO_PROCESSO up
+        INNER JOIN TRIAGEM tca ON up.CD_TRIAGEM_ATENDIMENTO = tca.CD_TRIAGEM_ATENDIMENTO
+        LEFT JOIN PROCESSO_ANTERIOR pa ON up.CD_TRIAGEM_ATENDIMENTO = pa.CD_TRIAGEM_ATENDIMENTO
+        WHERE
+            up.RN = 1
+            AND up.CD_TIPO_TEMPO_PROCESSO != 32
+            AND NOT EXISTS (
+                SELECT 1
+                FROM UNION_HIPOTESES uh
+                WHERE uh.CD_TRIAGEM_ATENDIMENTO = up.CD_TRIAGEM_ATENDIMENTO
+                  AND uh.CD_TIPO_TEMPO_PROCESSO = 32
+            )
+),
+UNION_FINAL
+    AS (
+        SELECT * FROM UNION_HIPOTESES
+        UNION ALL
+        SELECT
+            rcf.TIPO,
+            rcf.CD_TRIAGEM_ATENDIMENTO,
+            rcf.CD_ATENDIMENTO,
+            rcf.NM_USUARIO,
+            rcf.CD_PRESTADOR,
+            rcf.CD_CONVENIO,
+            rcf.TP_ATENDIMENTO,
+            rcf.CD_TIPO_TEMPO_PROCESSO,
+            rcf.DH_PROCESSO
+        FROM REGISTROS_SEM_FINALIZACAO rcf
+),
 TREATS
     AS (
         SELECT
@@ -456,7 +544,7 @@ TREATS
             ROUND((tcam.DH_PROCESSO
                 - LAG(tcam.DH_PROCESSO) OVER (
                         PARTITION BY tcam.CD_TRIAGEM_ATENDIMENTO
-                        ORDER BY tcam.DH_PROCESSO
+                        ORDER BY tcam.CD_TIPO_TEMPO_PROCESSO --tcam.DH_PROCESSO
                     )) * 24 * 60, 2) AS INTERVALO_TEMPO,
 
             CASE
@@ -533,7 +621,7 @@ TREATS
             sc.DS_TIPO_RISCO,
             co.NM_COR
 
-        FROM UNION_HIPOTESES tcam
+        FROM UNION_FINAL tcam
         LEFT JOIN TIPO_PROCESSO tp        ON tcam.CD_TIPO_TEMPO_PROCESSO  = tp.CD_TIPO_TEMPO_PROCESSO
         LEFT JOIN TRIAGEM tri             ON tcam.CD_TRIAGEM_ATENDIMENTO  = tri.CD_TRIAGEM_ATENDIMENTO
 
@@ -546,7 +634,7 @@ TREATS
         LEFT JOIN PRESTADORESS p          ON tcam.CD_PRESTADOR            = p.CD_PRESTADOR
         LEFT JOIN CONVENIOS c             ON tcam.CD_CONVENIO             = c.CD_CONVENIO
         WHERE
-            tcam.DH_PROCESSO >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -12) AND
+            tcam.DH_PROCESSO >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -7) AND
             tcam.DH_PROCESSO <  ADD_MONTHS(TRUNC(SYSDATE, 'MM'),  1)
 ),
 AGRUPAMENTOS
@@ -627,7 +715,41 @@ ORDER BY
     MES,
     ANO,
     ORDEM_PROCESSO
+
+
+
+-- )
+-- SELECT
+--     MES,
+--     ANO,
+--     CLINICA,
+--     NM_PRESTADOR,
+--     FILA,
+--     CLASSIFICACAO_PROCESSO,
+--     CASE
+--         WHEN SUM(QTD) > 0 THEN
+--             TO_CHAR(TRUNC(SYSDATE) + NUMTODSINTERVAL((SUM(TEMPO_MINUTOS) / SUM(QTD)), 'MINUTE'), 'HH24:MI:SS')
+--         ELSE
+--             '00:00:00'
+--     END AS TEMPO_MEDIO
+-- FROM PAINEL
+-- WHERE NM_PRESTADOR = 'JOAQUIM DAVID CARNEIRO NETO '
+-- GROUP BY
+--     MES,
+--     ANO,
+--     CLINICA,
+--     NM_PRESTADOR,
+--     FILA,
+--     CLASSIFICACAO_PROCESSO
+-- ORDER BY
+--     MES,
+--     ANO,
+--     CLINICA,
+--     NM_PRESTADOR,
+--     FILA,
+--     CLASSIFICACAO_PROCESSO
 ;
+
 
 
 
@@ -660,7 +782,6 @@ FROM TREATS
 WHERE DS_FILA LIKE '%ANGIO TC%'
 ORDER BY CD_TIPO_TEMPO_PROCESSO
 ;
-
 
 
 
