@@ -354,8 +354,7 @@ WITH UNIDADE_LEITOS
             /*+ MATERIALIZE */
         FROM DBAMV.LEITO l
         JOIN DBAMV.UNID_INT ui ON l.CD_UNID_INT = ui.CD_UNID_INT
-)
-,
+),
 ATENDIMENTO
     AS (
         SELECT
@@ -532,8 +531,7 @@ PACIENTE_ALTAS
             EXTRACT(MONTH FROM a.DT_ALTA_SYS),
             EXTRACT(YEAR FROM a.DT_ALTA_SYS),
             ul.LOCAL
-)
-,
+),
 MOVI_INTERNA
     AS (
         SELECT
@@ -601,7 +599,7 @@ FROM PACIENTE_DIA pd
 LEFT JOIN PACIENTE_ALTAS pa ON pd.MES = pa.MES AND pd.ANO = pa.ANO AND pd.LOCAL = pa.LOCAL
 JOIN MOVI_INTERNA mi ON pd.MES = mi.MES AND pd.ANO = mi.ANO AND pd.LOCAL = mi.LOCAL
 JOIN MEDIANA m ON pd.MES = m.MES AND pd.ANO = m.ANO AND pd.LOCAL = m.LOCAL
-WHERE pd.LOCAL = '" & Unidade & "' AND pd.ANO =  = EXTRACT(YEAR FROM SYSDATE)
+WHERE pd.LOCAL = 'UTI 1' AND pd.ANO  = EXTRACT(YEAR FROM SYSDATE)
 ORDER BY
     pd.MES,
     pd.LOCAL
@@ -694,6 +692,7 @@ WITH PRESCRICAO_VM
                 te.CD_TIP_ESQ IN( 'PME' ) AND
                 tp.CD_TIP_PRESC IN(488) AND
                 EXTRACT(YEAR FROM ipm.DH_REGISTRO) = EXTRACT(YEAR FROM SYSDATE)
+                -- AND pm.CD_ATENDIMENTO = 265514
                 -- AND pm.CD_ATENDIMENTO = 187202 -- 183178 --198862 -- 183314--187202 --184846
             -- ORDER BY ipm.DH_REGISTRO DESC
 ),
@@ -902,7 +901,7 @@ ORDER BY MES
 /* ******************************************************************************************** */
 /* ******************************************************************************************** */
 
-
+-- ESBOCO [PARA BAGUNCAR]
 WITH PACIENTE_DIA_PRESCRICAO
     AS     (
             SELECT DISTINCT
@@ -914,17 +913,29 @@ WITH PACIENTE_DIA_PRESCRICAO
                 pm.CD_UNID_INT,
 
                 pm.HR_PRE_MED,
-                -- MIN(ipm.DH_REGISTRO)
-                -- OVER (
-                --       PARTITION BY
-                --         pm.CD_ATENDIMENTO
-                --     ) AS DT_START,
 
-                -- MAX(ipm.DH_REGISTRO)
-                -- OVER (
-                --       PARTITION BY
-                --         pm.CD_ATENDIMENTO
-                --     ) AS DT_END,
+                -- CASE
+                --     WHEN a.DT_ALTA IS NOT NULL AND a.HR_ALTA IS NOT NULL THEN
+                --         TO_DATE(
+                --             TO_CHAR(a.DT_ALTA, 'DD/MM/YYYY') || ' ' || TO_CHAR(a.HR_ALTA, 'HH24:MI:SS'),
+                --             'DD/MM/YYYY HH24:MI:SS'
+                --         )
+                --     WHEN a.DT_ALTA IS NOT NULL AND a.HR_ALTA IS NULL THEN
+                --         TO_DATE(TO_CHAR(a.DT_ALTA, 'DD/MM/YYYY') || ' 23:59:59', 'DD/MM/YYYY HH24:MI:SS')
+                --     ELSE NULL
+                -- END AS DH_ALTA,
+
+                MIN(ipm.DH_REGISTRO)
+                OVER (
+                      PARTITION BY
+                        pm.CD_ATENDIMENTO
+                    ) AS DT_START,
+
+                MAX(ipm.DH_REGISTRO)
+                OVER (
+                      PARTITION BY
+                        pm.CD_ATENDIMENTO
+                    ) AS DT_END,
 
                 tp.CD_TIP_PRESC,
                 tp.DS_TIP_PRESC,
@@ -936,19 +947,24 @@ WITH PACIENTE_DIA_PRESCRICAO
             JOIN DBAMV.PRE_MED pm       ON ipm.CD_PRE_MED = pm.CD_PRE_MED
             JOIN TIP_PRESC tp           ON ipm.CD_TIP_ESQ = tp.CD_TIP_ESQ
             JOIN DBAMV.TIP_ESQ te       ON ipm.CD_TIP_ESQ = te.CD_TIP_ESQ AND ipm.CD_TIP_PRESC = tp.CD_TIP_PRESC
+            -- LEFT JOIN DBAMV.ATENDIME a  ON pm.CD_ATENDIMENTO = a.CD_ATENDIMENTO
             WHERE
                 -- te.CD_TIP_ESQ IN( 'PME' ) AND
-                tp.CD_TIP_PRESC IN(
-                                    488,                       -- [PAVM] VENTILACAO MECANICA
-                                    42400,                     -- [IPCS] INSTALAR CATETER VENOSO CENTRAL
-                                    688, 743, 42724,           -- [ITU-AC] SONDA VESICAL
-                                    42566, 42631, 9042325,
-                                    42790, 9042327, 9040923,
-                                    7568, 7569                 -- [ISC] REVASCULARIZAÇÃO DO MIOCARDIO - PROTESE MAMARIA ???
+                tp.CD_TIP_PRESC IN(488
+                -- IN(
+                --                     488,                       -- [PAVM] VENTILACAO MECANICA
+                --                     42400,                     -- [IPCS] INSTALAR CATETER VENOSO CENTRAL
+                --                     688, 743, 42724,           -- [ITU-AC] SONDA VESICAL
+                --                     42566, 42631, 9042325,
+                --                     42790, 9042327, 9040923,
+                --                     7568, 7569                 -- [ISC] REVASCULARIZAÇÃO DO MIOCARDIO - PROTESE MAMARIA ???
                                 ) AND
                 -- EXTRACT(YEAR FROM ipm.DH_REGISTRO) = EXTRACT(YEAR FROM SYSDATE)
                 ipm.DH_REGISTRO BETWEEN ADD_MONTHS(SYSDATE, -5) AND TRUNC(SYSDATE)
-                AND pm.CD_ATENDIMENTO = 265514 --262558
+                AND pm.CD_ATENDIMENTO = 262558 --289010  --265514 --262558
+            ORDER BY
+                pm.CD_ATENDIMENTO,
+                pm.HR_PRE_MED
 ),
 ATENDIMENTO
     AS (
@@ -1028,7 +1044,6 @@ TREATS
 
             EXTRACT(MONTH FROM pvm.DT_START) AS MES,
             SUBSTR(TO_CHAR(pvm.DT_START, 'FMMONTH', 'NLS_DATE_LANGUAGE=PORTUGUESE'), 1, 3)  AS NOME_MES,
-
             EXTRACT(YEAR FROM pvm.DT_START) AS ANO,
 
             uil.CD_UNID_INT,
@@ -1068,7 +1083,17 @@ TREATS
         LEFT JOIN OBITOS o ON pvm.CD_ATENDIMENTO = o.CD_ATENDIMENTO
         LEFT JOIN UNIDADE_LEITOS uil ON pvm.CD_UNID_INT = uil.CD_UNID_INT
         ORDER BY EXTRACT(MONTH FROM pvm.DT_START)
-),
+)
+SELECT
+    *
+FROM TREATS
+ORDER BY
+    CD_ATENDIMENTO,
+    DT_START
+;
+
+
+,
 HORAS
     AS (
         SELECT
@@ -1143,29 +1168,36 @@ ORDER BY MES
 
 
 /* ******************************************************************************************** */
-/* PACIENTE-DIA - ITU-AC E IPCS UNIFICADO                                                         */
+/* PACIENTE-DIA - ITU-AC | IPCS | PAVM                                                         */
 /* ******************************************************************************************** */
 
-WITH PRESCRICAO_TODAS
+WITH PRESCRICAO
     AS (
         SELECT
             pm.CD_ATENDIMENTO,
             pm.CD_UNID_INT,
             pm.HR_PRE_MED,
-            ipm.CD_TIP_PRESC,
+            im.DH_REGISTRO, -- Dt solicitacao exame/realizacao de prescricao do item
+            im.CD_TIP_PRESC,
             CASE
-                WHEN ipm.CD_TIP_PRESC IN (688, 42631) THEN 'ITU-AC'
-                WHEN ipm.CD_TIP_PRESC = 743 THEN 'ITU-AC'
-                WHEN ipm.CD_TIP_PRESC IN (42400, 41177, 35753, 35752, 39669, 39668, 35751, 42230, 42855, 9043509) THEN 'IPCS'
-                WHEN ipm.CD_TIP_PRESC = 746 THEN 'IPCS'
+                WHEN im.CD_TIP_PRESC IN (688, 42631, 743) THEN
+                    'ITU-AC'
+                WHEN im.CD_TIP_PRESC IN (42400, 41177, 35753, 35752,
+                                         39669, 39668, 35751, 42230,
+                                         42855, 9043509, 746) THEN
+                    'IPCS'
+                WHEN im.CD_TIP_PRESC =  488 THEN
+                    'PAVM'
             END AS TIPO_INDICADOR
-        FROM DBAMV.ITPRE_MED ipm
-        JOIN DBAMV.PRE_MED pm ON ipm.CD_PRE_MED = pm.CD_PRE_MED
+        FROM DBAMV.ITPRE_MED im
+        JOIN DBAMV.PRE_MED pm ON im.CD_PRE_MED = pm.CD_PRE_MED
         WHERE
-            ipm.CD_TIP_PRESC IN (688, 42631, 743, 42400, 41177, 35753, 35752, 39669, 39668, 35751, 42230, 42855, 9043509, 746)
-            AND ipm.DH_REGISTRO BETWEEN ADD_MONTHS(SYSDATE, -5) AND TRUNC(SYSDATE)
-            -- AND pm.CD_ATENDIMENTO = 265514
-    ),
+            im.CD_TIP_PRESC IN( 42631, 42400, 41177, 35753,
+                                35752, 39669, 39668, 35751,
+                                42230, 42855, 9043509, 746,
+                                688, 743, 488) AND
+            im.DH_REGISTRO BETWEEN ADD_MONTHS(SYSDATE, -5) AND TRUNC(SYSDATE)
+),
 ATENDIMENTO_ALTA
     AS (
         SELECT
@@ -1181,20 +1213,65 @@ ATENDIMENTO_ALTA
                 ELSE NULL
             END AS DH_ALTA
         FROM DBAMV.ATENDIME a
-    ),
-INICIO
+),
+PROTOCOLO_EXTUBACAO_PAVM
+    AS (
+        SELECT
+
+            pdc.CD_ATENDIMENTO,
+            er.CD_CAMPO,
+            REGEXP_SUBSTR(DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1), '[0-9]+') AS REGX,
+            DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1) AS SEM_REGX,
+            MAX(pdc.DH_DOCUMENTO) AS HR_DOC_EXTUBACAO
+
+        FROM DBAMV.PW_DOCUMENTO_CLINICO pdc
+        INNER JOIN DBAMV.PW_EDITOR_CLINICO pec    ON pec.CD_DOCUMENTO_CLINICO = pdc.CD_DOCUMENTO_CLINICO
+        LEFT JOIN DBAMV.EDITOR_REGISTRO_CAMPO er  ON er.CD_REGISTRO = pec.CD_EDITOR_REGISTRO
+        LEFT JOIN DBAMV.EDITOR_DOCUMENTO doc      ON pec.CD_DOCUMENTO = doc.CD_DOCUMENTO
+        WHERE
+            EXTRACT(YEAR FROM pdc.DH_DOCUMENTO) = EXTRACT(YEAR FROM SYSDATE) AND
+            doc.CD_DOCUMENTO IN ('935') AND
+            er.CD_CAMPO IN(442178, 452571)
+        GROUP BY
+            pdc.CD_ATENDIMENTO,
+            er.CD_CAMPO,
+            REGEXP_SUBSTR(DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1), '[0-9]+'),
+            DBMS_LOB.SUBSTR(er.LO_VALOR, 4000, 1)
+),
+DT_INICIO
     AS (
         SELECT
             p.CD_ATENDIMENTO,
             p.CD_UNID_INT,
             p.HR_PRE_MED AS DT_START,
             p.TIPO_INDICADOR
-        FROM PRESCRICAO_TODAS p
+        FROM PRESCRICAO p
         WHERE
-            (p.TIPO_INDICADOR = 'ITU-AC' AND p.CD_TIP_PRESC IN (688, 42631))
-            OR (p.TIPO_INDICADOR = 'IPCS' AND p.CD_TIP_PRESC IN (42400, 41177, 35753, 35752, 39669, 39668, 35751, 42230, 42855, 9043509))
-    ),
-PERIODO
+            (p.TIPO_INDICADOR = 'ITU-AC' AND p.CD_TIP_PRESC IN(688, 42631)) OR
+            (p.TIPO_INDICADOR = 'IPCS'   AND p.CD_TIP_PRESC IN(42400, 41177, 35753, 35752,
+                                                               39669, 39668, 35751, 42230,
+                                                               42855, 9043509))
+),
+DT_INICIO_PAVM
+    AS (
+        SELECT
+            p.CD_ATENDIMENTO,
+            p.CD_UNID_INT,
+            p.TIPO_INDICADOR,
+            a.DH_ALTA,
+            MIN(p.HR_PRE_MED) AS DT_START
+
+        FROM PRESCRICAO p
+        LEFT JOIN ATENDIMENTO_ALTA a ON p.CD_ATENDIMENTO = a.CD_ATENDIMENTO
+        WHERE
+            p.TIPO_INDICADOR = 'PAVM' AND p.CD_TIP_PRESC = 488
+        GROUP BY
+            p.CD_ATENDIMENTO,
+            p.CD_UNID_INT,
+            p.TIPO_INDICADOR,
+            a.DH_ALTA
+),
+TREATS_UNION
     AS (
         SELECT
             i.CD_ATENDIMENTO,
@@ -1202,58 +1279,120 @@ PERIODO
             i.DT_START,
             i.TIPO_INDICADOR,
             a.DH_ALTA,
+
+            NULL AS DT_INICIAL_PAVM,
+            NULL AS HR_DOC_EXTUBACAO,
             (
-                SELECT MIN(p2.HR_PRE_MED)
-                FROM PRESCRICAO_TODAS p2
+                SELECT
+                    MIN(p2.HR_PRE_MED)
+                FROM PRESCRICAO p2
                 WHERE
-                    p2.CD_ATENDIMENTO = i.CD_ATENDIMENTO
-                    AND p2.TIPO_INDICADOR = i.TIPO_INDICADOR
-                    AND (
-                        (i.TIPO_INDICADOR = 'ITU-AC' AND p2.CD_TIP_PRESC = 743)
-                        OR (i.TIPO_INDICADOR = 'IPCS' AND p2.CD_TIP_PRESC = 746)
-                    )
-                    AND p2.HR_PRE_MED > i.DT_START
-            ) AS NEXT_FIM,
+                    p2.CD_ATENDIMENTO = i.CD_ATENDIMENTO AND
+                    p2.TIPO_INDICADOR = i.TIPO_INDICADOR AND
+                    (
+                        (i.TIPO_INDICADOR = 'ITU-AC' AND p2.CD_TIP_PRESC = 743) OR
+                        (i.TIPO_INDICADOR = 'IPCS'   AND p2.CD_TIP_PRESC = 746)
+                    ) AND
+                    p2.HR_PRE_MED > i.DT_START
+            ) AS DT_PRIMEIRO_FIM,
+
             (
-                SELECT MIN(p3.HR_PRE_MED)
-                FROM PRESCRICAO_TODAS p3
+                SELECT
+                    MIN(p3.HR_PRE_MED)
+                FROM PRESCRICAO p3
                 WHERE
-                    p3.CD_ATENDIMENTO = i.CD_ATENDIMENTO
-                    AND p3.TIPO_INDICADOR = i.TIPO_INDICADOR
-                    AND (
-                        (i.TIPO_INDICADOR = 'ITU-AC' AND p3.CD_TIP_PRESC IN (688, 42631))
-                        OR (i.TIPO_INDICADOR = 'IPCS' AND p3.CD_TIP_PRESC IN (42400, 41177, 35753, 35752, 39669, 39668, 35751, 42230, 42855, 9043509))
-                    )
-                    AND p3.HR_PRE_MED > i.DT_START
-            ) AS NEXT_START
-        FROM INICIO i
+                    p3.CD_ATENDIMENTO = i.CD_ATENDIMENTO AND
+                    p3.TIPO_INDICADOR = i.TIPO_INDICADOR AND
+                    (
+                        (i.TIPO_INDICADOR = 'ITU-AC' AND p3.CD_TIP_PRESC IN(688, 42631)) OR
+                        (i.TIPO_INDICADOR = 'IPCS'   AND p3.CD_TIP_PRESC IN(42400, 41177, 35753, 35752,
+                                                                            39669, 39668, 35751, 42230,
+                                                                            42855, 9043509))
+                    ) AND
+                    p3.HR_PRE_MED > i.DT_START
+            ) AS DT_SEGUNDO_INICIO
+
+        FROM DT_INICIO i
         LEFT JOIN ATENDIMENTO_ALTA a ON i.CD_ATENDIMENTO = a.CD_ATENDIMENTO
-    )
-SELECT
-    p.TIPO_INDICADOR,
-    p.CD_ATENDIMENTO,
-    p.CD_UNID_INT,
-    p.DT_START,
+
+        UNION ALL
+
+        SELECT
+            di.CD_ATENDIMENTO,
+            di.CD_UNID_INT,
+            di.DT_START,
+            di.TIPO_INDICADOR,
+            di.DH_ALTA,
+            di.DT_START AS DT_INICIAL_PAVM,
+            (
+                SELECT
+                    MAX(p_pavm.HR_PRE_MED)
+                FROM PRESCRICAO p_pavm
+                WHERE
+                    p_pavm.CD_ATENDIMENTO = di.CD_ATENDIMENTO AND
+                    p_pavm.CD_UNID_INT = di.CD_UNID_INT AND
+                    p_pavm.TIPO_INDICADOR = 'PAVM' AND
+                    p_pavm.CD_TIP_PRESC = 488
+            ) AS HR_DOC_EXTUBACAO,
+            NULL AS DT_PRIMEIRO_FIM,
+            NULL AS DT_SEGUNDO_INICIO
+        FROM DT_INICIO_PAVM di
+),
+DT_FIM
+    AS (
+        SELECT
+            p.TIPO_INDICADOR,
+            p.CD_ATENDIMENTO,
+            p.CD_UNID_INT,
+            p.DT_START,
+            p.DH_ALTA,
+            CASE
+                WHEN p.TIPO_INDICADOR = 'PAVM' AND p.HR_DOC_EXTUBACAO IS NOT NULL THEN
+                    p.HR_DOC_EXTUBACAO
+                WHEN p.DT_PRIMEIRO_FIM IS NOT NULL THEN
+                    p.DT_PRIMEIRO_FIM
+                WHEN p.DT_SEGUNDO_INICIO IS NOT NULL THEN
+                    p.DT_SEGUNDO_INICIO
+                WHEN p.DT_INICIAL_PAVM IS NOT NULL THEN
+                    p.DT_INICIAL_PAVM
+                ELSE p.DH_ALTA
+            END AS DT_END
+
+        FROM TREATS_UNION p
+        ORDER BY
+            p.TIPO_INDICADOR,
+            p.CD_ATENDIMENTO,
+            p.DT_START
+),
+ UNIDADE_LEITOS
+    AS (
+        SELECT
+            CD_UNID_INT,
+            CASE
+                WHEN DS_UNID_INT LIKE '%POSTO%' THEN
+                    'POSTO'
+                ELSE DS_UNID_INT
+            END AS LOCAL
+        FROM DBAMV.UNID_INT
+)
+SELECT DISTINCT
+    TRUNC(df.DT_START) AS DATA,
+    ul.LOCAL,
+    df.TIPO_INDICADOR AS TIPO,
+
     CASE
-        WHEN p.NEXT_FIM IS NOT NULL THEN p.NEXT_FIM
-        WHEN p.NEXT_START IS NOT NULL THEN p.NEXT_START
-        ELSE p.DH_ALTA
-    END AS DT_END,
-    CASE
-        WHEN p.DT_START IS NOT NULL AND
-             (p.NEXT_FIM IS NOT NULL OR p.NEXT_START IS NOT NULL OR p.DH_ALTA IS NOT NULL) THEN
-            TRUNC(
-                CASE
-                    WHEN p.NEXT_FIM IS NOT NULL THEN p.NEXT_FIM
-                    WHEN p.NEXT_START IS NOT NULL THEN p.NEXT_START
-                    ELSE p.DH_ALTA
-                END
-            ) - TRUNC(p.DT_START) + 1
-        ELSE NULL
-    END AS PACIENTE_DIA
-FROM PERIODO p
+        WHEN df.DT_START IS NOT NULL AND df.DT_END IS NOT NULL THEN
+            TRUNC(df.DT_END) - TRUNC(df.DT_START)
+        ELSE 0
+    END AS QTD_PACIENTE,
+
+    0 AS QTD_OCORRENCIA
+
+FROM DT_FIM df
+JOIN UNIDADE_LEITOS ul ON df.CD_UNID_INT = ul.CD_UNID_INT
+WHERE ul.LOCAL = '" & Unidade & "'
 ORDER BY
-    p.TIPO_INDICADOR,
-    p.CD_ATENDIMENTO,
-    p.DT_START
+    TRUNC(df.DT_START),
+    ul.LOCAL,
+    df.TIPO_INDICADOR
 ;
