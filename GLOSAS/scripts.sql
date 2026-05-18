@@ -1,5 +1,5 @@
 
--- "Serviços da Conta" + "Dados da Conta" da tela "M_LAN_HOS" e ""
+-- "Serviços da Conta" + "Dados da Conta" da tela "M_LAN_HOS" e "M_LAN_AMB_PARTICULAR"
 
 WITH FILTRO AS (
     SELECT
