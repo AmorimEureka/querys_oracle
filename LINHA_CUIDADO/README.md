@@ -46,10 +46,12 @@ Explicar, de forma simples, como a evolucao vira registro em `PRE_MED`.
 
 ## Relacionamento 1:* opcional e query principal
 
-No contexto funcional deste fluxo, considere o relacionamento entre `PW_DOCUMENTO_CLINICO` e `PRE_MED` como `1:* opcional`.
+No contexto funcional deste fluxo, a leitura correta e esta:
 
-- Opcional: pode existir documento clinico sem linha correspondente em `PRE_MED`.
-- Vinculo: a chave de associacao usada no fluxo e `CD_DOCUMENTO_CLINICO`.
+- todo documento clinico criado por esse fluxo termina com registro em `PRE_MED`;
+- a relacao continua sendo `1:* opcional` no lado da `PRE_MED`, porque a tabela de prescricao tambem recebe registros vindos de outros documentos;
+- por isso, nem toda `PRE_MED` nasce com `PW_DOCUMENTO_CLINICO` no mesmo caminho;
+- a chave de associacao usada no fluxo e `CD_DOCUMENTO_CLINICO`.
 
 Query base com campos principais da juncao:
 
@@ -73,11 +75,13 @@ SELECT
 	pm.nm_usuario,
 	pm.ds_evolucao
 FROM dbamv.pw_documento_clinico pdc
-LEFT JOIN dbamv.pre_med pm
-	   ON pm.cd_documento_clinico = pdc.cd_documento_clinico
+INNER JOIN dbamv.pre_med pm
+	ON pm.cd_documento_clinico = pdc.cd_documento_clinico
 WHERE pdc.cd_atendimento = :cd_atendimento
 ORDER BY pdc.cd_documento_clinico DESC;
 ```
+
+Use `INNER JOIN` neste exemplo porque ele representa o fluxo principal documentado aqui: `PW_DOCUMENTO_CLINICO` criado pela API com `PRE_MED` correspondente.
 
 ## Fluxo simples
 1. Tela chama `PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao(...)`.
@@ -85,7 +89,6 @@ ORDER BY pdc.cd_documento_clinico DESC;
 3. A funcao procura uma `PRE_MED` aberta para o mesmo contexto.
 4. Se existir, reutiliza o `CD_PRE_MED`; se nao existir, chama `dbamv.fnc_pagu_presc_nova(...)` para criar.
 5. O sistema grava/atualiza o conteudo clinico (incluindo `DS_EVOLUCAO`).
-6. No fechamento, `PRC_PAGU_FECHAR_PRESCRICAO` marca `PRE_MED` como impressa/fechada e fecha `PW_DOCUMENTO_CLINICO`.
 
 ## Onde cada arquivo ajuda
 - `PKG_MVPEP_WRAPPER.sql`: mostra o wrapper delegando.
@@ -216,7 +219,6 @@ def criar_evolucao(req: EvolucaoRequest):
 				select dbamv.fnc_mvpep_criar_prescricao(
 					:cd_atendimento,
 					:tp_acao_tela,
-					:dt_prescricao,
 					:cd_setor,
 					:tp_objeto,
 					:cd_setor_maquina,
