@@ -1,6 +1,10 @@
-# Persistência de evolução em PRE_MED
+# Linha de Cuidado: Fluxos de Prescrição Clínica
 
-## Fluxograma da inserção em PRE_MED
+---
+
+# Parte 1: INSERT em PW_DOCUMENTO_CLINICO + PRE_MED
+
+## Fluxograma: Documento Clínico + Cabeçalho da Prescrição
 
 ```mermaid
 flowchart TD
@@ -20,10 +24,12 @@ flowchart TD
 	L --> M
 ```
 
-## Objetivo
-Explicar, de forma simples, como a evolução vira registro em `PRE_MED`.
+## Explicações: Como funciona o fluxo
 
-## Diferenca entre as duas funcoes
+### Objetivo
+Criar um documento clínico (`PW_DOCUMENTO_CLINICO`) e associá-lo a uma prescrição (`PRE_MED`), gerando um vínculo de evolução clínica que persiste em base de dados com regras de negócio validadas.
+
+### Diferença entre as duas funções principais
 
 ### `PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao(...)`
 - É uma porta de entrada (wrapper).
@@ -59,7 +65,6 @@ Query base com campos principais da junção:
 SELECT
 	pdc.cd_documento_clinico,
 	pdc.cd_atendimento,
-	pdc.cd_paciente,
 	pdc.cd_prestador,
 	pdc.tp_status,
 	pdc.dh_referencia,
@@ -83,40 +88,31 @@ ORDER BY pdc.cd_documento_clinico DESC;
 
 Use `INNER JOIN` neste exemplo porque ele representa o fluxo principal documentado aqui: `PW_DOCUMENTO_CLINICO` criado pela API com `PRE_MED` correspondente.
 
-## Fluxo simples
+## Fluxo prático
 1. Tela chama `PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao(...)`.
 2. O wrapper chama `DBAMV.FNC_MVPEP_CRIAR_PRESCRICAO(...)`.
 3. A função procura uma `PRE_MED` aberta para o mesmo contexto.
 4. Se existir, reutiliza o `CD_PRE_MED`; se não existir, chama `dbamv.fnc_pagu_presc_nova(...)` para criar.
 5. O sistema grava/atualiza o conteúdo clínico (incluindo `DS_EVOLUCAO`).
 
-## Onde cada arquivo ajuda
+## Referências de arquivos que implementam este fluxo
 - `PKG_MVPEP_WRAPPER.sql`: mostra o wrapper delegando.
 - `FNC_MVPEP_CRIAR_PRESCRICAO.sql`: mostra a regra de reutilizar ou criar.
 - `FNC_PAGU_PRESC_NOVA.sql`: mostra a criação física da nova linha em `PRE_MED`.
 - `DDL_PRE_MED.sql`: mostra estrutura da tabela e trigger de sincronização documental.
 - `PRC_PAGU_FECHAR_PRESCRICAO.sql`: mostra a consolidação final no fechamento.
 
-## Exemplo de endpoint FastAPI (documento clínico + criação de PRE_MED)
+## Endpoints sugeridos para este fluxo
 
-Objetivo do endpoint:
-- receber contexto clínico da API,
-- criar `PW_DOCUMENTO_CLINICO`,
-- chamar a função de negócio para criar/reutilizar `PRE_MED`.
+### Endpoint 1a: Criar documento clínico + prescrição (evolução/consulta)
 
-Regra desta API (obrigatória):
-- sempre criar primeiro `PW_DOCUMENTO_CLINICO`,
-- depois gerar `PRE_MED`.
+**Objetivo**: receber contexto clínico da API, criar `PW_DOCUMENTO_CLINICO` e gerar/reutilizar `PRE_MED`.
 
-Ordem de execucao na API:
-1. `INSERT` em `PW_DOCUMENTO_CLINICO`.
-2. chamada da regra de negocio para gerar/reutilizar `PRE_MED`.
-3. retorno de `cd_documento_clinico` e `cd_pre_med` na resposta.
+**Regra obrigatória**: criar primeiro `PW_DOCUMENTO_CLINICO`, depois gerar `PRE_MED`.
 
-### Contrato sugerido
+**Método e rota**: `POST /api/v1/prescricoes/criar-evolucao`
 
-`POST /api/v1/prescricoes/evolucao`
-
+**Contrato**:
 ```json
 {
   "cd_atendimento": 302831,
@@ -134,7 +130,7 @@ Ordem de execucao na API:
 }
 ```
 
-### Exemplo simplificado de implementação
+**Exemplo simplificado de implementação**:
 
 ```python
 from datetime import datetime
@@ -151,7 +147,6 @@ class EvolucaoRequest(BaseModel):
 	cd_prestador: int
 	cd_objeto: int
 	tp_acao_tela: str = "EVO"
-	tp_objeto: str = "MEDICA"
 	cd_setor: int | None = None
 	cd_setor_maquina: int | None = None
 	cd_unid_int: int | None = None
@@ -164,7 +159,7 @@ def get_conn():
 	return oracledb.connect(user="app", password="***", dsn="host/service")
 
 
-@app.post("/api/v1/prescricoes/evolucao")
+@app.post("/api/v1/prescricoes/criar-evolucao")
 def criar_evolucao(req: EvolucaoRequest):
 	conn = get_conn()
 	try:
@@ -242,7 +237,6 @@ def criar_evolucao(req: EvolucaoRequest):
 					"dt_validade": req.dt_validade,
 				},
 			)
-			cd_pre_med = cur.fetchone()[0]
 
 		conn.commit()
 		return {
@@ -257,14 +251,240 @@ def criar_evolucao(req: EvolucaoRequest):
 		conn.close()
 ```
 
-### Resposta esperada
-
+**Resposta esperada**:
 ```json
 {
   "cd_documento_clinico": 2746304,
   "cd_pre_med": 791775,
+  "status": "ok"
 }
 ```
 
-## Conclusão
-Não há um `INSERT` direto da tela em `PRE_MED` nesse desenho. O processo passa por regras PL/SQL: decide reutilizar/criar, grava evolução e depois consolida no fechamento.
+### Endpoint 1b: Fechar prescrição e documento
+
+**Objetivo**: consolidar a prescrição, atualizar status em `PRE_MED` e `PW_DOCUMENTO_CLINICO`, marcando como impressa/fechada.
+
+**Método e rota**: `POST /api/v1/prescricoes/{cd_pre_med}/fechar`
+
+**Contrato**:
+```json
+{
+  "nm_usuario_autorizador": "DR_SILVA"
+}
+```
+
+**Resposta esperada**:
+```json
+{
+  "cd_pre_med": 791775,
+  "fl_impresso": "S",
+  "dh_impressao": "2026-05-19T16:45:30",
+  "status": "fechado"
+}
+```
+
+## Conclusão desta parte
+
+A persistência de evolução em `PRE_MED` não é um `INSERT` direto; segue um fluxo governado por regras PL/SQL que:
+1. **Cria primeiro** o documento clínico (`PW_DOCUMENTO_CLINICO`).
+2. **Reutiliza ou cria** a prescrição (`PRE_MED`) conforme contexto.
+3. **Grava/atualiza** o conteúdo clínico (evolução textual) durante o uso.
+4. **Consolida** o documento clínico no fechamento da prescrição.
+
+O ponto crítico é que `PW_DOCUMENTO_CLINICO` e `PRE_MED` mantêm **sincronismo via trigger e rotina de fechamento**, garantindo integridade referencial e auditoria do fluxo.
+
+---
+
+# Parte 2: INSERT em PRE_MED + ITPRE_MED
+
+## Fluxograma: Cabeçalho + Itens da Prescrição
+
+```mermaid
+flowchart TD
+	A["PRE_MED criada\nCD_PRE_MED conhecido"] --> B["Sistema prepara\ninsert de itens"]
+	B --> C["Para cada item\ndo tipo prescricao"]
+	C --> D{"Tipo de item?\nMED/EXA/PROC?"}
+	D -->|Medicamento| E["INSERT ITPRE_MED\ncom CD_PRODUTO, CD_UNI_PRO"]
+	D -->|Exame| F["INSERT ITPRE_MED\ncom CD_SET_EXA, CD_TIP_ESQ"]
+	D -->|Procedimento| G["INSERT ITPRE_MED\ncom CD_PROC, formato específico"]
+	E --> H["Atualiza NR_ORDEM,\nTP_SITUACAO, SN_CANCELADO"]
+	F --> H
+	G --> H
+	H --> I["Item vinculado a\nPRE_MED pelo CD_PRE_MED"]
+	I --> J["Próximo item\nou Fim"]
+	J -->|Há itens| C
+	J -->|Fim| K["Prescrição com N itens\npronta para uso"]
+	K --> L["Fluxo retorna à API\ncom CD_PRE_MED e lista de itens"]
+```
+
+## Explicações: Como funciona a prescrição em dois níveis
+
+### Visão simples da relação PRE_MED + ITPRE_MED
+- `PRE_MED` é o **cabeçalho** da prescrição (atendimento, data de referência, tipo, status e vínculo clínico).
+- `ITPRE_MED` são os **itens** (medicamentos, exames, procedimentos, etc.).
+- A relação prática é: `PRE_MED.CD_PRE_MED` → `ITPRE_MED.CD_PRE_MED` (1:N obrigatória).
+
+### Como ocorre o INSERT no fluxo
+
+1. **PRE_MED já existe** (foi criado na Parte 1 ou reutilizado).
+2. **No código**, isso ocorre em `FNC_PAGU_PRESC_NOVA.sql` com `INSERT INTO DBAMV.PRE_MED`.
+3. **Depois são inseridos os itens** em `ITPRE_MED`, sempre apontando para o `CD_PRE_MED` criado/reutilizado.
+4. **No trace** (`query_detect.sql`), aparecem **múltiplos `INSERT INTO DBAMV.ITPRE_MED`** com variações de colunas.
+5. **Essas variações representam tipos diferentes** de item.
+
+#### Exemplos práticos de variações:
+- **Inserts com `CD_PRODUTO` e `CD_UNI_PRO`**: cenário típico de medicação/produto.
+- **Inserts com `CD_FOR_APL`**: cenário com forma de aplicação.
+- **Inserts sem alguns campos opcionais**: exames/procedimentos ou itens com estrutura diferente.
+
+### Evidências diretas encontradas
+
+- **Criação do cabeçalho**: `FNC_PAGU_PRESC_NOVA.sql` contém `Insert Into Dbamv.Pre_Med (...)`.
+- **Estrutura dos itens**: `ITPRE_MED.sql` mostra FK `ITPRE_MED_PRE_MED_FK` (`CD_PRE_MED`) e FK para `TIP_PRESC` (`CD_TIP_PRESC`), que define o tipo do item prescrito.
+- **Trace de execução**: `query_detect.sql` contém inserts como `insert into dbamv.ITPRE_MED (... CD_PRE_MED, CD_TIP_PRESC, CD_ITPRE_MED ...) values (...)`.
+- **Suporte auxiliar**: chamadas de apoio como `PRC_PAGU_COPIA_ITPRESC_PADRAO` e consultas de listagem por `CD_PRE_MED` (`FNC_MVPEP_LISTAITEMPRESCRICAO`).
+
+### Query base para análise: prescrição com todos os itens
+
+```sql
+SELECT
+    pm.cd_pre_med,
+    pm.cd_atendimento,
+    pm.tp_pre_med,
+    pm.dt_referencia,
+    pm.fl_impresso,
+    ipm.cd_itpre_med,
+    ipm.cd_tip_presc,
+    ipm.cd_tip_esq,
+    ipm.cd_produto,
+    ipm.ds_itpre_med,
+    ipm.tp_situacao,
+    ipm.sn_cancelado,
+    ipm.nr_ordem
+FROM dbamv.pre_med pm
+INNER JOIN dbamv.itpre_med ipm
+        ON ipm.cd_pre_med = pm.cd_pre_med
+WHERE pm.cd_pre_med = :cd_pre_med
+ORDER BY ipm.nr_ordem, ipm.cd_itpre_med;
+```
+
+## Endpoints sugeridos para este fluxo
+
+### Endpoint 2a: Listar itens da prescrição
+
+**Objetivo**: retornar todos os itens (`ITPRE_MED`) de uma prescrição (`PRE_MED`).
+
+**Método e rota**: `GET /api/v1/prescricoes/{cd_pre_med}/itens`
+
+**Resposta esperada**:
+```json
+[
+  {
+    "cd_itpre_med": 1001,
+    "cd_pre_med": 791775,
+    "cd_tip_presc": 5,
+    "cd_tipo_esq": "MED",
+    "cd_produto": 4521,
+    "ds_itpre_med": "Dipirona 500mg",
+    "qt_itpre_med": 2,
+    "tp_situacao": "N",
+    "nr_ordem": 1
+  },
+  {
+    "cd_itpre_med": 1002,
+    "cd_pre_med": 791775,
+    "cd_tip_presc": 12,
+    "cd_tipo_esq": "EXA",
+    "cd_set_exa": 89,
+    "ds_itpre_med": "Hemograma",
+    "tp_situacao": "N",
+    "nr_ordem": 2
+  }
+]
+```
+
+### Endpoint 2b: Adicionar item à prescrição
+
+**Objetivo**: inserir um novo item (`ITPRE_MED`) em uma prescrição aberta.
+
+**Método e rota**: `POST /api/v1/prescricoes/{cd_pre_med}/itens`
+
+**Contrato**:
+```json
+{
+  "cd_tip_presc": 5,
+  "cd_tipo_esq": "MED",
+  "cd_produto": 4521,
+  "cd_uni_pro": 1,
+  "qt_itpre_med": 2,
+  "ds_itpre_med": "Dipirona 500mg, 2 comprimidos a cada 6 horas",
+  "nr_ordem": 1
+}
+```
+
+**Resposta esperada**:
+```json
+{
+  "cd_itpre_med": 1001,
+  "cd_pre_med": 791775,
+  "status": "criado"
+}
+```
+
+**Variação para exame**:
+```json
+{
+  "cd_tip_presc": 12,
+  "cd_tipo_esq": "EXA",
+  "cd_set_exa": 89,
+  "ds_itpre_med": "Hemograma",
+  "nr_ordem": 2
+}
+```
+
+## Conclusão desta parte
+
+A prescrição é estruturada em **dois níveis hierárquicos**:
+
+1. **Cabeçalho (PRE_MED)**: criado uma única vez por contexto clínico; reutilizado se compatível.
+2. **Itens (ITPRE_MED)**: inseridos com **flexibilidade de campos** conforme tipo de prescrição:
+   - Medicamentos: com `CD_PRODUTO`, `CD_UNI_PRO`, `QT_ITPRE_MED`
+   - Exames: com `CD_SET_EXA`, `CD_TIP_ESQ`
+   - Procedimentos: com `CD_PROC` ou equivalente
+
+- O INSERT em `PRE_MED` ocorre **uma única vez** por prescrição.
+- Os INSERTs em `ITPRE_MED` são **múltiplos** (1 por item), cada um atualizado conforme o tipo.
+- A relação é **1:N obrigatória**, permitindo uma prescrição com múltiplos itens.
+- O tipo de item é um atributo de negócio determinado por `CD_TIP_PRESC` e configurações da rotina de inserção.
+
+---
+
+## Referências de arquivos que implementam este fluxo
+- `ITPRE_MED.sql`: DDL com estrutura, FKs e triggers.
+- `query_detect.sql`: Exemplos de múltiplos INSERT patterns.
+- `FNC_MVPEP_LISTAITEMPRESCRICAO`: Função auxiliar de listagem de itens.
+- `PRC_PAGU_COPIA_ITPRESC_PADRAO`: Procedure de cópia de itens padrão.
+
+---
+
+## Conclusão geral
+
+O sistema de prescrição é composto por **duas partes bem definidas**:
+
+### Parte 1: Documento Clínico + Prescrição
+- Cria ou reutiliza a prescrição clínica
+- Vincula documento a prescrição
+- Persiste evolução textual
+- Consolida ao final
+
+### Parte 2: Prescrição + Itens
+- Popula prescrição com medicamentos, exames, procedimentos
+- Suporta múltiplos tipos com estruturas flexíveis
+- Mantém ordem e status dos itens
+- Permite operações de CRUD independentes
+
+**Garantias do fluxo**:
+- Não há `INSERT` direto da tela; tudo passa por regras PL/SQL validadas
+- Sincronismo automático via triggers entre documento e prescrição
+- Auditoria completa de criação, modificação e fechamento
+- Reutilização inteligente de prescrições compatíveis
