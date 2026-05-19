@@ -1,6 +1,6 @@
-# Persistencia de evolucao em PRE_MED
+# Persistência de evolução em PRE_MED
 
-## Fluxograma da insercao em PRE_MED
+## Fluxograma da inserção em PRE_MED
 
 ```mermaid
 flowchart TD
@@ -21,39 +21,39 @@ flowchart TD
 ```
 
 ## Objetivo
-Explicar, de forma simples, como a evolucao vira registro em `PRE_MED`.
+Explicar, de forma simples, como a evolução vira registro em `PRE_MED`.
 
 ## Diferenca entre as duas funcoes
 
 ### `PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao(...)`
-- E uma porta de entrada (wrapper).
-- Recebe a chamada da tela/servico.
-- Encaminha para a funcao de negocio.
+- É uma porta de entrada (wrapper).
+- Recebe a chamada da tela/serviço.
+- Encaminha para a função de negócio.
 - Retorna o `CD_PRE_MED`.
 
 ### `dbamv.fnc_pagu_presc_nova(...)`
-- E a rotina que efetivamente cria a nova prescricao.
-- Ela e chamada de dentro de `FNC_MVPEP_CRIAR_PRESCRICAO` quando precisa criar.
-- Nao e chamada direto pela tela nesse fluxo.
+- É a rotina que efetivamente cria a nova prescrição.
+- Ela é chamada de dentro de `FNC_MVPEP_CRIAR_PRESCRICAO` quando precisa criar.
+- Não é chamada direto pela tela nesse fluxo.
 
-`PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao` orquestra a chamada; `dbamv.fnc_pagu_presc_nova` faz a criacao fisica da nova `PRE_MED`.
+`PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao` orquestra a chamada; `dbamv.fnc_pagu_presc_nova` faz a criação física da nova `PRE_MED`.
 
-## O que `FNC_PAGU_PRESC_NOVA` faz na pratica
+## O que `FNC_PAGU_PRESC_NOVA` faz na prática
 - Gera um novo `CD_PRE_MED` pela sequencia (`SEQ_PRE_MED.NEXTVAL`).
 - Monta e grava um novo registro em `DBAMV.PRE_MED` (`INSERT INTO PRE_MED`).
 - Cria o registro inicial com `DS_EVOLUCAO = NULL` (a evolucao textual e preenchida depois).
-- Associa o novo registro ao documento clinico (`CD_DOCUMENTO_CLINICO`) e devolve o `CD_PRE_MED` criado.
+- Associa o novo registro ao documento clínico (`CD_DOCUMENTO_CLINICO`) e devolve o `CD_PRE_MED` criado.
 
 ## Relacionamento 1:* opcional e query principal
 
-No contexto funcional deste fluxo, a leitura correta e esta:
+No contexto funcional deste fluxo, a leitura correta é esta:
 
-- todo documento clinico criado por esse fluxo termina com registro em `PRE_MED`;
-- a relacao continua sendo `1:* opcional` no lado da `PRE_MED`, porque a tabela de prescricao tambem recebe registros vindos de outros documentos;
+- todo documento clínico criado por esse fluxo termina com registro em `PRE_MED`;
+- a relação continua sendo `1:* opcional` no lado da `PRE_MED`, porque a tabela de prescrição também recebe registros vindos de outros documentos;
 - por isso, nem toda `PRE_MED` nasce com `PW_DOCUMENTO_CLINICO` no mesmo caminho;
-- a chave de associacao usada no fluxo e `CD_DOCUMENTO_CLINICO`.
+- a chave de associação usada no fluxo é `CD_DOCUMENTO_CLINICO`.
 
-Query base com campos principais da juncao:
+Query base com campos principais da junção:
 
 ```sql
 SELECT
@@ -86,25 +86,25 @@ Use `INNER JOIN` neste exemplo porque ele representa o fluxo principal documenta
 ## Fluxo simples
 1. Tela chama `PKG_MVPEP_WRAPPER.fnc_mvpep_criar_prescricao(...)`.
 2. O wrapper chama `DBAMV.FNC_MVPEP_CRIAR_PRESCRICAO(...)`.
-3. A funcao procura uma `PRE_MED` aberta para o mesmo contexto.
-4. Se existir, reutiliza o `CD_PRE_MED`; se nao existir, chama `dbamv.fnc_pagu_presc_nova(...)` para criar.
-5. O sistema grava/atualiza o conteudo clinico (incluindo `DS_EVOLUCAO`).
+3. A função procura uma `PRE_MED` aberta para o mesmo contexto.
+4. Se existir, reutiliza o `CD_PRE_MED`; se não existir, chama `dbamv.fnc_pagu_presc_nova(...)` para criar.
+5. O sistema grava/atualiza o conteúdo clínico (incluindo `DS_EVOLUCAO`).
 
 ## Onde cada arquivo ajuda
 - `PKG_MVPEP_WRAPPER.sql`: mostra o wrapper delegando.
 - `FNC_MVPEP_CRIAR_PRESCRICAO.sql`: mostra a regra de reutilizar ou criar.
-- `FNC_PAGU_PRESC_NOVA.sql`: mostra a criacao fisica da nova linha em `PRE_MED`.
-- `DDL_PRE_MED.sql`: mostra estrutura da tabela e trigger de sincronizacao documental.
-- `PRC_PAGU_FECHAR_PRESCRICAO.sql`: mostra a consolidacao final no fechamento.
+- `FNC_PAGU_PRESC_NOVA.sql`: mostra a criação física da nova linha em `PRE_MED`.
+- `DDL_PRE_MED.sql`: mostra estrutura da tabela e trigger de sincronização documental.
+- `PRC_PAGU_FECHAR_PRESCRICAO.sql`: mostra a consolidação final no fechamento.
 
-## Exemplo de endpoint FastAPI (documento clinico + criacao de PRE_MED)
+## Exemplo de endpoint FastAPI (documento clínico + criação de PRE_MED)
 
 Objetivo do endpoint:
-- receber contexto clinico da API,
+- receber contexto clínico da API,
 - criar `PW_DOCUMENTO_CLINICO`,
-- chamar a funcao de negocio para criar/reutilizar `PRE_MED`.
+- chamar a função de negócio para criar/reutilizar `PRE_MED`.
 
-Regra desta API (obrigatoria):
+Regra desta API (obrigatória):
 - sempre criar primeiro `PW_DOCUMENTO_CLINICO`,
 - depois gerar `PRE_MED`.
 
@@ -134,7 +134,7 @@ Ordem de execucao na API:
 }
 ```
 
-### Exemplo simplificado de implementacao
+### Exemplo simplificado de implementação
 
 ```python
 from datetime import datetime
@@ -263,9 +263,8 @@ def criar_evolucao(req: EvolucaoRequest):
 {
   "cd_documento_clinico": 2746304,
   "cd_pre_med": 791775,
-  "status": "ok"
 }
 ```
 
-## Conclusao
-Nao ha um `INSERT` direto da tela em `PRE_MED` nesse desenho. O processo passa por regras PL/SQL: decide reutilizar/criar, grava evolucao e depois consolida no fechamento.
+## Conclusão
+Não há um `INSERT` direto da tela em `PRE_MED` nesse desenho. O processo passa por regras PL/SQL: decide reutilizar/criar, grava evolução e depois consolida no fechamento.
