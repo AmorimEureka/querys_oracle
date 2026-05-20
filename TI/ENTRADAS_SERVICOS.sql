@@ -11,6 +11,25 @@
 
 
 
+/* ************************************************************************************** */
+-- TABELAS:
+--  ⛧ CEN_CUS*
+
+--  ⛧ GRU_RES
+--      CD_GRU_RES
+--      DS_GRU_RES
+--      TP_OPERACIONAL
+--      NR_ORDEM_GRUPO
+
+--  ⛧ ITEM_RES
+--      CD_ITEM_RES
+--      DS_ITEM_RES
+--      CD_GRU_RES
+--      TP_ITEM_RES
+--      SN_ATIVO
+
+--  ⛧ PLANO_CONTAS
+
 
 --SETOR TI - CD_SETOR IN(12, 73)
 SELECT
@@ -22,10 +41,19 @@ SELECT
     DT_COMPETENCIA,
     VL_RATEIO
 FROM DBAMV.RATCON_PAG
-WHERE CD_SETOR IN(12, 73)
+WHERE CD_SETOR IN(12, 73) AND CD_CON_PAG = 81023
 ;
 
 
+SELECT
+    CD_SETOR,
+    NM_SETOR,
+    CD_CEN_CUS
+FROM DBAMV.SETOR
+WHERE CD_SETOR IN(12, 73)
+;
+
+/* ************************************************************************************** */
 
 --PREVISTOS NO FINANCEIRO (CONTAS A PAGAR)
 
@@ -73,6 +101,19 @@ WHERE CD_CON_PAG = 81023
 ;
 
 
+SELECT
+    CD_ITCON_PAG,
+    CD_CON_PAG,
+    CD_PROCESSO,
+    NR_PARCELA,
+    DT_VENCIMENTO,
+    DT_PREVISTA_PAG,
+    TP_QUITACAO, -- "Q" QUITADO
+    VL_DUPLICATA
+FROM DBAMV.ITCON_PAG
+WHERE EXTRACT(YEAR FROM DT_VENCIMENTO) = 2025 AND EXTRACT(MONTH FROM DT_VENCIMENTO) = 08
+;
+
 
 -- PAGAMENTOS REALIZADOS
 
@@ -99,6 +140,9 @@ FROM DBAMV.PAGCON_PAG
 WHERE CD_ITCON_PAG = 171303
 -- WHERE CD_ITCON_PAG = 143636 -- CD_ITCON_PAG DA "CD_CON_PAG = 66696"
 ;
+
+
+
 
 
 
@@ -144,13 +188,6 @@ WHERE CD_ENT_SERV = 9024
 
 
 
-SELECT
-    CD_SETOR,
-    NM_SETOR,
-    CD_CEN_CUS
-FROM DBAMV.SETOR
-WHERE CD_SETOR IN(12, 73)
-;
 
 
 /*
