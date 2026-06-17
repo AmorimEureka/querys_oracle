@@ -1243,3 +1243,81 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 <br>
 
 </details>
+
+<br>
+<br>
+
+<details>
+
+<summary><strong>⛧ AGENDAMENTO e REAGENDAMENTO</strong></summary>
+
+**OBJETIVOS: Gerar conhecimento sobre como agendamento/reagendamentos são realizados no banco do ERP Soul MV**
+---
+
+<br>
+<br>
+
+<details>
+    <summary>
+        <strong>Origem do Estudo Modelo Entidade Relacionamento - MER</strong>
+    </summary>
+
+<br>
+
+<blockquote>
+
+- **ESCALA_CENTRAL**
+
+    Definição TEMPORAL de ONDE, QUANDO e COMO um recurso pode atender
+
+- **AGENDA_CENTRAL**
+
+    Agenda configurada a partir da ESCALA por RECURSO (Local/Unidade, Especialidade, Sala, Prestador, Equipamento)
+
+- **AGENDA_CENTRAL_ITEM_AGENDA**
+
+    Determina quais tipos ITEM _AGENDAMENTO ofertados podem ser agendados para determinado recurso da AGENDA_CENTRAL
+
+- **ITEM_AGENDAMENTO**
+
+    Item ofertado para agendamento (consulta, exame, procedimento e etc)
+
+- **IT_AGENDA_CENTRAL**
+
+    Horários reais de agendamentos realizado para PACIENTES e/ou PROCEDIMENTOS da Central de marcações
+
+![Diagrama ER](AGENDAMENTOS.png)
+
+</blockquote>
+
+</details>
+
+<br>
+
+<details>
+    <summary>
+        <strong>Documentacao:</strong>
+    </summary>
+
+<blockquote>
+
+- INSERT - IT_AGENDA_CENTRAL: Unico input é dos horarios gerados realizado por `DBAMV.PKG_SCMA_M_GERA_AGENDA`;
+
+- UPDATE - IT_AGENDA_CENTRAL: O agendamento marcado (paciente/item) faz UPDATE no slot existente com `DBAMV.PKG_AGENDAMENTO_WEB`;
+
+- WIEW - `VDIC_RECEPCAO_AGENDA`: É um join atualizavel das tabelas IT_AGENDA_CENTRAL + AGENDA_CENTRAL e fornece fonte de consulta de todos slots, ocupados ou nao;
+
+- PACKAGE - `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REVALIDA_HORARIOS`: É uma validacao concentrada de todas as regras anteriores e necessarias para realizar a marcacao
+
+- CANCELAMENTO: É realizado por `DBAMV.PKG_AGENDAMENTO_WEB.PRC_EXCLUIR_AGD`.
+
+- TRANSFERENCIA: Mudanca de slot reservado anteriormente para outro slot de agenda é feito por
+`DBAMV.PKG_CENTRAL_MARCACOES.PRC_REALIZA_TRANSFERENCIA`.
+
+</blockquote>
+
+</details>
+
+
+
+</details>
