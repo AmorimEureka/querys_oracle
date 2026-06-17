@@ -1247,7 +1247,7 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 <br>
 <br>
 
-<details>
+<details open>
 
 <summary><strong>⛧ AGENDAMENTO e REAGENDAMENTO</strong></summary>
 
@@ -1257,7 +1257,7 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 <br>
 <br>
 
-<details>
+<details open>
     <summary>
         <strong>Origem do Estudo Modelo Entidade Relacionamento - MER</strong>
     </summary>
@@ -1294,7 +1294,7 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 
 <br>
 
-<details>
+<details open>
     <summary>
         <strong>Documentacao:</strong>
     </summary>
@@ -1307,9 +1307,9 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 
 - **WIEW** - `VDIC_RECEPCAO_AGENDA`: É um join atualizavel das tabelas IT_AGENDA_CENTRAL + AGENDA_CENTRAL e fornece fonte de consulta de todos slots, ocupados ou nao;
 
-- **PACKAGE** - `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REVALIDA_HORARIOS`: É uma validacao concentrada de todas as regras anteriores e necessarias para realizar a marcacao
+- **PACKAGE** - `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REVALIDA_HORARIOS`: É uma validacao concentrada de todas as regras anteriores e necessarias para realizar a marcacao;
 
-- **CANCELAMENTO**: É realizado por `DBAMV.PKG_AGENDAMENTO_WEB.PRC_EXCLUIR_AGD`.
+- **CANCELAMENTO**: É realizado por `DBAMV.PKG_AGENDAMENTO_WEB.PRC_EXCLUIR_AGD`;
 
 - **TRANSFERENCIA**: Mudanca de slot reservado anteriormente para outro slot de agenda é feito por
 `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REALIZA_TRANSFERENCIA`.
