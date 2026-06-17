@@ -1301,17 +1301,17 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 
 <blockquote>
 
-- INSERT - IT_AGENDA_CENTRAL: Unico input é dos horarios gerados realizado por `DBAMV.PKG_SCMA_M_GERA_AGENDA`;
+- **INSERT - IT_AGENDA_CENTRAL**: Unico input é dos horarios gerados realizado por `DBAMV.PKG_SCMA_M_GERA_AGENDA`;
 
-- UPDATE - IT_AGENDA_CENTRAL: O agendamento marcado (paciente/item) faz UPDATE no slot existente com `DBAMV.PKG_AGENDAMENTO_WEB`;
+- **UPDATE - IT_AGENDA_CENTRAL**: O agendamento marcado (paciente/item) faz UPDATE no slot existente com `DBAMV.PKG_AGENDAMENTO_WEB`;
 
-- WIEW - `VDIC_RECEPCAO_AGENDA`: É um join atualizavel das tabelas IT_AGENDA_CENTRAL + AGENDA_CENTRAL e fornece fonte de consulta de todos slots, ocupados ou nao;
+- **WIEW** - `VDIC_RECEPCAO_AGENDA`: É um join atualizavel das tabelas IT_AGENDA_CENTRAL + AGENDA_CENTRAL e fornece fonte de consulta de todos slots, ocupados ou nao;
 
-- PACKAGE - `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REVALIDA_HORARIOS`: É uma validacao concentrada de todas as regras anteriores e necessarias para realizar a marcacao
+- **PACKAGE** - `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REVALIDA_HORARIOS`: É uma validacao concentrada de todas as regras anteriores e necessarias para realizar a marcacao
 
-- CANCELAMENTO: É realizado por `DBAMV.PKG_AGENDAMENTO_WEB.PRC_EXCLUIR_AGD`.
+- **CANCELAMENTO**: É realizado por `DBAMV.PKG_AGENDAMENTO_WEB.PRC_EXCLUIR_AGD`.
 
-- TRANSFERENCIA: Mudanca de slot reservado anteriormente para outro slot de agenda é feito por
+- **TRANSFERENCIA**: Mudanca de slot reservado anteriormente para outro slot de agenda é feito por
 `DBAMV.PKG_CENTRAL_MARCACOES.PRC_REALIZA_TRANSFERENCIA`.
 
 </blockquote>
