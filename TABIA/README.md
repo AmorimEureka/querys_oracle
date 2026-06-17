@@ -1301,9 +1301,9 @@ OBJETIVO: Listar Prescrições e Pedidos de exames de Imagem e Laboratórial
 
 <blockquote>
 
-- **INSERT - IT_AGENDA_CENTRAL**: Unico input é dos horarios gerados realizado por `DBAMV.PKG_SCMA_M_GERA_AGENDA`;
+- **INSERT - IT_AGENDA_CENTRAL**: Unico input é dos horarios gerados por `DBAMV.PKG_SCMA_M_GERA_AGENDA`;
 
-- **UPDATE - IT_AGENDA_CENTRAL**: O agendamento marcado (paciente/item) faz UPDATE no slot existente com `DBAMV.PKG_AGENDAMENTO_WEB`;
+- **UPDATE - IT_AGENDA_CENTRAL**: O agendamento marcado (paciente/item) faz UPDATE no slot de agendas existente com `DBAMV.PKG_AGENDAMENTO_WEB`;
 
 - **WIEW** - `VDIC_RECEPCAO_AGENDA`: É um join atualizavel das tabelas IT_AGENDA_CENTRAL + AGENDA_CENTRAL e fornece fonte de consulta de todos slots, ocupados ou nao;
 
