@@ -34,12 +34,19 @@ CENTRAL
                                 gf.ds_gru_fat,
                                 it.cd_pro_fat,
                                 pf.ds_pro_fat AS descricao,
-                                it.cd_guia,
+                                g.nr_guia,
+                                g.cd_senha,
+                                a.dt_atendimento,
+                                a.dt_alta,
+                                rf.dt_remessa,
+                                rf.dt_fechamento,
                                 it.dt_lancamento,
                                 it.hr_lancamento,
                                 it.cd_prestador,
                                 pr.nm_prestador,
+                                rf.sn_fechada,
                                 it.sn_pertence_pacote,
+                                it.qt_lancamento,
                                 it.vl_unitario,
                                 it.vl_total_conta,
                                 it.vl_honorario_unitario,
@@ -49,7 +56,13 @@ CENTRAL
                                 am.ds_ati_med,
                                 it.cd_usuario,
                                 u.nm_usuario,
-                                a.tp_atendimento,
+CASE
+    WHEN a.tp_atendimento = 'A' THEN 'Ambulatório'
+    WHEN a.tp_atendimento = 'E' THEN 'Externo'
+    WHEN a.tp_atendimento = 'U' THEN 'Urgência'
+    WHEN a.tp_atendimento = 'I' THEN 'Internação'
+    ELSE NULL
+END AS tp_atendimento,
                                 TO_DATE(
                                     TO_CHAR(it.dt_lancamento, 'DD/MM/YYYY') ||
                                     TO_CHAR(it.hr_lancamento, 'HH24:MI:SS'),
@@ -64,6 +77,7 @@ CENTRAL
                             LEFT JOIN dbasgu.usuarios u     ON it.cd_usuario     =  u.cd_usuario
                             LEFT JOIN dbamv.atendime a      ON rf.cd_atendimento = a.cd_atendimento
                             LEFT JOIN dbamv.convenio c      ON rf.cd_convenio    =  c.cd_convenio
+                            LEFT JOIN dbamv.guia g          ON it.cd_guia         = g.cd_guia
                             LEFT JOIN dbamv.regra r         ON rf.cd_regra       =  r.cd_regra
                             LEFT JOIN dbamv.paciente p      ON a.cd_paciente     = p.cd_paciente
                             CROSS JOIN FILTRO f
@@ -87,12 +101,19 @@ CENTRAL
                                 gf.ds_gru_fat,
                                 ia.cd_pro_fat,
                                 pf.ds_pro_fat AS descricao,
-                                ia.cd_guia,
+                                g.nr_guia,
+                                g.cd_senha,
+                                a.dt_atendimento,
+                                a.dt_alta,
+                                ra.dt_remessa,
+                                ia.dt_fechamento,
                                 ra.dt_lancamento_final AS dt_lancamento,
                                 ia.hr_lancamento,
                                 ia.cd_prestador,
                                 pr.nm_prestador,
+                                ia.sn_fechada,
                                 ia.sn_pertence_pacote,
+                                ia.qt_lancamento,
                                 ia.vl_unitario,
                                 ia.vl_total_conta,
                                 ia.vl_honorario_unitario,
@@ -102,7 +123,13 @@ CENTRAL
                                 am.ds_ati_med,
                                 ia.cd_usuario,
                                 ia.nm_usuario,
-                                a.tp_atendimento,
+CASE
+    WHEN a.tp_atendimento = 'A' THEN 'Ambulatório'
+    WHEN a.tp_atendimento = 'E' THEN 'Externo'
+    WHEN a.tp_atendimento = 'U' THEN 'Urgência'
+    WHEN a.tp_atendimento = 'I' THEN 'Internação'
+    ELSE NULL
+END AS tp_atendimento,
                                 TO_DATE(
                                     TO_CHAR(ra.dt_lancamento_final, 'DD/MM/YYYY') ||
                                     TO_CHAR(ia.hr_lancamento, 'HH24:MI:SS'),
@@ -117,6 +144,7 @@ CENTRAL
                             LEFT JOIN dbasgu.usuarios u     ON ia.cd_usuario     =  u.cd_usuario
                             LEFT JOIN dbamv.atendime a      ON ia.cd_atendimento = a.cd_atendimento
                             LEFT JOIN dbamv.convenio c      ON ra.cd_convenio    =  c.cd_convenio
+                            LEFT JOIN dbamv.guia g          ON ia.cd_guia         = g.cd_guia
                             LEFT JOIN dbamv.regra r         ON ra.cd_regra       =  r.cd_regra
                             LEFT JOIN dbamv.paciente p      ON a.cd_paciente     = p.cd_paciente
                             CROSS JOIN FILTRO f
@@ -125,11 +153,11 @@ CENTRAL
                     )
                     ORDER BY sn_pertence_pacote ASC, dt_ordenacao
                 ) t
-                WHERE
-                    ROWNUM <= :param_Max
+                -- WHERE
+                --     ROWNUM <= :param_Max
         )
-        WHERE
-            recnum >= :param_Min
+        -- WHERE
+        --     recnum >= :param_Min
 )
 SELECT
     *
@@ -242,8 +270,10 @@ FROM (
 ORDER BY dt_ordenacao DESC, sn_pertence_pacote ASC
 ;
 
-
-SELECT * FROM dbamv.HPC_V_CONTA_ATENDIMENTO;
+SELECT * FROM DBAMV.NOTA_FISCAL WHERE CD_NOTA_FISCAL = 25114;
+SELECT * FROM DBAMV.NOTA_FISCAL WHERE NR_ID_NOTA_FISCAL = 25114;
+SELECT * FROM DBAMV.NOTA_FISCAL WHERE NR_NOTA_FISCAL_NFE = 25114;
+SELECT * FROM dbamv.HPC_V_CONTA_ATENDIMENTO WHERE CD_ATENDIMENTO = 301886;
 
 CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
     SELECT
@@ -261,12 +291,19 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
         gf.ds_gru_fat,
         it.cd_pro_fat,
         pf.ds_pro_fat AS descricao,
-        it.cd_guia,
+        g.nr_guia,
+        g.cd_senha,
+        a.dt_atendimento,
+        a.dt_alta,
+        rf.dt_remessa,
+        rf.dt_fechamento,
         it.dt_lancamento,
         it.hr_lancamento,
         it.cd_prestador,
         pr.nm_prestador,
+        rf.sn_fechada,
         it.sn_pertence_pacote,
+        it.qt_lancamento,
         it.vl_unitario,
         it.vl_total_conta,
         it.vl_honorario_unitario,
@@ -276,7 +313,13 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
         am.ds_ati_med,
         it.cd_usuario,
         u.nm_usuario,
-        a.tp_atendimento,
+        CASE
+            WHEN a.tp_atendimento = 'A' THEN 'Ambulatório'
+            WHEN a.tp_atendimento = 'E' THEN 'Externo'
+            WHEN a.tp_atendimento = 'U' THEN 'Urgência'
+            WHEN a.tp_atendimento = 'I' THEN 'Internação'
+            ELSE NULL
+        END AS tp_atendimento,
         TO_DATE(
             TO_CHAR(it.dt_lancamento, 'DD/MM/YYYY') ||
             TO_CHAR(it.hr_lancamento, 'HH24:MI:SS'),
@@ -291,6 +334,7 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
     LEFT JOIN dbasgu.usuarios u     ON it.cd_usuario     = u.cd_usuario
     LEFT JOIN dbamv.atendime a      ON rf.cd_atendimento = a.cd_atendimento
     LEFT JOIN dbamv.convenio c      ON rf.cd_convenio    = c.cd_convenio
+    LEFT JOIN dbamv.guia g          ON it.cd_guia         = g.cd_guia
     LEFT JOIN dbamv.regra r         ON rf.cd_regra       = r.cd_regra
     LEFT JOIN dbamv.paciente p      ON a.cd_paciente     = p.cd_paciente
 
@@ -311,12 +355,19 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
         gf.ds_gru_fat,
         ia.cd_pro_fat,
         pf.ds_pro_fat AS descricao,
-        ia.cd_guia,
+        g.nr_guia,
+        g.cd_senha,
+        a.dt_atendimento,
+        a.dt_alta,
+        ra.dt_remessa,
+        ia.dt_fechamento,
         ra.dt_lancamento_final AS dt_lancamento,
         ia.hr_lancamento,
         ia.cd_prestador,
         pr.nm_prestador,
+        ia.sn_fechada,
         ia.sn_pertence_pacote,
+        ia.qt_lancamento,
         ia.vl_unitario,
         ia.vl_total_conta,
         ia.vl_honorario_unitario,
@@ -326,7 +377,13 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
         am.ds_ati_med,
         ia.cd_usuario,
         ia.nm_usuario,
-        a.tp_atendimento,
+        CASE
+            WHEN a.tp_atendimento = 'A' THEN 'Ambulatório'
+            WHEN a.tp_atendimento = 'E' THEN 'Externo'
+            WHEN a.tp_atendimento = 'U' THEN 'Urgência'
+            WHEN a.tp_atendimento = 'I' THEN 'Internação'
+            ELSE NULL
+        END AS tp_atendimento,
         TO_DATE(
             TO_CHAR(ra.dt_lancamento_final, 'DD/MM/YYYY') ||
             TO_CHAR(ia.hr_lancamento, 'HH24:MI:SS'),
@@ -341,5 +398,9 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
     LEFT JOIN dbasgu.usuarios u     ON ia.cd_usuario     = u.cd_usuario
     LEFT JOIN dbamv.atendime a      ON ia.cd_atendimento = a.cd_atendimento
     LEFT JOIN dbamv.convenio c      ON ra.cd_convenio    = c.cd_convenio
+    LEFT JOIN dbamv.guia g          ON ia.cd_guia         = g.cd_guia
     LEFT JOIN dbamv.regra r         ON ra.cd_regra       = r.cd_regra
-    LEFT JOIN dbamv.paciente p      ON a.cd_paciente     = p.cd_paciente;
+    LEFT JOIN dbamv.paciente p      ON a.cd_paciente     = p.cd_paciente
+;
+
+
