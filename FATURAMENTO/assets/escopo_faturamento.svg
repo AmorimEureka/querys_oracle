@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
+  <rect x="1" y="1" width="1198" height="518" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="60" y="64" font-family="Arial" font-size="30" font-weight="700" fill="#172033">Faturamento desde a contratação: cobertura</text>
+  <g transform="translate(270 285) rotate(-90)">
+    <circle r="145" fill="none" stroke="#fdba74" stroke-width="62"/>
+    <circle r="145" fill="none" stroke="#93c5fd" stroke-width="62" pathLength="100" stroke-dasharray="15.37 84.63"/>
+  </g>
+  <text x="270" y="272" text-anchor="middle" font-family="Arial" font-size="48" font-weight="700" fill="#172033">15,4%</text>
+  <text x="270" y="307" text-anchor="middle" font-family="Arial" font-size="21" fill="#475569">coberto</text>
+  <rect x="520" y="155" width="22" height="22" rx="5" fill="#93c5fd"/>
+  <text x="560" y="175" font-family="Arial" font-size="26" font-weight="700" fill="#172033">Coberto: R$ 13,44 mi</text>
+  <text x="560" y="210" font-family="Arial" font-size="20" fill="#475569">Convênios atendidos pelo fornecedor</text>
+  <rect x="520" y="275" width="22" height="22" rx="5" fill="#fdba74"/>
+  <text x="560" y="295" font-family="Arial" font-size="26" font-weight="700" fill="#172033">Fora do escopo: R$ 74,00 mi</text>
+  <text x="560" y="330" font-family="Arial" font-size="20" fill="#475569">IPM, ISSEC, FUSEX, FUSMA, FUNSA, CONAB e FAMED</text>
+  <text x="60" y="475" font-family="Arial" font-size="18" fill="#475569">Percentuais calculados exclusivamente sobre os R$ 87,43 milhões avaliados.</text>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect x="1" y="1" width="1198" height="698" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="55" y="58" font-family="Arial" font-size="30" font-weight="700" fill="#172033">Quantidade de contas em remessa por convênio</text>
+  <text x="55" y="88" font-family="Arial" font-size="18" fill="#475569">fev/2025–jun/2026 · azul claro = coberto · pêssego = fora do escopo</text>
+  <g font-family="Arial" font-size="18" fill="#334155">
+    <text x="55" y="145">ISSEC</text><rect x="280" y="125" width="760" height="27" rx="6" fill="#fdba74"/><text x="1055" y="146">80.847</text>
+    <text x="55" y="200">IPM</text><rect x="280" y="180" width="301" height="27" rx="6" fill="#fdba74"/><text x="596" y="201">32.032</text>
+    <text x="55" y="255">FUSMA</text><rect x="280" y="235" width="49" height="27" rx="6" fill="#fdba74"/><text x="344" y="256">5.231</text>
+    <text x="55" y="310">SUS - INTERNAÇÃO</text><rect x="280" y="290" width="37" height="27" rx="6" fill="#93c5fd"/><text x="332" y="311">3.950</text>
+    <text x="55" y="365">CASSI</text><rect x="280" y="345" width="24" height="27" rx="6" fill="#93c5fd"/><text x="319" y="366">2.502</text>
+    <text x="55" y="420">BRADESCO</text><rect x="280" y="400" width="22" height="27" rx="6" fill="#93c5fd"/><text x="317" y="421">2.378</text>
+    <text x="55" y="475">CAMED</text><rect x="280" y="455" width="18" height="27" rx="6" fill="#93c5fd"/><text x="313" y="476">1.925</text>
+    <text x="55" y="530">FUSEX</text><rect x="280" y="510" width="18" height="27" rx="6" fill="#fdba74"/><text x="313" y="531">1.885</text>
+    <text x="55" y="585">UNIMED MULTIPLAN</text><rect x="280" y="565" width="14" height="27" rx="6" fill="#93c5fd"/><text x="309" y="586">1.495</text>
+    <text x="55" y="640">SAÚDE PETROBRAS</text><rect x="280" y="620" width="9" height="27" rx="6" fill="#93c5fd"/><text x="304" y="641">938</text>
+  </g>
+  <line x1="280" y1="112" x2="280" y2="655" stroke="#94a3b8"/>
+</svg>
