@@ -169,6 +169,7 @@ SELECT * FROM DBAMV.NOTA_FISCAL WHERE CD_NOTA_FISCAL = 25114;
 SELECT * FROM DBAMV.NOTA_FISCAL WHERE NR_ID_NOTA_FISCAL = 25114;
 SELECT * FROM DBAMV.NOTA_FISCAL WHERE NR_NOTA_FISCAL_NFE = 25114;
 SELECT * FROM dbamv.HPC_V_CONTA_ATENDIMENTO WHERE CD_ATENDIMENTO = 301886;
+SELECT * FROM dbamv.HPC_V_CONTA_ATENDIMENTO WHERE CD_REMESSA = 17413;
 
 
 
@@ -213,6 +214,7 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
         it.qt_lancamento,
         it.vl_unitario,
         it.vl_total_conta,
+        rf.vl_total_conta AS vl_total_registro,
         it.vl_honorario_unitario,
         it.vl_acrescimo,
         it.vl_desconto,
@@ -293,6 +295,7 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
         ia.qt_lancamento,
         ia.vl_unitario,
         ia.vl_total_conta,
+        ra.vl_total_conta AS vl_total_registro,
         ia.vl_honorario_unitario,
         ia.vl_acrescimo,
         ia.vl_desconto,
@@ -334,6 +337,38 @@ CREATE OR REPLACE VIEW dbamv.HPC_V_CONTA_ATENDIMENTO AS
 
 
 
+
+
+# -------------------------------------------------------------------------------------------------------
+
+
+SELECT * FROM dbamv.HPC_V_CONVENIOS;
+
+CREATE OR REPLACE VIEW dbamv.HPC_V_CONVENIOS AS
+    SELECT
+        CD_CONVENIO,
+        NR_CGC AS cnpj_convenio,
+        NM_CONVENIO
+    FROM DBAMV.CONVENIO
+    WHERE SN_ATIVO = 'S'
+;
+
+
+
+# -------------------------------------------------------------------------------------------------------
+
+SELECT * FROM dbamv.HPC_V_CONTAS_BANCARIAS;
+
+CREATE OR REPLACE VIEW dbamv.HPC_V_CONTAS_BANCARIAS AS
+  SELECT
+	cd_con_cor,
+	ds_con_cor,
+	cd_agencia,
+	cd_digito_agencia,
+	nr_conta,
+	cd_digito_conta_corrente
+FROM DBAMV.CON_COR
+;
 
 
 # -------------------------------------------------------------------------------------------------------
@@ -572,4 +607,25 @@ WHERE
 SELECT *
 FROM dbamv.atendime
 WHERE dt_alta > TO_DATE('15/06/2026', 'DD/MM/YYYY') AND TP_ATENDIMENTO = 'I'
+;
+
+
+
+SELECT * FROM DBAMV.HPC_V_PACIENTES;
+
+CREATE OR REPLACE VIEW dbamv.HPC_V_PACIENTES AS
+    SELECT
+        CD_PACIENTE,
+        NM_PACIENTE AS PACIENTE,
+        NM_MAE AS NOME_MAE,
+        NR_CPF AS CPF,
+        NR_CEP AS CEP,
+        DS_ENDERECO AS RUA,
+        NR_ENDERECO AS NUMERO_CASA,
+        NM_BAIRRO AS BAIRRO,
+        DS_COMPLEMENTO AS COMPLEMENTO,
+        EMAIL,
+        COALESCE(NR_FONE, NR_CELULAR) AS CONTATO,
+        COALESCE(NR_DDD_CELULAR, NR_DDD_FONE) AS DDD
+    FROM DBAMV.PACIENTE
 ;
