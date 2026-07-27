@@ -591,3 +591,295 @@ LEFT JOIN DBAMV.EXA_LAB el	   ON pf.CD_PRO_FAT = el.CD_PRO_FAT
 WHERE (itf.SN_REPASSADO IN ('S', 'N') OR itf.SN_REPASSADO IS NULL) AND  itf.CD_GRU_FAT = 8
 ;
 -- ################################################################################################
+
+
+WITH
+--     JN_PARAMETRO
+--     AS (
+--         SELECT
+--             :param AS CD_ATENDIMENTO
+--             -- :param AS PERIODO
+--         FROM DUAL
+-- ),
+JN_ATENDIMENTO
+    AS (
+        SELECT
+            a.CD_ATENDIMENTO,
+            a.DT_ATENDIMENTO,
+            TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') AS MES_ANO,
+            CASE
+                WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+                    AND st.cd_setor NOT IN (117,137)
+                    AND a.cd_prestador IN ('245', '268', '277', '318', '366', '372', '619', '645', '655', '682', '747', '762', '787', '874', '925', '945', '960') THEN
+                    'CLINICA 2'
+                WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+                    AND st.cd_setor NOT IN (117, 137)
+                    AND st.nm_setor LIKE '%2%'
+                    AND st.nm_setor NOT IN ('POSTO 2', 'UTI 2') THEN
+                    'CLINICA 2'
+                WHEN a.dt_atendimento >= TO_TIMESTAMP('2024-05-27 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+                AND  st.cd_setor IN (117, 137) THEN
+                    'CLINICA 2'
+                ELSE
+                    'CLINICA 1'
+            END AS CLINICAS,
+            EXTRACT(MONTH FROM a.DT_ATENDIMENTO) AS MES,
+            EXTRACT(YEAR FROM  a.DT_ATENDIMENTO) AS ANO,
+            a.CD_PACIENTE,
+            p.NM_PACIENTE,
+            a.TP_ATENDIMENTO,
+            -- c.NM_CONVENIO,
+            a.SN_OBITO,
+
+            a.NR_CARTEIRA
+        FROM DBAMV.ATENDIME a
+        JOIN DBAMV.PACIENTE p       ON a.CD_PACIENTE    = p.CD_PACIENTE
+        -- JOIN DBAMV.CONVENIO c       ON a.CD_CONVENIO    = c.CD_CONVENIO
+
+        JOIN DBAMV.ORI_ATE s   ON a.cd_ori_ate     = s.cd_ori_ate
+        JOIN DBAMV.SETOR st	ON s.CD_SETOR       = st.CD_SETOR
+        -- CROSS JOIN JN_PARAMETRO par
+        WHERE
+            -- a.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+            EXTRACT(YEAR FROM a.DT_ATENDIMENTO) IN(EXTRACT(YEAR FROM SYSDATE), EXTRACT(YEAR FROM SYSDATE)-1)
+            -- TO_CHAR(a.DT_ATENDIMENTO, 'MM/YYYY') = par.PERIODO
+),
+JN_REGRA_AMBULATORIO
+    AS (
+        SELECT
+            ia.CD_ATENDIMENTO,
+            ia.CD_REG_AMB AS CONTA,
+            ra.CD_REMESSA,
+            pf.CD_GRU_PRO,
+            ia.CD_GRU_FAT,
+            pf.CD_PRO_FAT,
+            pf.DS_PRO_FAT,
+            ia.CD_CONVENIO,
+            ia.SN_PERTENCE_PACOTE,
+            ia.QT_LANCAMENTO,
+            ia.VL_TOTAL_CONTA,
+            ia.TP_PAGAMENTO,
+            p.NM_PRESTADOR,
+            'AMBULATORIO' AS RG_FATURAMENTO
+        FROM DBAMV.ITREG_AMB ia
+        LEFT JOIN DBAMV.PRO_FAT pf     ON ia.CD_PRO_FAT = pf.CD_PRO_FAT
+        LEFT JOIN DBAMV.REG_AMB ra     ON ia.CD_REG_AMB = ra.CD_REG_AMB
+        LEFT JOIN DBAMV.PRESTADOR p    ON ia.CD_PRESTADOR = p.CD_PRESTADOR
+        -- CROSS JOIN JN_PARAMETRO par
+        -- WHERE ia.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+),
+JN_REGRA_HOSPITALAR
+    AS (
+        SELECT
+            rf.CD_ATENDIMENTO,
+            ift.CD_REG_FAT AS CONTA,
+            rf.CD_REMESSA,
+            pf.CD_GRU_PRO,
+            ift.CD_GRU_FAT,
+            pf.CD_PRO_FAT,
+            pf.DS_PRO_FAT,
+            rf.CD_CONVENIO,
+            ift.SN_PERTENCE_PACOTE,
+            ift.QT_LANCAMENTO,
+            ift.VL_TOTAL_CONTA,
+            ift.TP_PAGAMENTO,
+            p.NM_PRESTADOR,
+            'FATURAMENTO' AS RG_FATURAMENTO
+        FROM DBAMV.ITREG_FAT ift
+        LEFT JOIN DBAMV.PRO_FAT pf 	   ON ift.CD_PRO_FAT = pf.CD_PRO_FAT
+        LEFT JOIN DBAMV.REG_FAT rf 	   ON ift.CD_REG_FAT = rf.CD_REG_FAT
+        LEFT JOIN DBAMV.PRESTADOR p    ON ift.CD_PRESTADOR = p.CD_PRESTADOR
+        -- CROSS JOIN JN_PARAMETRO par
+        -- WHERE rf.CD_ATENDIMENTO = par.CD_ATENDIMENTO
+),
+JN_UNION_REGRAS
+    AS (
+        SELECT
+            ra.CD_ATENDIMENTO,
+            ra.CD_REMESSA,
+            ra.CONTA,
+            ra.CD_GRU_FAT,
+
+            ra.SN_PERTENCE_PACOTE,
+
+            ra.DS_PRO_FAT AS PROCEDIMENTO,
+            ra.CD_PRO_FAT AS CODIGO,
+
+            ra.CD_CONVENIO,
+            ra.TP_PAGAMENTO,
+
+            ra.RG_FATURAMENTO,
+            ra.NM_PRESTADOR,
+            (ra.VL_TOTAL_CONTA / ra.QT_LANCAMENTO) AS VL_UNIDADE,
+            SUM(ra.VL_TOTAL_CONTA) AS VL_TOTAL_CONTA,
+            SUM(ra.QT_LANCAMENTO) AS QTD
+
+
+        FROM JN_REGRA_AMBULATORIO ra
+        WHERE
+            ra.SN_PERTENCE_PACOTE = 'N' AND
+            ra.CD_REMESSA IS NOT NULL
+        GROUP BY
+            ra.CD_ATENDIMENTO,
+            ra.CD_REMESSA,
+            ra.CONTA,
+            ra.CD_GRU_FAT,
+
+            ra.SN_PERTENCE_PACOTE,
+
+            ra.DS_PRO_FAT,
+            ra.CD_PRO_FAT,
+
+            ra.CD_CONVENIO,
+            ra.TP_PAGAMENTO,
+
+            ra.RG_FATURAMENTO,
+            ra.NM_PRESTADOR,
+            (ra.VL_TOTAL_CONTA / ra.QT_LANCAMENTO)
+
+        UNION ALL
+
+        SELECT
+            rh.CD_ATENDIMENTO,
+            rh.CD_REMESSA,
+            rh.CONTA,
+            rh.CD_GRU_FAT,
+
+            rh.SN_PERTENCE_PACOTE,
+
+            rh.DS_PRO_FAT AS PROCEDIMENTO,
+            rh.CD_PRO_FAT AS CODIGO,
+
+            rh.CD_CONVENIO,
+            rh.TP_PAGAMENTO,
+
+            rh.RG_FATURAMENTO,
+            rh.NM_PRESTADOR,
+            (rh.VL_TOTAL_CONTA / rh.QT_LANCAMENTO) AS VL_UNIDADE,
+
+            SUM(rh.VL_TOTAL_CONTA) AS VL_TOTAL_CONTA,
+            SUM(rh.QT_LANCAMENTO) AS QTD
+
+        FROM JN_REGRA_HOSPITALAR rh
+        WHERE
+            rh.SN_PERTENCE_PACOTE = 'N' AND
+            rh.CD_REMESSA IS NOT NULL
+        GROUP BY
+            rh.CD_ATENDIMENTO,
+            rh.CD_REMESSA,
+            rh.CONTA,
+            rh.CD_GRU_FAT,
+
+            rh.SN_PERTENCE_PACOTE,
+
+            rh.DS_PRO_FAT,
+            rh.CD_PRO_FAT,
+
+            rh.CD_CONVENIO,
+            rh.TP_PAGAMENTO,
+
+            rh.RG_FATURAMENTO,
+            rh.NM_PRESTADOR,
+            (rh.VL_TOTAL_CONTA / rh.QT_LANCAMENTO)
+),
+JN_TUSS
+    AS (
+        SELECT
+            CD_PRO_FAT,
+            CD_TUSS,
+            CD_CONVENIO
+        FROM DBAMV.TUSS
+),
+JN_CONVENIO
+    AS (
+        SELECT
+            CD_CONVENIO,
+            NM_CONVENIO
+        FROM DBAMV.CONVENIO
+),
+TREATS
+    AS (
+        SELECT
+            a.CD_ATENDIMENTO,
+
+            ur.CD_REMESSA,
+            ur.CONTA,
+
+            a.MES,
+            a.ANO,
+
+            CASE a.TP_ATENDIMENTO
+                WHEN 'A' THEN 'AMBULATORIAL'
+                WHEN 'E' THEN 'EXTERNO'
+                WHEN 'U' THEN 'URGENCIA/EMERGENCIA'
+                WHEN 'I' THEN 'INTERNACAO'
+                ELSE 'Sem Correspondência'
+            END AS TIPO_ATENDIMENTO,
+
+            a.CLINICAS,
+
+            c.CD_CONVENIO,
+            c.NM_CONVENIO,
+
+            CASE
+                WHEN ur.CODIGO = 'X0000000' THEN
+                    'SUS'
+                WHEN ur.TP_PAGAMENTO = 'P' OR ur.TP_PAGAMENTO IS NULL THEN
+                    'PRODUCAO'
+                WHEN ur.TP_PAGAMENTO = 'C' THEN
+                    'COOPERATIVA'
+                ELSE 'OUTROS'
+            END AS TP_FATURAMENTO,
+
+            a.NM_PACIENTE,
+            CASE WHEN a.SN_OBITO = 'S' THEN 'OBITO' END AS OBITO,
+
+            ur.NM_PRESTADOR AS PRESTADOR,
+
+            CASE
+                WHEN ur.CD_GRU_FAT IN(3,5,10) THEN
+                    'MEDICAMENTOS'
+                WHEN ur.CD_GRU_FAT = 1 THEN
+                    'DIARIAS'
+                WHEN ur.CD_GRU_FAT = 2 THEN
+                    'TAXAS'
+                WHEN ur.CD_GRU_FAT = 4 THEN
+                    'MATERIAIS'
+                WHEN ur.CD_GRU_FAT = 8 THEN
+                    'PACOTE'
+                WHEN ur.CD_GRU_FAT = 7 AND a.TP_ATENDIMENTO = 'I' THEN
+                    'PROCEDIMENTO_MED'
+                WHEN ur.CD_GRU_FAT = 7 AND a.TP_ATENDIMENTO IN('A', 'U') THEN
+                    'CONSULTA'
+                WHEN ur.CD_GRU_FAT = 6 AND a.TP_ATENDIMENTO = 'A'  THEN
+                    'EXAMES'
+                WHEN ur.CD_GRU_FAT IN(6, 7) AND a.TP_ATENDIMENTO IN('I', 'E', 'U') THEN
+                    'EXAMES'
+                ELSE 'OUTROS'
+            END AS PROCEDIMENTO_FATURADO,
+
+            COALESCE(t.CD_TUSS, ur.CODIGO) AS CODIGO,
+            ur.PROCEDIMENTO,
+            ur.QTD,
+            ur.VL_UNIDADE,
+            ur.VL_TOTAL_CONTA,
+            CASE
+                WHEN ur.SN_PERTENCE_PACOTE = 'N' THEN
+                    'Não'
+                ELSE 'Sim'
+            END AS PACOTE
+
+        FROM JN_ATENDIMENTO a
+        LEFT JOIN JN_UNION_REGRAS ur  ON a.CD_ATENDIMENTO = ur.CD_ATENDIMENTO
+        LEFT JOIN JN_TUSS t ON ur.CODIGO = t.CD_PRO_FAT AND ur.CD_CONVENIO = t.CD_CONVENIO
+        LEFT JOIN JN_CONVENIO c       ON ur.CD_CONVENIO    = c.CD_CONVENIO
+
+        -- WHERE
+        --     ur.SN_PERTENCE_PACOTE = 'N'
+        ORDER BY a.CD_ATENDIMENTO DESC
+)
+SELECT
+    COUNT(DISTINCT CD_ATENDIMENTO)
+FROM TREATS
+WHERE TIPO_ATENDIMENTO = 'EXTERNO' AND ANO = '2026' AND MES = '1'
+;
