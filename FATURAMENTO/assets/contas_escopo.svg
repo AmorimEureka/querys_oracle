@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
+  <rect x="1" y="1" width="1198" height="518" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="60" y="64" font-family="Arial" font-size="30" font-weight="700" fill="#172033">Contas em remessa desde a contratação</text>
+  <g transform="translate(270 285) rotate(-90)">
+    <circle r="145" fill="none" stroke="#fdba74" stroke-width="62"/>
+    <circle r="145" fill="none" stroke="#93c5fd" stroke-width="62" pathLength="100" stroke-dasharray="12.91 87.09"/>
+  </g>
+  <text x="270" y="272" text-anchor="middle" font-family="Arial" font-size="48" font-weight="700" fill="#172033">12,9%</text>
+  <text x="270" y="307" text-anchor="middle" font-family="Arial" font-size="21" fill="#475569">cobertas</text>
+  <rect x="520" y="155" width="22" height="22" rx="5" fill="#93c5fd"/>
+  <text x="560" y="175" font-family="Arial" font-size="26" font-weight="700" fill="#172033">Cobertas: 17.893 contas</text>
+  <text x="560" y="210" font-family="Arial" font-size="20" fill="#475569">Média de 1.052 contas por mês</text>
+  <rect x="520" y="275" width="22" height="22" rx="5" fill="#fdba74"/>
+  <text x="560" y="295" font-family="Arial" font-size="26" font-weight="700" fill="#172033">Fora do escopo: 120.663 contas</text>
+  <text x="560" y="330" font-family="Arial" font-size="20" fill="#475569">Média de 7.098 contas por mês</text>
+  <text x="60" y="475" font-family="Arial" font-size="18" fill="#475569">Base avaliada: 138.556 contas · competências fev/2025–jun/2026.</text>
+</svg>
